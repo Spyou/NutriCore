@@ -6,7 +6,7 @@ class OpenFoodFactsConfig {
       name: 'NutriCheck',
       version: '1.0.0',
       system: 'Flutter App',
-      url: 'https://github.com/spyou/nutri-check',
+      url: 'https://github.com/Spyou/NutriCheck',
     );
 
     OpenFoodAPIConfiguration.globalLanguages = <OpenFoodFactsLanguage>[
