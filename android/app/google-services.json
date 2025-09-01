@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "1003927448309",
+    "project_id": "nutri-check-624ca",
+    "storage_bucket": "nutri-check-624ca.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1003927448309:android:adadcbb637ff480528b3bc",
+        "android_client_info": {
+          "package_name": "com.spyou.nutri_check"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1003927448309-jpcicg2m0c6f9r4vsp9pq39ifgvcn7ar.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAiXwpp8QuwmhFiKP7M-BIpjQePnhcOXM4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1003927448309-jpcicg2m0c6f9r4vsp9pq39ifgvcn7ar.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
