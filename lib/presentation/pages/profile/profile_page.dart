@@ -730,7 +730,6 @@ class ProfilePage extends StatelessWidget {
     );
   }
 
-  // In your profile page's edit profile dialog:
   void _showEditProfileDialog(ProfileController controller) {
     final nameController = TextEditingController(
       text: controller.userName.value,
