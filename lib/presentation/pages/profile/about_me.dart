@@ -1,4 +1,5 @@
 import 'package:another_flushbar/flushbar.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:nutri_check/core/constants/app_colors.dart';
@@ -57,7 +58,8 @@ class DeveloperAndDonationSection extends StatelessWidget {
           Row(
             children: [
               Container(
-                padding: EdgeInsets.all(12),
+                height: 48,
+                width: 48,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
@@ -65,9 +67,13 @@ class DeveloperAndDonationSection extends StatelessWidget {
                       AppColors.primary.withOpacity(0.8),
                     ],
                   ),
+                  image: DecorationImage(
+                    image: CachedNetworkImageProvider(
+                      'https://avatars.githubusercontent.com/u/88382789?v=4',
+                    ),
+                  ),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(Icons.person, color: Colors.white, size: 24),
               ),
               SizedBox(width: 16),
               Expanded(
@@ -75,14 +81,14 @@ class DeveloperAndDonationSection extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Developer',
+                      'About the Developer',
                       style: AppTextStyles.headingSmall(context).copyWith(
                         fontWeight: FontWeight.bold,
                         color: AppColors.primary,
                       ),
                     ),
                     Text(
-                      'Meet the creator behind NutriCheck',
+                      'App Developer & UI/UX Designer',
                       style: AppTextStyles.bodySmall(
                         context,
                       ).copyWith(color: AppColors.textSecondary),
