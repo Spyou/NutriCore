@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:nutri_check/core/services/theme_service.dart';
 import 'package:nutri_check/presentation/controllers/nutrition_controller.dart';
+import 'package:nutri_check/presentation/pages/profile/about_me.dart';
 import 'package:nutri_check/presentation/pages/theme_settings_page.dart';
 
 import '../../../core/constants/app_colors.dart';
@@ -43,6 +44,7 @@ class ProfilePage extends StatelessWidget {
                             _buildStatsCards(controller),
                             _buildHealthMetrics(controller),
                             _buildSettingsSection(controller),
+                            _developerInfo(),
                             SizedBox(height: 20), // Bottom padding
                           ],
                         ),
@@ -705,8 +707,26 @@ class ProfilePage extends StatelessWidget {
             title: Text('Delete Account'),
             onTap: controller.deleteAccount,
           ),
+          Divider(),
         ],
       ),
+    );
+  }
+
+  Widget _developerInfo() {
+    // Developer info section
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10),
+          child: Text(
+            'Developer',
+            style: AppTextStyles.headingMedium(Get.context!),
+          ),
+        ),
+        DeveloperAndDonationSection(),
+      ],
     );
   }
 
