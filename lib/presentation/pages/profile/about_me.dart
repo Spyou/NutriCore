@@ -10,11 +10,10 @@ class DeveloperAndDonationSection extends StatelessWidget {
   final String developerName = "Krishna Vishwakarma";
   final String developerEmail = "krishnavishwakarma2525@gmail.com";
   final String upiId = "krishnavishwakarma9136@okhdfcbank";
+  final String buyMeACoffeeUrl = "https://buymeacoffee.com/krishna069";
   final String githubUrl = "https://github.com/spyou";
   final String linkedinUrl =
       "https://linkedin.com/in/krishna-vishwakarma-8974b332a";
-  // final String appVersion = "1.0.0";
-  // final String developmentYear = "2025";
 
   const DeveloperAndDonationSection({super.key});
 
@@ -25,9 +24,8 @@ class DeveloperAndDonationSection extends StatelessWidget {
       children: [
         _buildDeveloperSection(context),
         SizedBox(height: 24),
-        _buildDonationSection(context),
-        SizedBox(height: 24),
-        // _buildAppInfoSection(context),
+        // _buildDonationSection(context),
+        // SizedBox(height: 24),
       ],
     );
   }
@@ -133,6 +131,7 @@ class DeveloperAndDonationSection extends StatelessWidget {
     );
   }
 
+  // ignore: unused_element
   Widget _buildDonationSection(BuildContext context) {
     return Container(
       margin: EdgeInsets.symmetric(horizontal: 20),
@@ -272,9 +271,11 @@ class DeveloperAndDonationSection extends StatelessWidget {
                 child: _buildDonationButton(
                   context,
                   icon: Icons.coffee,
-                  label: 'Buy Coffee ₹50',
+                  label: 'Buy Coffee',
                   color: AppColors.warning,
-                  onTap: () => _launchUPIWithAmount(context, '50'),
+                  onTap: () {
+                    _launchUrl(buyMeACoffeeUrl, context: context);
+                  },
                 ),
               ),
             ],
@@ -330,97 +331,6 @@ class DeveloperAndDonationSection extends StatelessWidget {
       ),
     );
   }
-
-  // Widget _buildAppInfoSection(BuildContext context) {
-  //   return Container(
-  //     margin: EdgeInsets.symmetric(horizontal: 20),
-  //     padding: EdgeInsets.all(20),
-  //     decoration: BoxDecoration(
-  //       gradient: LinearGradient(
-  //         colors: [AppColors.info.withOpacity(0.1), AppColors.surface],
-  //         begin: Alignment.topLeft,
-  //         end: Alignment.bottomRight,
-  //       ),
-  //       borderRadius: BorderRadius.circular(16),
-  //       border: Border.all(color: AppColors.info.withOpacity(0.2)),
-  //       boxShadow: [
-  //         BoxShadow(
-  //           color: Colors.black.withOpacity(0.05),
-  //           blurRadius: 10,
-  //           offset: Offset(0, 4),
-  //         ),
-  //       ],
-  //     ),
-  //     child: Column(
-  //       crossAxisAlignment: CrossAxisAlignment.start,
-  //       children: [
-  //         Row(
-  //           children: [
-  //             Container(
-  //               padding: EdgeInsets.all(12),
-  //               decoration: BoxDecoration(
-  //                 gradient: LinearGradient(
-  //                   colors: [AppColors.info, AppColors.info.withOpacity(0.8)],
-  //                 ),
-  //                 borderRadius: BorderRadius.circular(12),
-  //               ),
-  //               child: Icon(Icons.info_outline, color: Colors.white, size: 24),
-  //             ),
-  //             SizedBox(width: 16),
-  //             Expanded(
-  //               child: Column(
-  //                 crossAxisAlignment: CrossAxisAlignment.start,
-  //                 children: [
-  //                   Text(
-  //                     'App Information',
-  //                     style: AppTextStyles.headingSmall(context).copyWith(
-  //                       fontWeight: FontWeight.bold,
-  //                       color: AppColors.info,
-  //                     ),
-  //                   ),
-  //                   Text(
-  //                     'Version and development details',
-  //                     style: AppTextStyles.bodySmall(
-  //                       context,
-  //                     ).copyWith(color: AppColors.textSecondary),
-  //                   ),
-  //                 ],
-  //               ),
-  //             ),
-  //           ],
-  //         ),
-  //         SizedBox(height: 16),
-
-  //         _buildInfoRow(Icons.apps, 'App Version', appVersion),
-  //         SizedBox(height: 12),
-  //         _buildInfoRow(
-  //           Icons.calendar_today,
-  //           'Development Year',
-  //           developmentYear,
-  //         ),
-  //         SizedBox(height: 12),
-  //         _buildInfoRow(Icons.flutter_dash, 'Built with', 'Flutter & Dart'),
-  //         SizedBox(height: 12),
-  //         _buildInfoRow(Icons.psychology, 'AI Powered by', 'Google Gemini'),
-  //         SizedBox(height: 16),
-
-  //         Container(
-  //           padding: EdgeInsets.all(12),
-  //           decoration: BoxDecoration(
-  //             color: AppColors.info.withOpacity(0.05),
-  //             borderRadius: BorderRadius.circular(8),
-  //           ),
-  //           child: Text(
-  //             '🚀 NutriCheck v$appVersion - Your AI-powered nutrition companion featuring barcode scanning, meal photo analysis, and personalized nutrition tracking. Made with ❤️ in India.',
-  //             style: AppTextStyles.bodySmall(
-  //               context,
-  //             ).copyWith(color: AppColors.textSecondary, height: 1.4),
-  //           ),
-  //         ),
-  //       ],
-  //     ),
-  //   );
-  // }
 
   Widget _buildInfoRow(
     IconData icon,
@@ -562,31 +472,182 @@ class DeveloperAndDonationSection extends StatelessWidget {
     );
   }
 
-  // 🔥 UPI Payment Methods
+  // 🔥 ENHANCED: Robust UPI Payment Methods
   Future<void> _launchUPI(BuildContext context) async {
-    final upiUrl = 'upi://pay?pa=$upiId&pn=$developerName&cu=INR&mode=02';
-    await _launchUrl(
-      upiUrl,
-      context: context,
-      errorMessage:
-          'Could not open UPI app. Please make sure you have Google Pay, PhonePe, or any UPI app installed.',
-    );
+    final upiUrl = _buildUPIUrl();
+    await _launchPaymentUrl(context, upiUrl, 'UPI payment');
   }
 
   Future<void> _launchUPIWithAmount(BuildContext context, String amount) async {
-    final upiUrl =
-        'upi://pay?pa=$upiId&pn=$developerName&am=$amount&cu=INR&tn=Coffee for NutriCheck Developer - Thank you!&mode=02';
-    await _launchUrl(
-      upiUrl,
-      context: context,
-      errorMessage:
-          'Could not open UPI app. Please make sure you have Google Pay, PhonePe, or any UPI app installed.',
+    final upiUrl = _buildUPIUrl(
+      amount: amount,
+      note: 'Coffee for NutriCheck Developer - Thank you!',
     );
-
-    // Show thank you message
+    await _launchPaymentUrl(context, upiUrl, 'UPI payment');
     _showThankYouMessage(context, amount);
   }
 
+  // 🔥 ROBUST: Build proper UPI URL
+  String _buildUPIUrl({String? amount, String? note}) {
+    final params = <String, String>{
+      'pa': upiId,
+      'pn': developerName,
+      'cu': 'INR',
+      'mode': '02',
+    };
+
+    if (amount != null && amount.isNotEmpty) {
+      params['am'] = amount;
+    }
+
+    if (note != null && note.isNotEmpty) {
+      params['tn'] = Uri.encodeComponent(note);
+    }
+
+    final query = params.entries.map((e) => '${e.key}=${e.value}').join('&');
+
+    return 'upi://pay?$query';
+  }
+
+  Future<void> _launchPaymentUrl(
+    BuildContext context,
+    String url,
+    String paymentType,
+  ) async {
+    try {
+      final uri = Uri.parse(url);
+      print('🔍 Attempting to launch: $url');
+
+      // Method 1: Try canLaunchUrl first
+      final canLaunch = await canLaunchUrl(uri);
+
+      if (canLaunch) {
+        final launched = await launchUrl(
+          uri,
+          mode: LaunchMode.externalApplication,
+        );
+
+        if (launched) {
+          Flushbar(
+            title: 'Opening Payment App',
+            message: 'Redirecting to your payment app...',
+            duration: Duration(seconds: 2),
+            backgroundColor: AppColors.info,
+            icon: Icon(Icons.payment, color: Colors.white),
+          ).show(context);
+        } else {
+          await _tryAlternativePaymentMethods(context, paymentType);
+        }
+      } else {
+        await _tryAlternativePaymentMethods(context, paymentType);
+      }
+    } catch (e) {
+      print('Payment launch error: $e');
+      await _tryAlternativePaymentMethods(context, paymentType);
+    }
+  }
+
+  Future<void> _tryAlternativePaymentMethods(
+    BuildContext context,
+    String paymentType,
+  ) async {
+    final alternativeUrls = [
+      'tez://upi/pay?pa=$upiId&pn=${Uri.encodeComponent(developerName)}&cu=INR', // Google Pay
+      'phonepe://pay?pa=$upiId&pn=${Uri.encodeComponent(developerName)}&cu=INR', // PhonePe
+      'paytmmp://pay?pa=$upiId&pn=${Uri.encodeComponent(developerName)}&cu=INR', // Paytm
+    ];
+
+    for (final url in alternativeUrls) {
+      try {
+        final uri = Uri.parse(url);
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+
+          Flushbar(
+            title: 'Opening Payment App',
+            message: 'Redirecting to your payment app...',
+            duration: Duration(seconds: 2),
+            backgroundColor: AppColors.info,
+            icon: Icon(Icons.payment, color: Colors.white),
+          ).show(context);
+          return;
+        }
+      } catch (e) {
+        print('Failed alternative: $url - $e');
+      }
+    }
+
+    _showPaymentFailureDialog(context, paymentType);
+  }
+
+  void _showPaymentFailureDialog(BuildContext context, String paymentType) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.payment, color: AppColors.warning),
+            SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                'Payment App Not Found',
+                style: TextStyle(fontSize: 18),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'To make UPI payments, please install one of these apps:',
+              style: TextStyle(fontSize: 16),
+            ),
+            SizedBox(height: 16),
+            _buildAppSuggestion('Google Pay', Icons.account_balance_wallet),
+            _buildAppSuggestion('PhonePe', Icons.phone_android),
+            _buildAppSuggestion('Paytm', Icons.payment),
+            _buildAppSuggestion('Any UPI App', Icons.apps),
+            SizedBox(height: 16),
+            Text(
+              'Or copy the UPI ID below and use it in any payment app:',
+              style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              _copyToClipboard(context, upiId);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.success),
+            child: Text('Copy UPI ID', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAppSuggestion(String name, IconData icon) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Icon(icon, color: Colors.grey[600], size: 20),
+          SizedBox(width: 12),
+          Text(name, style: TextStyle(fontSize: 14)),
+        ],
+      ),
+    );
+  }
+
+  // 🔥 ENHANCED: General URL launcher with better error handling
   Future<void> _launchUrl(
     String url, {
     BuildContext? context,
@@ -594,24 +655,30 @@ class DeveloperAndDonationSection extends StatelessWidget {
   }) async {
     try {
       final uri = Uri.parse(url);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      print('🔍 Attempting to launch URL: $url');
 
-        // Show success message for UPI
-        if (url.contains('upi://') && context != null) {
+      final canLaunch = await canLaunchUrl(uri);
+
+      if (canLaunch) {
+        final launched = await launchUrl(
+          uri,
+          mode: LaunchMode.externalApplication,
+        );
+
+        if (!launched && context != null) {
           Flushbar(
-            title: 'Opening UPI App',
-            message: 'Redirecting to your payment app...',
-            duration: Duration(seconds: 2),
-            backgroundColor: AppColors.info,
-            icon: Icon(Icons.payment, color: Colors.white),
+            title: '❌ Error',
+            message: 'Failed to open link',
+            duration: Duration(seconds: 3),
+            backgroundColor: Colors.red,
+            icon: Icon(Icons.error, color: Colors.white),
           ).show(context);
         }
       } else {
         if (context != null) {
           Flushbar(
-            title: 'Error',
-            message: errorMessage ?? 'Could not launch $url',
+            title: '❌ Error',
+            message: errorMessage ?? 'No app available to open this link',
             duration: Duration(seconds: 3),
             backgroundColor: Colors.red,
             icon: Icon(Icons.error, color: Colors.white),
@@ -619,10 +686,11 @@ class DeveloperAndDonationSection extends StatelessWidget {
         }
       }
     } catch (e) {
+      print('❌ URL launch error: $e');
       if (context != null) {
         Flushbar(
-          title: 'Error',
-          message: errorMessage ?? 'Could not launch $url',
+          title: '❌ Error',
+          message: errorMessage ?? 'Could not open link: ${e.toString()}',
           duration: Duration(seconds: 3),
           backgroundColor: Colors.red,
           icon: Icon(Icons.error, color: Colors.white),
@@ -634,7 +702,7 @@ class DeveloperAndDonationSection extends StatelessWidget {
   void _copyToClipboard(BuildContext context, String text) {
     Clipboard.setData(ClipboardData(text: text));
     Flushbar(
-      title: 'Copied!',
+      title: '📋 Copied!',
       message: 'UPI ID copied to clipboard',
       duration: Duration(seconds: 2),
       backgroundColor: AppColors.success,

@@ -1136,7 +1136,8 @@ class HomePage extends GetView<HomeController> {
   }
 
   double _getChallengeProgress() {
-    return 0.6;
+    final day = DateTime.now().day;
+    return (day % 5 + 1) / 5;
   }
 
   String _getSmartInsight(NutritionController controller) {
