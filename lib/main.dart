@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
+import 'package:nutri_check/presentation/services/firebase_notification_service.dart';
 
 import 'core/config/off_config.dart';
 import 'core/services/theme_service.dart';
@@ -35,6 +36,8 @@ void main() async {
     // Initialize OpenFoodFacts
     OpenFoodFactsConfig.initialize();
     await _setInitialSystemUI();
+
+    Get.put(NotificationService(), permanent: true);
 
     runApp(const MyApp());
   } catch (e, stackTrace) {

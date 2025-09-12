@@ -9,9 +9,9 @@ import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:nutri_check/core/utils/components/custom_flushbar.dart';
 
-import '../../core/constants/app_colors.dart';
-import '../../core/constants/app_text_styles.dart';
-import '../controllers/nutrition_controller.dart';
+import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_text_styles.dart';
+import '../../controllers/nutrition_controller.dart';
 
 class AIMealAnalysisPage extends StatefulWidget {
   const AIMealAnalysisPage({super.key});

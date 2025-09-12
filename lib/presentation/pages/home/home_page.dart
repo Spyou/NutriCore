@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:nutri_check/core/utils/components/custom_flushbar.dart';
 import 'package:nutri_check/presentation/controllers/main_controller.dart';
-import 'package:nutri_check/presentation/pages/ai_meal_analysis_page.dart';
+import 'package:nutri_check/presentation/pages/home/ai_meal_analysis_page.dart';
 import 'package:percent_indicator/circular_percent_indicator.dart';
 
 import '../../../core/constants/app_colors.dart';

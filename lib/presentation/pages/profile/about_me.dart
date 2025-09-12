@@ -115,14 +115,18 @@ class DeveloperAndDonationSection extends StatelessWidget {
                 icon: Icons.code,
                 label: 'GitHub',
                 color: Colors.black87,
-                onTap: () => _launchUrl(githubUrl, context: context),
+                onTap: () {
+                  launchUrl(Uri.parse(githubUrl));
+                },
               ),
               SizedBox(width: 12),
               _buildSocialButton(
                 icon: Icons.work_outline,
                 label: 'LinkedIn',
                 color: Color(0xFF0077B5),
-                onTap: () => _launchUrl(linkedinUrl, context: context),
+                onTap: () {
+                  launchUrl(Uri.parse(linkedinUrl));
+                },
               ),
             ],
           ),

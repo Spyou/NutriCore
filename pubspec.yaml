@@ -63,6 +63,8 @@ dependencies:
   http: ^1.1.0
   flutter_dotenv: ^6.0.0
   url_launcher: ^6.3.2
+  flutter_local_notifications: ^19.4.1
+  timezone: ^0.10.1
 
 
   # The following adds the Cupertino Icons font to your application.

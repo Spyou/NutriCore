@@ -5,8 +5,9 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:nutri_check/core/services/theme_service.dart';
 import 'package:nutri_check/presentation/controllers/nutrition_controller.dart';
+import 'package:nutri_check/presentation/pages/notification/notification_settings_page.dart';
 import 'package:nutri_check/presentation/pages/profile/about_me.dart';
-import 'package:nutri_check/presentation/pages/theme_settings_page.dart';
+import 'package:nutri_check/presentation/pages/theme/theme_settings_page.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
@@ -654,15 +655,19 @@ class ProfilePage extends StatelessWidget {
           SizedBox(height: 16),
 
           // Notifications
-          Obx(
-            () => SwitchListTile(
-              title: Text('Push Notifications'),
-              subtitle: Text('Receive meal reminders and updates'),
-              value: controller.notificationsEnabled.value,
-              onChanged: (value) =>
-                  controller.updateSettings(notifications: value),
-              activeColor: AppColors.primary,
+          ListTile(
+            leading: Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.warning.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(Icons.notifications, color: AppColors.warning),
             ),
+            title: Text('Notification Settings'),
+            subtitle: Text('Customize meal reminders and alerts'),
+            trailing: Icon(Icons.arrow_forward_ios, size: 16),
+            onTap: () => Get.to(() => NotificationSettingsPage()),
           ),
 
           // Weekly Reports
