@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:another_flushbar/flushbar.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -170,7 +171,7 @@ class NutritionController extends GetxController {
     update();
   }
 
-  // 🔥 NEW: Load data based on view mode
+  // Load data based on view mode
   Future<void> _loadDataForViewMode(String mode) async {
     try {
       isLoadingViewData.value = true;
@@ -463,7 +464,7 @@ class NutritionController extends GetxController {
       });
     } else {
       if (kDebugMode) {
-        print('❌ No user - retrying in 2 seconds...');
+        print('No user - retrying in 2 seconds...');
       }
       todayMeals.clear();
       _calculateTotals();
@@ -571,16 +572,15 @@ class NutritionController extends GetxController {
 
     if (success) {
       if (kDebugMode) {
-        print('Meal successfully added and saved to Firebase');
+        print('Meal successfully added and saved');
       }
 
       // Refresh current
       await _loadDataForViewMode(viewMode.value);
     } else {
       if (kDebugMode) {
-        print('Failed to save meal to Firebase');
+        print('Failed to save meal');
       }
-      // Remove from local list if Firebase save failed
       if (todayMeals.isNotEmpty) {
         todayMeals.removeLast();
         _calculateTotals();
@@ -602,7 +602,7 @@ class NutritionController extends GetxController {
 
       if (success) {
         if (kDebugMode) {
-          print('Meal deleted and synced to Firebase');
+          print('Meal deleted and synced to NutriCheck');
         }
         await _loadDataForViewMode(viewMode.value);
       } else {
@@ -801,14 +801,15 @@ class NutritionController extends GetxController {
         print('Removed from favorites: ${meal['name']}');
       }
 
-      Get.snackbar(
-        'Removed from Favorites',
-        '${meal['name']} has been removed from your favorites',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.grey,
-        colorText: Colors.white,
+      Flushbar(
+        title: 'Removed from Favorites',
+        message: '${meal['name']} has been removed from your favorites',
         duration: Duration(seconds: 2),
-      );
+        backgroundColor: Colors.grey[800]!,
+        margin: EdgeInsets.all(8),
+        borderRadius: BorderRadius.circular(8),
+        flushbarPosition: FlushbarPosition.BOTTOM,
+      )..show(Get.context!);
     } catch (e) {
       if (kDebugMode) {
         print('Error removing from favorites: $e');
@@ -1295,7 +1296,7 @@ class NutritionController extends GetxController {
   }
 
   double getAdjustedServingSize(double baseServing, double targetWeight) {
-    final weightRatio = userWeight.value / 70.0; // 70kg as baseline
+    final weightRatio = userWeight.value / 70.0;
     return baseServing * weightRatio;
   }
 

@@ -2246,8 +2246,8 @@ class NutritionPage extends GetView<NutritionController> {
               );
               Get.back();
               Get.snackbar(
-                '🎯 Success',
-                'Goals updated and saved to Firebase!',
+                'Success',
+                'Your goals have been updated and synced!',
                 snackPosition: SnackPosition.BOTTOM,
                 backgroundColor: AppColors.success,
                 colorText: Colors.white,
@@ -2297,7 +2297,7 @@ class NutritionPage extends GetView<NutritionController> {
                 ),
                 const Divider(),
                 Text(
-                  'Data synced with Firebase ☁️',
+                  'Data synced with NutriCheck!',
                   style: AppTextStyles.bodySmall(
                     Get.context!,
                   ).copyWith(color: AppColors.textTertiary),

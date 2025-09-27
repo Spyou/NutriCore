@@ -158,7 +158,7 @@ class _AIMealAnalysisPageState extends State<AIMealAnalysisPage>
                   ).copyWith(color: Colors.white, fontWeight: FontWeight.bold),
                 ),
                 Text(
-                  'NutriCheck',
+                  'NutriCore',
                   style: AppTextStyles.bodySmall(
                     context,
                   ).copyWith(color: Colors.white.withOpacity(0.8)),
@@ -807,7 +807,7 @@ All nutritional values should be numbers (integers for calories, decimals for ot
       final responseText = response.text;
 
       if (responseText != null) {
-        print('🔍 Raw AI Response: $responseText');
+        print('Raw AI Response: $responseText');
 
         String jsonString = responseText.trim();
 
@@ -933,7 +933,7 @@ All nutritional values should be numbers (integers for calories, decimals for ot
       });
 
       Get.snackbar(
-        '🎉 Analysis Complete!',
+        'Analysis Complete!',
         'Your meal has been analyzed successfully',
         backgroundColor: AppColors.success,
         colorText: Colors.white,

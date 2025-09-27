@@ -82,7 +82,7 @@ class MyApp extends StatelessWidget {
           _updateSystemUI(themeService.isDarkMode.value);
 
           return GetMaterialApp(
-            title: 'NutriCheck',
+            title: 'NutriCore',
             debugShowCheckedModeBanner: false,
             theme: themeService.lightTheme,
             darkTheme: themeService.darkTheme,

@@ -384,7 +384,12 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
           children: [
             Icon(Icons.water_drop, color: AppColors.success),
             SizedBox(width: 8),
-            Text('Hydration Settings'),
+            Text(
+              'Hydration Settings',
+              style: AppTextStyles.bodyLarge(
+                context,
+              ).copyWith(fontWeight: FontWeight.w600),
+            ),
           ],
         ),
         content: Column(
@@ -424,7 +429,12 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
           children: [
             Icon(Icons.fitness_center, color: AppColors.success),
             SizedBox(width: 8),
-            Text('Protein Alert Settings'),
+            Text(
+              'Protein Alert Settings',
+              style: AppTextStyles.bodyLarge(
+                context,
+              ).copyWith(fontWeight: FontWeight.w600),
+            ),
           ],
         ),
         content: Column(
@@ -464,7 +474,12 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
           children: [
             Icon(Icons.assessment, color: AppColors.success),
             SizedBox(width: 8),
-            Text('Evening Review Settings'),
+            Text(
+              'Evening Review Settings',
+              style: AppTextStyles.bodyLarge(
+                context,
+              ).copyWith(fontWeight: FontWeight.w600),
+            ),
           ],
         ),
         content: Column(
@@ -518,9 +533,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
       _saveTimeToStorage('working_lunch_time', lunchTime);
       _saveTimeToStorage('working_dinner_time', dinnerTime);
 
-      _showUpdateFeedback(
-        'Meal reminders scheduled! They will work even when app is closed.',
-      );
+      _showUpdateFeedback('Meal reminders scheduled!');
     } catch (e) {
       _showErrorFeedback('Failed to schedule meal reminders');
     }
@@ -542,9 +555,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
       _storage.write('working_protein_enabled', proteinAlertsEnabled);
       _storage.write('working_evening_enabled', eveningReviewEnabled);
 
-      _showUpdateFeedback(
-        'Smart notifications scheduled! All will work even when app is closed.',
-      );
+      _showUpdateFeedback('Smart notifications scheduled!');
     } catch (e) {
       _showErrorFeedback('Failed to update smart notifications');
     }
