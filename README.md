@@ -1,2 +1,2 @@
-# nutri_check
+# NutriCore
 
