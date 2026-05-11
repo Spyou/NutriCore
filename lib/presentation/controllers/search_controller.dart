@@ -123,6 +123,7 @@ class SearchController extends GetxController {
 
   Future<void> _loadRecentSearches() async {
     try {
+      if (!Get.isRegistered<AuthController>()) return;
       final authController = Get.find<AuthController>();
       if (authController.user == null) return;
 
@@ -142,6 +143,7 @@ class SearchController extends GetxController {
 
   Future<void> _saveRecentSearch(String query) async {
     try {
+      if (!Get.isRegistered<AuthController>()) return;
       final authController = Get.find<AuthController>();
       if (authController.user == null) return;
 
@@ -188,6 +190,13 @@ class SearchController extends GetxController {
 
   Future<void> addProductToNutrition(Product product) async {
     try {
+      if (!Get.isRegistered<NutritionController>()) {
+        CustomThemeFlushbar.show(
+          title: 'Error',
+          message: 'Nutrition log is not available right now',
+        );
+        return;
+      }
       final nutritionController = Get.find<NutritionController>();
       final quantityController = TextEditingController(text: '100');
       String selectedMealType = 'meal';
@@ -318,11 +327,13 @@ class SearchController extends GetxController {
     recentSearches.clear();
 
     try {
-      final authController = Get.find<AuthController>();
-      if (authController.user != null) {
-        await _preferencesRepository.clearRecentSearches(
-          authController.user!.uid,
-        );
+      if (Get.isRegistered<AuthController>()) {
+        final authController = Get.find<AuthController>();
+        if (authController.user != null) {
+          await _preferencesRepository.clearRecentSearches(
+            authController.user!.uid,
+          );
+        }
       }
     } catch (e) {
       if (kDebugMode) {

@@ -61,7 +61,11 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
     final timeString = _storage.read(key);
     if (timeString != null) {
       final parts = timeString.split(':');
-      return TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
+      if (parts.length >= 2) {
+        final hour = int.tryParse(parts[0]) ?? defaultTime.hour;
+        final minute = int.tryParse(parts[1]) ?? defaultTime.minute;
+        return TimeOfDay(hour: hour, minute: minute);
+      }
     }
     return defaultTime;
   }

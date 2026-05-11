@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_text_styles.dart';
-import '../controllers/auth_controller.dart';
 
 class SplashPage extends StatefulWidget {
   const SplashPage({super.key});
@@ -44,8 +42,8 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
   void _checkAuthStatus() async {
     // Wait for animations and minimum splash time
     await Future.delayed(const Duration(seconds: 3));
-
-    Get.find<AuthController>();
+    // AuthController is registered as permanent in AppBinding and will
+    // drive navigation via its auth-state listener.
   }
 
   @override

@@ -26,9 +26,9 @@ class SearchPage extends StatelessWidget {
             SliverToBoxAdapter(
               child: Column(
                 children: [
-                  _buildSearchBar(controller),
+                  _buildSearchBar(context, controller),
                   _buildCategoryFilter(controller),
-                  _buildSearchContent(controller),
+                  _buildSearchContent(context, controller),
                 ],
               ),
             ),
@@ -102,7 +102,7 @@ class SearchPage extends StatelessWidget {
                           ? Text(
                               'Search',
                               key: const ValueKey('collapsed_search'),
-                              style: AppTextStyles.headingMedium(Get.context!)
+                              style: AppTextStyles.headingMedium(context)
                                   .copyWith(
                                     color: AppColors.textOnPrimary,
                                     fontWeight: FontWeight.w600,
@@ -140,7 +140,7 @@ class SearchPage extends StatelessWidget {
                                         'Search Products',
                                         style:
                                             AppTextStyles.displayMedium(
-                                              Get.context!,
+                                              context,
                                             ).copyWith(
                                               color: AppColors.textOnPrimary,
                                               fontWeight: FontWeight.w700,
@@ -201,7 +201,7 @@ class SearchPage extends StatelessWidget {
                                                     '${controller.searchResults.length}',
                                                     style:
                                                         AppTextStyles.labelMedium(
-                                                          Get.context!,
+                                                          context,
                                                         ).copyWith(
                                                           color: AppColors
                                                               .textOnPrimary,
@@ -218,7 +218,7 @@ class SearchPage extends StatelessWidget {
                                                     : 'results found',
                                                 style:
                                                     AppTextStyles.bodyMedium(
-                                                      Get.context!,
+                                                      context,
                                                     ).copyWith(
                                                       color: AppColors
                                                           .textOnPrimary
@@ -283,6 +283,8 @@ class SearchPage extends StatelessWidget {
   }
 
   void _showClearRecentDialog(app_search.SearchController controller) {
+    final ctx = Get.context;
+    if (ctx == null) return;
     Get.dialog(
       AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -292,7 +294,7 @@ class SearchPage extends StatelessWidget {
             const SizedBox(width: 12),
             Text(
               'Clear Search History',
-              style: AppTextStyles.headingMedium(Get.context!),
+              style: AppTextStyles.headingMedium(ctx),
             ),
           ],
         ),
@@ -319,7 +321,10 @@ class SearchPage extends StatelessWidget {
     );
   }
 
-  Widget _buildSearchBar(app_search.SearchController controller) {
+  Widget _buildSearchBar(
+    BuildContext context,
+    app_search.SearchController controller,
+  ) {
     return Container(
       margin: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -339,7 +344,7 @@ class SearchPage extends StatelessWidget {
         decoration: InputDecoration(
           hintText: 'Search for food products...',
           hintStyle: AppTextStyles.bodyMedium(
-            Get.context!,
+            context,
           ).copyWith(color: AppColors.textSecondary),
           prefixIcon: Icon(Icons.search, color: AppColors.primary),
           suffixIcon: Obx(
@@ -478,25 +483,28 @@ class SearchPage extends StatelessWidget {
     );
   }
 
-  Widget _buildSearchContent(app_search.SearchController controller) {
+  Widget _buildSearchContent(
+    BuildContext context,
+    app_search.SearchController controller,
+  ) {
     return Obx(() {
       if (controller.isLoading.value) {
-        return _buildLoadingState();
+        return _buildLoadingState(context);
       }
 
       if (controller.searchQuery.value.isEmpty) {
-        return _buildInitialState(controller);
+        return _buildInitialState(context, controller);
       }
 
       if (controller.searchResults.isEmpty) {
-        return _buildEmptyState();
+        return _buildEmptyState(context);
       }
 
-      return _buildSearchResults(controller);
+      return _buildSearchResults(context, controller);
     });
   }
 
-  Widget _buildLoadingState() {
+  Widget _buildLoadingState(BuildContext context) {
     return SizedBox(
       height: 300,
       child: Center(
@@ -507,7 +515,7 @@ class SearchPage extends StatelessWidget {
             const SizedBox(height: 16),
             Text(
               'Searching products...',
-              style: AppTextStyles.bodyLarge(Get.context!),
+              style: AppTextStyles.bodyLarge(context),
             ),
           ],
         ),
@@ -515,23 +523,29 @@ class SearchPage extends StatelessWidget {
     );
   }
 
-  Widget _buildInitialState(app_search.SearchController controller) {
+  Widget _buildInitialState(
+    BuildContext context,
+    app_search.SearchController controller,
+  ) {
     return Column(
       children: [
         // Recent searches
         Obx(
           () => controller.recentSearches.isNotEmpty
-              ? _buildRecentSearches(controller)
+              ? _buildRecentSearches(context, controller)
               : const SizedBox.shrink(),
         ),
 
         // Suggested products
-        _buildSuggestedProducts(controller),
+        _buildSuggestedProducts(context, controller),
       ],
     );
   }
 
-  Widget _buildRecentSearches(app_search.SearchController controller) {
+  Widget _buildRecentSearches(
+    BuildContext context,
+    app_search.SearchController controller,
+  ) {
     return Container(
       margin: const EdgeInsets.all(20),
       padding: const EdgeInsets.all(16),
@@ -547,7 +561,7 @@ class SearchPage extends StatelessWidget {
             children: [
               Text(
                 'Recent Searches',
-                style: AppTextStyles.headingMedium(Get.context!),
+                style: AppTextStyles.headingMedium(context),
               ),
               TextButton(
                 onPressed: controller.clearRecentSearches,
@@ -596,7 +610,10 @@ class SearchPage extends StatelessWidget {
     );
   }
 
-  Widget _buildSuggestedProducts(app_search.SearchController controller) {
+  Widget _buildSuggestedProducts(
+    BuildContext context,
+    app_search.SearchController controller,
+  ) {
     return Obx(
       () => controller.suggestedProducts.isNotEmpty
           ? Container(
@@ -606,7 +623,7 @@ class SearchPage extends StatelessWidget {
                 children: [
                   Text(
                     'Suggested Products',
-                    style: AppTextStyles.headingMedium(Get.context!),
+                    style: AppTextStyles.headingMedium(context),
                   ),
                   const SizedBox(height: 12),
                   SizedBox(
@@ -616,7 +633,11 @@ class SearchPage extends StatelessWidget {
                       itemCount: controller.suggestedProducts.length,
                       itemBuilder: (context, index) {
                         final product = controller.suggestedProducts[index];
-                        return _buildSuggestedProductCard(product, controller);
+                        return _buildSuggestedProductCard(
+                          context,
+                          product,
+                          controller,
+                        );
                       },
                     ),
                   ),
@@ -628,6 +649,7 @@ class SearchPage extends StatelessWidget {
   }
 
   Widget _buildSuggestedProductCard(
+    BuildContext context,
     dynamic product,
     app_search.SearchController controller,
   ) {
@@ -664,7 +686,7 @@ class SearchPage extends StatelessWidget {
                 Text(
                   product.productName ?? 'Unknown Product',
                   style: AppTextStyles.bodyMedium(
-                    Get.context!,
+                    context,
                   ).copyWith(fontWeight: FontWeight.w600),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -693,7 +715,7 @@ class SearchPage extends StatelessWidget {
                 Text(
                   '${controller.getCalories(product)} kcal/100g',
                   style: AppTextStyles.labelMedium(
-                    Get.context!,
+                    context,
                   ).copyWith(color: AppColors.textSecondary),
                 ),
                 const SizedBox(height: 8),
@@ -723,6 +745,7 @@ class SearchPage extends StatelessWidget {
   }
 
   Widget _buildProductCard(
+    BuildContext context,
     dynamic product,
     app_search.SearchController controller,
   ) {
@@ -755,7 +778,7 @@ class SearchPage extends StatelessWidget {
                 Text(
                   product.productName ?? 'Unknown Product',
                   style: AppTextStyles.bodyLarge(
-                    Get.context!,
+                    context,
                   ).copyWith(fontWeight: FontWeight.w600),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -785,7 +808,7 @@ class SearchPage extends StatelessWidget {
                   Text(
                     product.brands!,
                     style: AppTextStyles.bodySmall(
-                      Get.context!,
+                      context,
                     ).copyWith(color: AppColors.textSecondary),
                   ),
                 ],
@@ -815,7 +838,7 @@ class SearchPage extends StatelessWidget {
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(BuildContext context) {
     return SizedBox(
       height: 300,
       child: Center(
@@ -827,14 +850,14 @@ class SearchPage extends StatelessWidget {
             Text(
               'No products found',
               style: AppTextStyles.headingMedium(
-                Get.context!,
+                context,
               ).copyWith(color: AppColors.textSecondary),
             ),
             const SizedBox(height: 8),
             Text(
               'Try searching with different keywords',
               style: AppTextStyles.bodyMedium(
-                Get.context!,
+                context,
               ).copyWith(color: AppColors.textTertiary),
             ),
           ],
@@ -843,7 +866,10 @@ class SearchPage extends StatelessWidget {
     );
   }
 
-  Widget _buildSearchResults(app_search.SearchController controller) {
+  Widget _buildSearchResults(
+    BuildContext context,
+    app_search.SearchController controller,
+  ) {
     return Container(
       margin: const EdgeInsets.all(20),
       child: Column(
@@ -851,7 +877,7 @@ class SearchPage extends StatelessWidget {
         children: [
           Text(
             'Search Results',
-            style: AppTextStyles.headingMedium(Get.context!),
+            style: AppTextStyles.headingMedium(context),
           ),
           const SizedBox(height: 12),
           ListView.builder(
@@ -861,7 +887,7 @@ class SearchPage extends StatelessWidget {
             itemCount: controller.searchResults.length,
             itemBuilder: (context, index) {
               final product = controller.searchResults[index];
-              return _buildProductCard(product, controller);
+              return _buildProductCard(context, product, controller);
             },
           ),
         ],

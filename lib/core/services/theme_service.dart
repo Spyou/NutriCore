@@ -127,6 +127,12 @@ class ThemeService extends GetxService {
     _cachedDarkTheme = null;
   }
 
+  /// Public hook so callers (e.g. the DynamicColorBuilder in `main.dart`)
+  /// can drop the cached themes when the system palette becomes available.
+  void invalidateThemeCache() {
+    _invalidateCache();
+  }
+
   void _saveThemeMode() => _box.write(_themeKey, isDarkMode.value);
   void _saveMaterial3Setting() => _box.write(_material3Key, useMaterial3.value);
   void _saveDynamicColorSetting() =>

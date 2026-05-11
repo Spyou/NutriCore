@@ -74,7 +74,14 @@ class MyApp extends StatelessWidget {
     return DynamicColorBuilder(
       builder: (lightDynamic, darkDynamic) {
         if (lightDynamic != null && darkDynamic != null) {
-          themeService.systemDynamicColors.value = lightDynamic;
+          // Only push a change (and invalidate cached themes) when the
+          // dynamic palette actually changes; otherwise the cached themes
+          // built with a null palette are kept and dynamic colours never
+          // make it into the rendered theme.
+          if (themeService.systemDynamicColors.value != lightDynamic) {
+            themeService.systemDynamicColors.value = lightDynamic;
+            themeService.invalidateThemeCache();
+          }
         }
 
         return Obx(() {

@@ -23,6 +23,9 @@ class FirebaseDataSource {
     dynamic isEqualTo,
     dynamic isGreaterThanOrEqualTo,
     dynamic isLessThanOrEqualTo,
+    String? rangeField,
+    dynamic rangeStart,
+    dynamic rangeEnd,
     String? orderBy,
     bool descending = false,
     int? limit,
@@ -40,6 +43,12 @@ class FirebaseDataSource {
       }
       if (field != null && isLessThanOrEqualTo != null) {
         query = query.where(field, isLessThanOrEqualTo: isLessThanOrEqualTo);
+      }
+      if (rangeField != null && rangeStart != null) {
+        query = query.where(rangeField, isGreaterThanOrEqualTo: rangeStart);
+      }
+      if (rangeField != null && rangeEnd != null) {
+        query = query.where(rangeField, isLessThan: rangeEnd);
       }
       if (orderBy != null) {
         query = query.orderBy(orderBy, descending: descending);
@@ -89,17 +98,21 @@ class FirebaseDataSource {
   }
 
   Future<void> batchDelete(String collection, List<String> docIds) async {
-    const int batchSize = 500;
-    for (var i = 0; i < docIds.length; i += batchSize) {
-      final batch = _firestore.batch();
-      final chunk = docIds.sublist(
-        i,
-        i + batchSize > docIds.length ? docIds.length : i + batchSize,
-      );
-      for (final id in chunk) {
-        batch.delete(_firestore.collection(collection).doc(id));
+    try {
+      const int batchSize = 500;
+      for (var i = 0; i < docIds.length; i += batchSize) {
+        final batch = _firestore.batch();
+        final chunk = docIds.sublist(
+          i,
+          i + batchSize > docIds.length ? docIds.length : i + batchSize,
+        );
+        for (final id in chunk) {
+          batch.delete(_firestore.collection(collection).doc(id));
+        }
+        await batch.commit();
       }
-      await batch.commit();
+    } catch (e) {
+      throw ServerException('Failed to batch delete documents: $e');
     }
   }
 

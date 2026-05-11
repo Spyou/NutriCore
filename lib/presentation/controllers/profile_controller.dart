@@ -168,12 +168,13 @@ class ProfileController extends GetxController {
     try {
       final authController = Get.find<AuthController>();
 
-      if (authController.user == null) {
+      final user = authController.user;
+      if (user == null) {
         streakDays.value = 0;
         return;
       }
 
-      final uid = authController.user!.uid;
+      final uid = user.uid;
       final now = DateTime.now();
       final result = await _nutritionRepository.getMonthlyIntake(uid, now);
 
@@ -492,9 +493,10 @@ class ProfileController extends GetxController {
   Future<void> _saveWeightToRepo(double weight, [int retryCount = 0]) async {
     try {
       final authController = Get.find<AuthController>();
-      if (authController.user == null) return;
+      final user = authController.user;
+      if (user == null) return;
 
-      final uid = authController.user!.uid;
+      final uid = user.uid;
       final updatedProfile = _cachedProfile?.copyWith(currentWeight: weight) ??
           UserProfile(id: uid, email: userEmail.value, currentWeight: weight);
 
@@ -552,9 +554,10 @@ class ProfileController extends GetxController {
   Future<void> _loadUserStats() async {
     try {
       final authController = Get.find<AuthController>();
-      if (authController.user == null) return;
+      final user = authController.user;
+      if (user == null) return;
 
-      await _loadNutritionStats(authController.user!.uid);
+      await _loadNutritionStats(user.uid);
       await _loadWeightHistory();
       await _calculateActivityStats();
     } catch (e) {
@@ -987,11 +990,12 @@ class ProfileController extends GetxController {
   }) async {
     try {
       final authController = Get.find<AuthController>();
-      if (authController.user == null) {
+      final user = authController.user;
+      if (user == null) {
         throw Exception('User not authenticated');
       }
 
-      final uid = authController.user!.uid;
+      final uid = user.uid;
 
       if (notifications != null) notificationsEnabled.value = notifications;
       if (darkMode != null) darkModeEnabled.value = darkMode;
@@ -1042,11 +1046,12 @@ class ProfileController extends GetxController {
       );
 
       final authController = Get.find<AuthController>();
-      if (authController.user == null) {
+      final user = authController.user;
+      if (user == null) {
         throw Exception('User not authenticated');
       }
 
-      final exportData = await _collectExportData(authController.user!.uid);
+      final exportData = await _collectExportData(user.uid);
 
       await storage.write(
         'exported_data_${DateTime.now().millisecondsSinceEpoch}',

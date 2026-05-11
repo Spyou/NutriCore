@@ -13,6 +13,13 @@ import 'package:timezone/timezone.dart' as tz;
 class NotificationService extends GetxService {
   static NotificationService get to => Get.find();
 
+  // Centralised toggle so emojis can be disabled globally if devices report
+  // rendering issues (missing emoji fonts show tofu boxes instead).
+  static const bool _useEmoji = true;
+
+  static String _withEmoji(String emoji, String text) =>
+      _useEmoji ? '$emoji $text' : text;
+
   final FlutterLocalNotificationsPlugin _notifications =
       FlutterLocalNotificationsPlugin();
   @override
@@ -220,7 +227,7 @@ class NotificationService extends GetxService {
     if (enableBreakfast) {
       await _scheduleDaily(
         id: 1,
-        title: '🌅 Breakfast Time!',
+        title: _withEmoji('🌅', 'Breakfast Time!'),
         body: 'Start your day with a nutritious breakfast',
         time: breakfast,
         useExactTiming: hasExactPermission,
@@ -233,7 +240,7 @@ class NotificationService extends GetxService {
     if (enableLunch) {
       await _scheduleDaily(
         id: 2,
-        title: '🌞 Lunch Time!',
+        title: _withEmoji('🌞', 'Lunch Time!'),
         body: 'Keep your energy up with a balanced lunch',
         time: lunch,
         useExactTiming: hasExactPermission,
@@ -246,7 +253,7 @@ class NotificationService extends GetxService {
     if (enableDinner) {
       await _scheduleDaily(
         id: 3,
-        title: '🌙 Dinner Time!',
+        title: _withEmoji('🌙', 'Dinner Time!'),
         body: 'End your day with a healthy dinner',
         time: dinner,
         useExactTiming: hasExactPermission,
@@ -349,7 +356,7 @@ class NotificationService extends GetxService {
     for (int i = 0; i < waterTimes.length; i++) {
       await _scheduleDaily(
         id: 50 + i,
-        title: '💧 Hydration Time!',
+        title: _withEmoji('💧', 'Hydration Time!'),
         body: waterMessages[i],
         time: waterTimes[i],
         useExactTiming: hasExactPermission,
@@ -376,7 +383,7 @@ class NotificationService extends GetxService {
 
     await _scheduleDaily(
       id: 60,
-      title: '💪 Protein Check!',
+      title: _withEmoji('💪', 'Protein Check!'),
       body:
           'How\'s your protein intake today? Make sure you\'re hitting your goals!',
       time: const TimeOfDay(hour: 15, minute: 0),
@@ -386,7 +393,7 @@ class NotificationService extends GetxService {
 
     await _scheduleDaily(
       id: 61,
-      title: '💪 Evening Protein Review',
+      title: _withEmoji('💪', 'Evening Protein Review'),
       body: 'Did you get enough protein today? Plan for tomorrow!',
       time: const TimeOfDay(hour: 20, minute: 30),
       useExactTiming: hasExactPermission,
@@ -433,6 +440,9 @@ class NotificationService extends GetxService {
       }
     }
 
+    final ctx = Get.context;
+    if (ctx == null) return;
+
     Flushbar(
       title: 'Scheduled Notifications',
       message:
@@ -450,6 +460,6 @@ class NotificationService extends GetxService {
           blurRadius: 6,
         ),
       ],
-    ).show(Get.context!);
+    ).show(ctx);
   }
 }

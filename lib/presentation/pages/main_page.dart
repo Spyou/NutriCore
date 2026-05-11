@@ -10,6 +10,8 @@ import 'package:nutri_check/presentation/pages/scan/scan_page.dart';
 import 'package:nutri_check/presentation/pages/search/search_page.dart';
 
 class MainPage extends GetView<MainController> {
+  static const int _scanIndex = 2;
+
   final List<Widget> _pages = [
     const HomePage(),
     const SearchPage(),
@@ -20,13 +22,36 @@ class MainPage extends GetView<MainController> {
 
   MainPage({super.key});
 
+  Widget _buildPage(int index, int currentIndex) {
+    final page = _pages[index];
+    // Pause the scan page subtree (including the camera preview) whenever
+    // it is not the active tab so the MobileScanner does not keep the
+    // camera alive while the user is on Home / Search / Nutrition / Profile.
+    if (index == _scanIndex) {
+      final bool isActive = currentIndex == _scanIndex;
+      return TickerMode(
+        enabled: isActive,
+        child: Visibility(
+          visible: isActive,
+          maintainState: true,
+          maintainAnimation: true,
+          child: page,
+        ),
+      );
+    }
+    return page;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Obx(
         () => IndexedStack(
           index: controller.currentIndex.value,
-          children: _pages,
+          children: [
+            for (int i = 0; i < _pages.length; i++)
+              _buildPage(i, controller.currentIndex.value),
+          ],
         ),
       ),
       bottomNavigationBar: Obx(

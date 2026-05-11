@@ -848,9 +848,22 @@ class ProfilePage extends StatelessWidget {
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Get.back(), child: const Text('Cancel')),
+          Semantics(
+            label: 'Cancel editing profile',
+            button: true,
+            child: TextButton(
+              onPressed: () => Get.back(),
+              child: const Text('Cancel'),
+            ),
+          ),
           Obx(
-            () => ElevatedButton(
+            () => Semantics(
+              label: controller.isSaving.value
+                  ? 'Saving profile changes'
+                  : 'Save profile changes',
+              button: true,
+              enabled: !controller.isSaving.value,
+              child: ElevatedButton(
               onPressed: controller.isSaving.value
                   ? null
                   : () async {
@@ -933,6 +946,7 @@ class ProfilePage extends StatelessWidget {
                       ),
                     )
                   : const Text('Save'),
+              ),
             ),
           ),
         ],

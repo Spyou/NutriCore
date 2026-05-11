@@ -52,10 +52,15 @@ class NutritionRepositoryImpl implements NutritionRepository {
     DateTime startDate,
   ) async {
     try {
+      final start = DateTime(startDate.year, startDate.month, startDate.day);
+      final end = start.add(const Duration(days: 7));
       final docs = await _firebaseDataSource.queryDocuments(
         AppConfig.nutritionCollection,
         field: 'userId',
         isEqualTo: userId,
+        rangeField: 'date',
+        rangeStart: start.toIso8601String(),
+        rangeEnd: end.toIso8601String(),
         orderBy: 'date',
       );
       final intakes = docs.docs
@@ -79,10 +84,15 @@ class NutritionRepositoryImpl implements NutritionRepository {
     DateTime month,
   ) async {
     try {
+      final start = DateTime(month.year, month.month, 1);
+      final end = DateTime(month.year, month.month + 1, 1);
       final docs = await _firebaseDataSource.queryDocuments(
         AppConfig.nutritionCollection,
         field: 'userId',
         isEqualTo: userId,
+        rangeField: 'date',
+        rangeStart: start.toIso8601String(),
+        rangeEnd: end.toIso8601String(),
         orderBy: 'date',
       );
       final intakes = docs.docs

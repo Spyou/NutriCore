@@ -45,16 +45,24 @@ class ScanController extends GetxController {
           if (savedProductsRaw is List) {
             for (var item in savedProductsRaw) {
               try {
+                if (item is! Map) {
+                  if (kDebugMode) {
+                    print('Skipping product entry of unexpected type: '
+                        '${item.runtimeType}');
+                  }
+                  continue;
+                }
                 final Map<String, dynamic> productMap =
                     Map<String, dynamic>.from(item);
+
                 Nutriments? nutriments;
-                if (productMap['nutrition'] != null &&
-                    productMap['nutrition'] is Map) {
-                  final Map<String, dynamic> nutritionData =
-                      Map<String, dynamic>.from(productMap['nutrition']);
-                  if (nutritionData.isNotEmpty &&
-                      nutritionData.values.any((v) => v != null && v != 0)) {
-                    try {
+                final dynamic rawNutrition = productMap['nutrition'];
+                if (rawNutrition is Map) {
+                  try {
+                    final Map<String, dynamic> nutritionData =
+                        Map<String, dynamic>.from(rawNutrition);
+                    if (nutritionData.isNotEmpty &&
+                        nutritionData.values.any((v) => v != null && v != 0)) {
                       nutriments = Nutriments.fromJson({
                         'energy-kcal_100g': nutritionData['energy-kcal'] ?? 0.0,
                         'proteins_100g': nutritionData['proteins'] ?? 0.0,
@@ -66,40 +74,49 @@ class ScanController extends GetxController {
                         'sodium_100g': nutritionData['sodium'] ?? 0.0,
                       });
                       if (kDebugMode) {
-                        print(
-                          'Reconstructed nutrition for ${productMap['productName']}: ${nutritionData['energy-kcal']} kcal',
+                        debugPrint(
+                          'Reconstructed nutrition for '
+                          '${productMap['productName']}: '
+                          '${nutritionData['energy-kcal']} kcal',
                         );
                       }
-                    } catch (e) {
-                      if (kDebugMode) {
-                        print('Error reconstructing Nutriments: $e');
-                      }
                     }
+                  } catch (e) {
+                    debugPrint('Error reconstructing Nutriments: $e');
                   }
                 }
 
-                // Create Product object with reconstructed nutrition
+                // Safely read categories as a list of strings.
+                List<String>? categoriesList;
+                final dynamic rawCategories =
+                    productMap['categoriesTagsInLanguages'];
+                if (rawCategories is List) {
+                  categoriesList = rawCategories
+                      .map((e) => e?.toString() ?? '')
+                      .where((e) => e.isNotEmpty)
+                      .toList();
+                }
+
+                // Create Product object with reconstructed nutrition.
                 final Product product = Product(
-                  barcode: productMap['barcode']?.toString(),
-                  productName: productMap['productName']?.toString(),
-                  brands: productMap['brands']?.toString(),
-                  imageFrontUrl: productMap['imageFrontUrl']?.toString(),
+                  barcode: productMap['barcode'] as String?,
+                  productName: productMap['productName'] as String?,
+                  brands: productMap['brands'] as String?,
+                  imageFrontUrl: productMap['imageFrontUrl'] as String?,
                   categoriesTagsInLanguages:
-                      productMap['categoriesTagsInLanguages'] != null
-                      ? {
-                          OpenFoodFactsLanguage.ENGLISH:
-                              productMap['categoriesTagsInLanguages'],
-                        }
+                      (categoriesList != null && categoriesList.isNotEmpty)
+                      ? {OpenFoodFactsLanguage.ENGLISH: categoriesList}
                       : null,
-                  ingredientsText: productMap['ingredientsText']?.toString(),
+                  ingredientsText: productMap['ingredientsText'] as String?,
                   nutriments: nutriments,
                 );
 
                 products.add(product);
-              } catch (e) {
-                if (kDebugMode) {
-                  print('Error parsing individual product: $e');
-                }
+              } catch (e, st) {
+                // Fragile shape: log and skip this entry rather than
+                // silently producing a malformed Product.
+                debugPrint('Error parsing individual product: $e');
+                debugPrint('$st');
               }
             }
           }
@@ -156,13 +173,19 @@ class ScanController extends GetxController {
           };
         }
 
+        // Persist categories as a real List<String> so it can be parsed
+        // back on reload. Using .toString() produced "[a, b, c]" which
+        // was unparseable.
+        final List<String> categoriesForLanguage = product
+                .categoriesTagsInLanguages?[OpenFoodFactsLanguage.ENGLISH] ??
+            const <String>[];
+
         return {
           'barcode': product.barcode ?? '',
           'productName': product.productName ?? '',
           'brands': product.brands ?? '',
           'imageFrontUrl': product.imageFrontUrl ?? '',
-          'categoriesTagsInLanguages': product.categoriesTagsInLanguages
-              ?.toString(),
+          'categoriesTagsInLanguages': categoriesForLanguage,
           'ingredientsText': product.ingredientsText,
           'allergens': product.allergens?.toString(),
           'labels': product.labels?.toString(),

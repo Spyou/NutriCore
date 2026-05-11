@@ -928,12 +928,28 @@ class NutritionPage extends GetView<NutritionController> {
             onPressed: (context) async {
               final confirmed = await _showDeleteConfirmation(meal.name);
               if (confirmed) {
+                final deletedMealData = <String, dynamic>{
+                  'name': meal.name,
+                  'calories': meal.calories,
+                  'proteins': meal.proteins,
+                  'carbs': meal.carbs,
+                  'fat': meal.fat,
+                  'type': meal.type.name,
+                  'notes': meal.notes,
+                  'imageUrl': meal.imageUrl,
+                  'isFavorite': meal.isFavorite,
+                };
                 controller.deleteMeal(index);
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text('${meal.name} deleted'),
                     backgroundColor: Colors.green,
-                    action: SnackBarAction(label: 'Undo', onPressed: () {}),
+                    action: SnackBarAction(
+                      label: 'Undo',
+                      onPressed: () {
+                        controller.addMeal(deletedMealData);
+                      },
+                    ),
                   ),
                 );
               }

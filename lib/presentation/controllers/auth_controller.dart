@@ -47,7 +47,7 @@ class AuthController extends GetxController {
       if (kDebugMode) {
         print('User not logged in');
       }
-      Get.offAll(() => LoginPage());
+      Get.offAll(() => const LoginPage());
     } else {
       if (kDebugMode) {
         print('User logged in: ${user.email}');

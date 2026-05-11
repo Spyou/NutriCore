@@ -13,6 +13,9 @@ class Result<T> {
   T get value => _value!;
   Failure get failure => _failure!;
 
+  T? get valueOrNull => _value;
+  Failure? get failureOrNull => _failure;
+
   R fold<R>({
     required R Function(T) onSuccess,
     required R Function(Failure) onFailure,

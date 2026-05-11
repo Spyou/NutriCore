@@ -29,6 +29,16 @@ class NutritionController extends GetxController {
 
   final List<Worker> _workers = [];
   StreamSubscription<DailyIntake>? _dailyIntakeSubscription;
+  int _bindRetryAttempts = 0;
+  static const int _maxBindRetries = 5;
+
+  double? _cachedBmrWeight;
+  double? _cachedBmrHeight;
+  int? _cachedBmrAge;
+  String? _cachedBmrSex;
+  double? _cachedBmrResult;
+
+  final Map<String, DateTime> _favoriteLastUsed = {};
 
   var selectedDate = DateTime.now().obs;
   var viewMode = 'daily'.obs;
@@ -105,10 +115,14 @@ class NutritionController extends GetxController {
       ever(favoriteMeals, (_) => _saveFavoriteMeals()),
       ever(selectedMealType, (_) => _applyFilters()),
       ever(searchQuery, (_) => _applyFilters()),
-      ever(todayMeals, (_) {
-        _calculateTotals();
-        _applyFilters();
-      }),
+      debounce<List<MealEntry>>(
+        todayMeals,
+        (_) {
+          _calculateTotals();
+          _applyFilters();
+        },
+        time: const Duration(milliseconds: 150),
+      ),
     ]);
   }
 
@@ -414,12 +428,17 @@ class NutritionController extends GetxController {
     if (authController.user == null) {
       todayMeals.clear();
       _calculateTotals();
-      Future.delayed(const Duration(seconds: 2), () {
-        _bindToDailyIntakeStream();
-      });
+      if (_bindRetryAttempts < _maxBindRetries) {
+        final delaySeconds = (1 << _bindRetryAttempts).clamp(1, 30);
+        _bindRetryAttempts++;
+        Future.delayed(Duration(seconds: delaySeconds), () {
+          _bindToDailyIntakeStream();
+        });
+      }
       return;
     }
 
+    _bindRetryAttempts = 0;
     _dailyIntakeSubscription?.cancel();
     _dailyIntakeSubscription = _nutritionRepo
         .watchDailyIntake(authController.user!.uid, selectedDate.value)
@@ -559,7 +578,10 @@ class NutritionController extends GetxController {
       sodium: (updatedMeal['sodium'] ?? originalMeal.sodium).toDouble(),
       notes: updatedMeal['notes']?.toString() ?? originalMeal.notes,
       imageUrl: updatedMeal['imageUrl']?.toString() ?? originalMeal.imageUrl,
-      isFavorite: updatedMeal['favorite'] == true,
+      isFavorite:
+          updatedMeal['favorite'] as bool? ??
+          updatedMeal['isFavorite'] as bool? ??
+          originalMeal.isFavorite,
     );
 
     todayMeals[index] = updatedEntry;
@@ -614,9 +636,10 @@ class NutritionController extends GetxController {
         final favorites = <Map<String, dynamic>>[];
         for (final item in savedFavoritesRaw) {
           try {
-            favorites.add(
-              Map<String, dynamic>.from(jsonDecode(item.toString())),
-            );
+            final decoded = item is String ? jsonDecode(item) : item;
+            if (decoded is Map) {
+              favorites.add(Map<String, dynamic>.from(decoded));
+            }
           } catch (_) {}
         }
         favoriteMeals.assignAll(favorites);
@@ -693,11 +716,14 @@ class NutritionController extends GetxController {
       );
       if (!alreadyFavorite) {
         final favoriteMeal = Map<String, dynamic>.from(meal);
-        favoriteMeal['addedAt'] = DateTime.now().toIso8601String();
+        final nowIso = DateTime.now().toIso8601String();
+        favoriteMeal['addedAt'] = nowIso;
         favoriteMeal['favorite'] = true;
+        final name = (favoriteMeal['name'] ?? '').toString();
+        _favoriteLastUsed[name] = DateTime.now();
         favoriteMeals.insert(0, favoriteMeal);
         if (favoriteMeals.length > 50) {
-          favoriteMeals.removeLast();
+          _evictLeastRecentlyUsedFavorite();
         }
         CustomThemeFlushbar.show(
           title: 'Added to Favorites',
@@ -705,6 +731,40 @@ class NutritionController extends GetxController {
         );
       }
     } catch (_) {}
+  }
+
+  DateTime _favoriteLastUsedAt(Map<String, dynamic> fav) {
+    final name = (fav['name'] ?? '').toString();
+    final tracked = _favoriteLastUsed[name];
+    if (tracked != null) return tracked;
+    final added = fav['addedAt'];
+    if (added is String) {
+      final parsed = DateTime.tryParse(added);
+      if (parsed != null) return parsed;
+    }
+    return DateTime.fromMillisecondsSinceEpoch(0);
+  }
+
+  void _evictLeastRecentlyUsedFavorite() {
+    if (favoriteMeals.isEmpty) return;
+    int lruIndex = 0;
+    DateTime lruTime = _favoriteLastUsedAt(favoriteMeals[0]);
+    for (int i = 1; i < favoriteMeals.length; i++) {
+      final t = _favoriteLastUsedAt(favoriteMeals[i]);
+      if (t.isBefore(lruTime)) {
+        lruTime = t;
+        lruIndex = i;
+      }
+    }
+    final removed = favoriteMeals.removeAt(lruIndex);
+    final removedName = (removed['name'] ?? '').toString();
+    _favoriteLastUsed.remove(removedName);
+  }
+
+  void markFavoriteUsed(Map<String, dynamic> meal) {
+    final name = (meal['name'] ?? '').toString();
+    if (name.isEmpty) return;
+    _favoriteLastUsed[name] = DateTime.now();
   }
 
   void removeFromFavorites(Map<String, dynamic> meal) {
@@ -770,8 +830,32 @@ class NutritionController extends GetxController {
     } else {
       userProfile = UserProfile(id: '', email: '', currentWeight: weight);
     }
-    bmr.value = _bmrCalculator.execute(userProfile);
+    _recalcBmrIfChanged(userProfile);
     dailyCalorieGoal.value = (bmr.value * 1.5).round();
+  }
+
+  void _recalcBmrIfChanged(UserProfile profile) {
+    final weight = profile.currentWeight;
+    final height = profile.height;
+    final age = profile.age;
+    final sex = profile.gender.name;
+
+    if (_cachedBmrResult != null &&
+        _cachedBmrWeight == weight &&
+        _cachedBmrHeight == height &&
+        _cachedBmrAge == age &&
+        _cachedBmrSex == sex) {
+      bmr.value = _cachedBmrResult!;
+      return;
+    }
+
+    final result = _bmrCalculator.execute(profile);
+    _cachedBmrWeight = weight;
+    _cachedBmrHeight = height;
+    _cachedBmrAge = age;
+    _cachedBmrSex = sex;
+    _cachedBmrResult = result;
+    bmr.value = result;
   }
 
   Map<String, double> get personalizedTargets {
@@ -1042,7 +1126,9 @@ class NutritionController extends GetxController {
     } else {
       userProfile = UserProfile(id: '', email: '', currentWeight: weight);
     }
-    _bmrCalculator.calculateTDEE(userProfile);
+    final tdee = _bmrCalculator.calculateTDEE(userProfile);
+    dailyCalorieGoal.value = tdee.round();
+    calorieGoal.value = tdee;
   }
 
   void syncWithProfile(UserProfile profile) {
