@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import 'package:nutri_check/core/constants/app_colors.dart';
 import 'package:nutri_check/presentation/controllers/main_controller.dart';
 import 'package:nutri_check/presentation/pages/home/home_page.dart';
 import 'package:nutri_check/presentation/pages/nutrition/nutrition_page.dart';
@@ -62,7 +61,8 @@ class MainPage extends GetView<MainController> {
             controller.changeIndex(index);
           },
           backgroundColor: Theme.of(context).colorScheme.surface,
-          indicatorColor: AppColors.primary.withValues(alpha: 0.12),
+          indicatorColor:
+              Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
           elevation: 8,
           height: 80,
 

@@ -3,9 +3,6 @@ import 'package:get_storage/get_storage.dart';
 import 'package:nutri_check/core/utils/components/custom_flushbar.dart';
 import 'package:nutri_check/presentation/services/firebase_notification_service.dart';
 
-import '../../../core/constants/app_colors.dart';
-import '../../../core/constants/app_text_styles.dart';
-
 class NotificationSettingsPage extends StatefulWidget {
   const NotificationSettingsPage({super.key});
 
@@ -76,14 +73,16 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     return Scaffold(
-      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: Text(
           'Notification Settings',
-          style: AppTextStyles.headingMedium(context),
+          style: textTheme.titleLarge?.copyWith(color: scheme.onPrimary),
         ),
-        backgroundColor: AppColors.primary,
+        backgroundColor: scheme.primary,
+        foregroundColor: scheme.onPrimary,
         elevation: 0,
       ),
       body: SingleChildScrollView(
@@ -141,7 +140,6 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
               },
             ),
             const SizedBox(height: 32),
-
             _buildSectionTitle('Smart Notifications'),
             const SizedBox(height: 16),
             _buildSmartToggleCard(
@@ -177,7 +175,6 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
               },
               onTap: () => _showEveningReviewDetails(),
             ),
-
             const SizedBox(height: 20),
           ],
         ),
@@ -186,11 +183,14 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
   }
 
   Widget _buildSectionTitle(String title) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     return Text(
       title,
-      style: AppTextStyles.headingSmall(
-        context,
-      ).copyWith(fontWeight: FontWeight.bold, color: AppColors.primary),
+      style: textTheme.titleMedium?.copyWith(
+        fontWeight: FontWeight.bold,
+        color: scheme.primary,
+      ),
     );
   }
 
@@ -203,15 +203,17 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
     Function(bool) onEnabledChanged,
     Function(TimeOfDay) onTimeChanged,
   ) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: scheme.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: enabled
-              ? AppColors.primary.withValues(alpha: 0.3)
-              : AppColors.textTertiary,
+              ? scheme.primary.withValues(alpha: 0.3)
+              : scheme.onSurface.withValues(alpha: 0.45),
         ),
       ),
       child: Column(
@@ -221,10 +223,10 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.1),
+                  color: scheme.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(icon, color: AppColors.primary, size: 20),
+                child: Icon(icon, color: scheme.primary, size: 20),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -233,15 +235,15 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                   children: [
                     Text(
                       title,
-                      style: AppTextStyles.bodyLarge(
-                        context,
-                      ).copyWith(fontWeight: FontWeight.w600),
+                      style: textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     Text(
                       description,
-                      style: AppTextStyles.bodySmall(
-                        context,
-                      ).copyWith(color: AppColors.textSecondary),
+                      style: textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurface.withValues(alpha: 0.65),
+                      ),
                     ),
                   ],
                 ),
@@ -249,7 +251,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
               Switch(
                 value: enabled,
                 onChanged: onEnabledChanged,
-                activeThumbColor: AppColors.primary,
+                activeThumbColor: scheme.primary,
               ),
             ],
           ),
@@ -260,19 +262,20 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
               child: Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.1),
+                  color: scheme.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                  border: Border.all(
+                      color: scheme.primary.withValues(alpha: 0.3)),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.access_time, color: AppColors.primary, size: 18),
+                    Icon(Icons.access_time, color: scheme.primary, size: 18),
                     const SizedBox(width: 8),
                     Text(
                       time.format(context),
-                      style: AppTextStyles.bodyLarge(context).copyWith(
-                        color: AppColors.primary,
+                      style: textTheme.bodyLarge?.copyWith(
+                        color: scheme.primary,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -294,18 +297,20 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
     Function(bool) onEnabledChanged, {
     VoidCallback? onTap,
   }) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: scheme.surface,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: enabled
-                ? AppColors.success.withValues(alpha: 0.3)
-                : AppColors.textTertiary,
+                ? scheme.tertiary.withValues(alpha: 0.3)
+                : scheme.onSurface.withValues(alpha: 0.45),
           ),
         ),
         child: Row(
@@ -313,10 +318,10 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: AppColors.success.withValues(alpha: 0.1),
+                color: scheme.tertiary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Icon(icon, color: AppColors.success, size: 20),
+              child: Icon(icon, color: scheme.tertiary, size: 20),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -325,15 +330,15 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                 children: [
                   Text(
                     title,
-                    style: AppTextStyles.bodyLarge(
-                      context,
-                    ).copyWith(fontWeight: FontWeight.w600),
+                    style: textTheme.bodyLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   Text(
                     description,
-                    style: AppTextStyles.bodySmall(
-                      context,
-                    ).copyWith(color: AppColors.textSecondary),
+                    style: textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurface.withValues(alpha: 0.65),
+                    ),
                   ),
                 ],
               ),
@@ -341,7 +346,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
             if (onTap != null) ...[
               Icon(
                 Icons.chevron_right,
-                color: AppColors.textSecondary,
+                color: scheme.onSurface.withValues(alpha: 0.65),
                 size: 20,
               ),
               const SizedBox(width: 8),
@@ -349,7 +354,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
             Switch(
               value: enabled,
               onChanged: onEnabledChanged,
-              activeThumbColor: AppColors.success,
+              activeThumbColor: scheme.tertiary,
             ),
           ],
         ),
@@ -365,14 +370,6 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
     final time = await showTimePicker(
       context: context,
       initialTime: initialTime,
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.light(primary: AppColors.primary),
-          ),
-          child: child!,
-        );
-      },
     );
 
     if (time != null) {
@@ -381,18 +378,20 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
   }
 
   void _showHydrationDetails() {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: Row(
           children: [
-            Icon(Icons.water_drop, color: AppColors.success),
+            Icon(Icons.water_drop, color: scheme.tertiary),
             const SizedBox(width: 8),
             Text(
               'Hydration Settings',
-              style: AppTextStyles.bodyLarge(
-                context,
-              ).copyWith(fontWeight: FontWeight.w600),
+              style: textTheme.bodyLarge?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ],
         ),
@@ -410,14 +409,15 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
               onChanged: (enabled) async {
                 setState(() => hydrationEnabled = enabled);
                 await _updateSmartNotifications();
-                Navigator.pop(context);
+                if (!dialogContext.mounted) return;
+                Navigator.pop(dialogContext);
               },
             ),
           ],
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Close'),
           ),
         ],
@@ -426,18 +426,20 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
   }
 
   void _showProteinDetails() {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: Row(
           children: [
-            Icon(Icons.fitness_center, color: AppColors.success),
+            Icon(Icons.fitness_center, color: scheme.tertiary),
             const SizedBox(width: 8),
             Text(
               'Protein Alert Settings',
-              style: AppTextStyles.bodyLarge(
-                context,
-              ).copyWith(fontWeight: FontWeight.w600),
+              style: textTheme.bodyLarge?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ],
         ),
@@ -447,7 +449,8 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
           children: [
             const Text('2 daily protein checks'),
             const SizedBox(height: 8),
-            const Text('Times: 3:00 PM (afternoon check), 8:30 PM (evening review)'),
+            const Text(
+                'Times: 3:00 PM (afternoon check), 8:30 PM (evening review)'),
             const SizedBox(height: 16),
             SwitchListTile(
               title: const Text('Enable Protein Alerts'),
@@ -455,14 +458,15 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
               onChanged: (enabled) async {
                 setState(() => proteinAlertsEnabled = enabled);
                 await _updateSmartNotifications();
-                Navigator.pop(context);
+                if (!dialogContext.mounted) return;
+                Navigator.pop(dialogContext);
               },
             ),
           ],
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Close'),
           ),
         ],
@@ -471,18 +475,20 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
   }
 
   void _showEveningReviewDetails() {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: Row(
           children: [
-            Icon(Icons.assessment, color: AppColors.success),
+            Icon(Icons.assessment, color: scheme.tertiary),
             const SizedBox(width: 8),
             Text(
               'Evening Review Settings',
-              style: AppTextStyles.bodyLarge(
-                context,
-              ).copyWith(fontWeight: FontWeight.w600),
+              style: textTheme.bodyLarge?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ],
         ),
@@ -504,14 +510,15 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
               onChanged: (enabled) async {
                 setState(() => eveningReviewEnabled = enabled);
                 await _updateSmartNotifications();
-                Navigator.pop(context);
+                if (!dialogContext.mounted) return;
+                Navigator.pop(dialogContext);
               },
             ),
           ],
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Close'),
           ),
         ],

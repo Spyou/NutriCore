@@ -1,10 +1,8 @@
-import 'package:another_flushbar/flushbar.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:nutri_check/core/constants/app_colors.dart';
-import 'package:nutri_check/core/constants/app_text_styles.dart';
+import 'package:nutri_check/core/utils/components/custom_flushbar.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class DeveloperAndDonationSection extends StatelessWidget {
@@ -25,27 +23,27 @@ class DeveloperAndDonationSection extends StatelessWidget {
       children: [
         _buildDeveloperSection(context),
         const SizedBox(height: 24),
-        // _buildDonationSection(context),
-        // SizedBox(height: 24),
       ],
     );
   }
 
   Widget _buildDeveloperSection(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [AppColors.primary.withValues(alpha: 0.1), AppColors.surface],
+          colors: [scheme.primary.withValues(alpha: 0.1), scheme.surface],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+        border: Border.all(color: scheme.primary.withValues(alpha: 0.2)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: scheme.shadow.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -62,8 +60,8 @@ class DeveloperAndDonationSection extends StatelessWidget {
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      AppColors.primary,
-                      AppColors.primary.withValues(alpha: 0.8),
+                      scheme.primary,
+                      scheme.primary.withValues(alpha: 0.8),
                     ],
                   ),
                   image: const DecorationImage(
@@ -81,16 +79,16 @@ class DeveloperAndDonationSection extends StatelessWidget {
                   children: [
                     Text(
                       'About the Developer',
-                      style: AppTextStyles.headingSmall(context).copyWith(
+                      style: textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
-                        color: AppColors.primary,
+                        color: scheme.primary,
                       ),
                     ),
                     Text(
                       'App Developer & UI/UX Designer',
-                      style: AppTextStyles.bodySmall(
-                        context,
-                      ).copyWith(color: AppColors.textSecondary),
+                      style: textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurface.withValues(alpha: 0.65),
+                      ),
                     ),
                   ],
                 ),
@@ -98,33 +96,33 @@ class DeveloperAndDonationSection extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-
-          // Developer Info
-          _buildInfoRow(Icons.person_outline, 'Name', developerName),
+          _buildInfoRow(context, Icons.person_outline, 'Name', developerName),
           const SizedBox(height: 12),
           _buildInfoRow(
+            context,
             Icons.email_outlined,
             'Email',
             developerEmail,
             isClickable: true,
           ),
           const SizedBox(height: 16),
-          // Social Links
           Row(
             children: [
               _buildSocialButton(
+                context: context,
                 icon: Icons.code,
                 label: 'GitHub',
-                color: Colors.black87,
+                color: scheme.onSurface,
                 onTap: () {
                   launchUrl(Uri.parse(githubUrl));
                 },
               ),
               const SizedBox(width: 12),
               _buildSocialButton(
+                context: context,
                 icon: Icons.work_outline,
                 label: 'LinkedIn',
-                color: const Color(0xFF0077B5),
+                color: scheme.secondary,
                 onTap: () {
                   launchUrl(Uri.parse(linkedinUrl));
                 },
@@ -138,20 +136,22 @@ class DeveloperAndDonationSection extends StatelessWidget {
 
   // ignore: unused_element
   Widget _buildDonationSection(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [AppColors.success.withValues(alpha: 0.1), AppColors.surface],
+          colors: [scheme.tertiary.withValues(alpha: 0.1), scheme.surface],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
+        border: Border.all(color: scheme.tertiary.withValues(alpha: 0.3)),
         boxShadow: [
           BoxShadow(
-            color: AppColors.success.withValues(alpha: 0.1),
+            color: scheme.tertiary.withValues(alpha: 0.1),
             blurRadius: 15,
             offset: const Offset(0, 5),
           ),
@@ -167,8 +167,8 @@ class DeveloperAndDonationSection extends StatelessWidget {
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      AppColors.success,
-                      AppColors.success.withValues(alpha: 0.8),
+                      scheme.tertiary,
+                      scheme.tertiary.withValues(alpha: 0.8),
                     ],
                   ),
                   borderRadius: BorderRadius.circular(12),
@@ -186,16 +186,16 @@ class DeveloperAndDonationSection extends StatelessWidget {
                   children: [
                     Text(
                       'Support Development',
-                      style: AppTextStyles.headingSmall(context).copyWith(
+                      style: textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
-                        color: AppColors.success,
+                        color: scheme.tertiary,
                       ),
                     ),
                     Text(
                       'Help keep NutriCheck free and improve',
-                      style: AppTextStyles.bodySmall(
-                        context,
-                      ).copyWith(color: AppColors.textSecondary),
+                      style: textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurface.withValues(alpha: 0.65),
+                      ),
                     ),
                   ],
                 ),
@@ -203,22 +203,21 @@ class DeveloperAndDonationSection extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-
           Text(
-            'If you love using NutriCheck and want to support its development, you can buy me a coffee! ☕ Your support helps me dedicate more time to adding new features and keeping the app free for everyone.',
-            style: AppTextStyles.bodyMedium(
-              context,
-            ).copyWith(color: AppColors.textPrimary, height: 1.4),
+            'If you love using NutriCheck and want to support its development, you can buy me a coffee! Your support helps me dedicate more time to adding new features and keeping the app free for everyone.',
+            style: textTheme.bodyMedium?.copyWith(
+              color: scheme.onSurface,
+              height: 1.4,
+            ),
           ),
           const SizedBox(height: 16),
-
-          // UPI Info Card
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppColors.info.withValues(alpha: 0.1),
+              color: scheme.secondary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.info.withValues(alpha: 0.3)),
+              border:
+                  Border.all(color: scheme.secondary.withValues(alpha: 0.3)),
             ),
             child: Column(
               children: [
@@ -226,15 +225,15 @@ class DeveloperAndDonationSection extends StatelessWidget {
                   children: [
                     Icon(
                       Icons.account_balance_wallet,
-                      color: AppColors.info,
+                      color: scheme.secondary,
                       size: 20,
                     ),
                     const SizedBox(width: 8),
                     Text(
                       'UPI ID',
-                      style: AppTextStyles.bodyLarge(context).copyWith(
+                      style: textTheme.bodyLarge?.copyWith(
                         fontWeight: FontWeight.w600,
-                        color: AppColors.info,
+                        color: scheme.secondary,
                       ),
                     ),
                   ],
@@ -245,15 +244,15 @@ class DeveloperAndDonationSection extends StatelessWidget {
                     Expanded(
                       child: SelectableText(
                         upiId,
-                        style: AppTextStyles.bodyLarge(context).copyWith(
+                        style: textTheme.bodyLarge?.copyWith(
                           fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary,
+                          color: scheme.onSurface,
                         ),
                       ),
                     ),
                     IconButton(
                       onPressed: () => _copyToClipboard(context, upiId),
-                      icon: Icon(Icons.copy, color: AppColors.info),
+                      icon: Icon(Icons.copy, color: scheme.secondary),
                       tooltip: 'Copy UPI ID',
                     ),
                   ],
@@ -262,8 +261,6 @@ class DeveloperAndDonationSection extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-
-          // Donation Buttons
           Row(
             children: [
               Expanded(
@@ -271,7 +268,7 @@ class DeveloperAndDonationSection extends StatelessWidget {
                   context,
                   icon: Icons.payment,
                   label: 'Pay via UPI',
-                  color: AppColors.success,
+                  color: scheme.tertiary,
                   onTap: () => _launchUPI(context),
                 ),
               ),
@@ -281,7 +278,7 @@ class DeveloperAndDonationSection extends StatelessWidget {
                   context,
                   icon: Icons.coffee,
                   label: 'Buy Coffee',
-                  color: AppColors.warning,
+                  color: scheme.error,
                   onTap: () {
                     _launchUrl(buyMeACoffeeUrl, context: context);
                   },
@@ -290,13 +287,11 @@ class DeveloperAndDonationSection extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-
-          // Quick Amount Buttons
           Text(
             'Quick Amounts:',
-            style: AppTextStyles.labelMedium(context).copyWith(
+            style: textTheme.labelMedium?.copyWith(
               fontWeight: FontWeight.w600,
-              color: AppColors.textSecondary,
+              color: scheme.onSurface.withValues(alpha: 0.65),
             ),
           ),
           const SizedBox(height: 8),
@@ -312,23 +307,21 @@ class DeveloperAndDonationSection extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-
-          // Appreciation Note
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: AppColors.warning.withValues(alpha: 0.1),
+              color: scheme.error.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Row(
               children: [
-                Icon(Icons.star, color: AppColors.warning, size: 16),
+                Icon(Icons.star, color: scheme.error, size: 16),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     'Every contribution helps improve NutriCheck for everyone!',
-                    style: AppTextStyles.bodySmall(context).copyWith(
-                      color: AppColors.textSecondary,
+                    style: textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurface.withValues(alpha: 0.65),
                       fontStyle: FontStyle.italic,
                     ),
                   ),
@@ -342,19 +335,21 @@ class DeveloperAndDonationSection extends StatelessWidget {
   }
 
   Widget _buildInfoRow(
+    BuildContext context,
     IconData icon,
     String label,
     String value, {
     bool isClickable = false,
   }) {
+    final scheme = Theme.of(context).colorScheme;
     return Row(
       children: [
-        Icon(icon, color: AppColors.textSecondary, size: 20),
+        Icon(icon, color: scheme.onSurface.withValues(alpha: 0.65), size: 20),
         const SizedBox(width: 12),
         Text(
           '$label: ',
           style: TextStyle(
-            color: AppColors.textSecondary,
+            color: scheme.onSurface.withValues(alpha: 0.65),
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -364,7 +359,7 @@ class DeveloperAndDonationSection extends StatelessWidget {
             child: Text(
               value,
               style: TextStyle(
-                color: isClickable ? AppColors.primary : AppColors.textPrimary,
+                color: isClickable ? scheme.primary : scheme.onSurface,
                 fontWeight: FontWeight.w600,
                 decoration: isClickable ? TextDecoration.underline : null,
               ),
@@ -376,6 +371,7 @@ class DeveloperAndDonationSection extends StatelessWidget {
   }
 
   Widget _buildSocialButton({
+    required BuildContext context,
     required IconData icon,
     required String label,
     required Color color,
@@ -459,21 +455,23 @@ class DeveloperAndDonationSection extends StatelessWidget {
     String label,
     String amount,
   ) {
+    final scheme = Theme.of(context).colorScheme;
     return Expanded(
       child: GestureDetector(
         onTap: () => _launchUPIWithAmount(context, amount),
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 8),
           decoration: BoxDecoration(
-            color: AppColors.success.withValues(alpha: 0.1),
+            color: scheme.tertiary.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
+            border:
+                Border.all(color: scheme.tertiary.withValues(alpha: 0.3)),
           ),
           child: Text(
             label,
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: AppColors.success,
+              color: scheme.tertiary,
               fontWeight: FontWeight.w600,
               fontSize: 12,
             ),
@@ -483,7 +481,6 @@ class DeveloperAndDonationSection extends StatelessWidget {
     );
   }
 
-  // 🔥 ENHANCED: Robust UPI Payment Methods
   Future<void> _launchUPI(BuildContext context) async {
     final upiUrl = _buildUPIUrl();
     await _launchPaymentUrl(context, upiUrl, 'UPI payment');
@@ -495,10 +492,9 @@ class DeveloperAndDonationSection extends StatelessWidget {
       note: 'Coffee for NutriCheck Developer - Thank you!',
     );
     await _launchPaymentUrl(context, upiUrl, 'UPI payment');
-    _showThankYouMessage(context, amount);
+    _showThankYouMessage(amount);
   }
 
-  // 🔥 ROBUST: Build proper UPI URL
   String _buildUPIUrl({String? amount, String? note}) {
     final params = <String, String>{
       'pa': upiId,
@@ -531,7 +527,6 @@ class DeveloperAndDonationSection extends StatelessWidget {
         print('Attempting to launch: $url');
       }
 
-      // Method 1: Try canLaunchUrl first
       final canLaunch = await canLaunchUrl(uri);
 
       if (canLaunch) {
@@ -541,23 +536,23 @@ class DeveloperAndDonationSection extends StatelessWidget {
         );
 
         if (launched) {
-          Flushbar(
+          CustomThemeFlushbar.show(
             title: 'Opening Payment App',
             message: 'Redirecting to your payment app...',
-            duration: const Duration(seconds: 2),
-            backgroundColor: AppColors.info,
-            icon: const Icon(Icons.payment, color: Colors.white),
-          ).show(context);
+          );
         } else {
+          if (!context.mounted) return;
           await _tryAlternativePaymentMethods(context, paymentType);
         }
       } else {
+        if (!context.mounted) return;
         await _tryAlternativePaymentMethods(context, paymentType);
       }
     } catch (e) {
       if (kDebugMode) {
         print('Payment launch error: $e');
       }
+      if (!context.mounted) return;
       await _tryAlternativePaymentMethods(context, paymentType);
     }
   }
@@ -567,9 +562,9 @@ class DeveloperAndDonationSection extends StatelessWidget {
     String paymentType,
   ) async {
     final alternativeUrls = [
-      'tez://upi/pay?pa=$upiId&pn=${Uri.encodeComponent(developerName)}&cu=INR', // Google Pay
-      'phonepe://pay?pa=$upiId&pn=${Uri.encodeComponent(developerName)}&cu=INR', // PhonePe
-      'paytmmp://pay?pa=$upiId&pn=${Uri.encodeComponent(developerName)}&cu=INR', // Paytm
+      'tez://upi/pay?pa=$upiId&pn=${Uri.encodeComponent(developerName)}&cu=INR',
+      'phonepe://pay?pa=$upiId&pn=${Uri.encodeComponent(developerName)}&cu=INR',
+      'paytmmp://pay?pa=$upiId&pn=${Uri.encodeComponent(developerName)}&cu=INR',
     ];
 
     for (final url in alternativeUrls) {
@@ -577,14 +572,10 @@ class DeveloperAndDonationSection extends StatelessWidget {
         final uri = Uri.parse(url);
         if (await canLaunchUrl(uri)) {
           await launchUrl(uri, mode: LaunchMode.externalApplication);
-
-          Flushbar(
+          CustomThemeFlushbar.show(
             title: 'Opening Payment App',
             message: 'Redirecting to your payment app...',
-            duration: const Duration(seconds: 2),
-            backgroundColor: AppColors.info,
-            icon: const Icon(Icons.payment, color: Colors.white),
-          ).show(context);
+          );
           return;
         }
       } catch (e) {
@@ -594,16 +585,19 @@ class DeveloperAndDonationSection extends StatelessWidget {
       }
     }
 
+    if (!context.mounted) return;
     _showPaymentFailureDialog(context, paymentType);
   }
 
   void _showPaymentFailureDialog(BuildContext context, String paymentType) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: Row(
           children: [
-            Icon(Icons.payment, color: AppColors.warning),
+            Icon(Icons.payment, color: scheme.error),
             const SizedBox(width: 8),
             const Flexible(
               child: Text(
@@ -622,14 +616,17 @@ class DeveloperAndDonationSection extends StatelessWidget {
               style: TextStyle(fontSize: 16),
             ),
             const SizedBox(height: 16),
-            _buildAppSuggestion('Google Pay', Icons.account_balance_wallet),
-            _buildAppSuggestion('PhonePe', Icons.phone_android),
-            _buildAppSuggestion('Paytm', Icons.payment),
-            _buildAppSuggestion('Any UPI App', Icons.apps),
+            _buildAppSuggestion(
+                context, 'Google Pay', Icons.account_balance_wallet),
+            _buildAppSuggestion(context, 'PhonePe', Icons.phone_android),
+            _buildAppSuggestion(context, 'Paytm', Icons.payment),
+            _buildAppSuggestion(context, 'Any UPI App', Icons.apps),
             const SizedBox(height: 16),
             Text(
               'Or copy the UPI ID below and use it in any payment app:',
-              style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+              style: textTheme.bodyMedium?.copyWith(
+                color: scheme.onSurface.withValues(alpha: 0.65),
+              ),
             ),
           ],
         ),
@@ -643,23 +640,25 @@ class DeveloperAndDonationSection extends StatelessWidget {
               Navigator.of(context).pop();
               _copyToClipboard(context, upiId);
             },
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.success),
-            child: const Text(
-              'Copy UPI ID',
-              style: TextStyle(color: Colors.white),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: scheme.tertiary,
+              foregroundColor: scheme.onTertiary,
             ),
+            child: const Text('Copy UPI ID'),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildAppSuggestion(String name, IconData icon) {
+  Widget _buildAppSuggestion(BuildContext context, String name, IconData icon) {
+    final scheme = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
-          Icon(icon, color: Colors.grey[600], size: 20),
+          Icon(icon,
+              color: scheme.onSurface.withValues(alpha: 0.65), size: 20),
           const SizedBox(width: 12),
           Text(name, style: const TextStyle(fontSize: 14)),
         ],
@@ -667,7 +666,6 @@ class DeveloperAndDonationSection extends StatelessWidget {
     );
   }
 
-  // 🔥 ENHANCED: General URL launcher with better error handling
   Future<void> _launchUrl(
     String url, {
     BuildContext? context,
@@ -688,23 +686,17 @@ class DeveloperAndDonationSection extends StatelessWidget {
         );
 
         if (!launched && context != null) {
-          Flushbar(
-            title: '❌ Error',
+          CustomThemeFlushbar.show(
+            title: 'Error',
             message: 'Failed to open link',
-            duration: const Duration(seconds: 3),
-            backgroundColor: Colors.red,
-            icon: const Icon(Icons.error, color: Colors.white),
-          ).show(context);
+          );
         }
       } else {
         if (context != null) {
-          Flushbar(
-            title: '❌ Error',
+          CustomThemeFlushbar.show(
+            title: 'Error',
             message: errorMessage ?? 'No app available to open this link',
-            duration: const Duration(seconds: 3),
-            backgroundColor: Colors.red,
-            icon: const Icon(Icons.error, color: Colors.white),
-          ).show(context);
+          );
         }
       }
     } catch (e) {
@@ -712,37 +704,28 @@ class DeveloperAndDonationSection extends StatelessWidget {
         print('URL launch error: $e');
       }
       if (context != null) {
-        Flushbar(
-          title: '❌ Error',
+        CustomThemeFlushbar.show(
+          title: 'Error',
           message: errorMessage ?? 'Could not open link: ${e.toString()}',
-          duration: const Duration(seconds: 3),
-          backgroundColor: Colors.red,
-          icon: const Icon(Icons.error, color: Colors.white),
-        ).show(context);
+        );
       }
     }
   }
 
   void _copyToClipboard(BuildContext context, String text) {
     Clipboard.setData(ClipboardData(text: text));
-    Flushbar(
-      title: '📋 Copied!',
+    CustomThemeFlushbar.show(
+      title: 'Copied',
       message: 'UPI ID copied to clipboard',
-      duration: const Duration(seconds: 2),
-      backgroundColor: AppColors.success,
-      icon: const Icon(Icons.copy, color: Colors.white),
-    ).show(context);
+    );
   }
 
-  void _showThankYouMessage(BuildContext context, String amount) {
+  void _showThankYouMessage(String amount) {
     Future.delayed(const Duration(seconds: 1), () {
-      Flushbar(
+      CustomThemeFlushbar.show(
         title: 'Thank You!',
         message: 'Your ₹$amount contribution means the world to me!',
-        duration: const Duration(seconds: 4),
-        backgroundColor: AppColors.warning,
-        icon: const Icon(Icons.favorite, color: Colors.white),
-      ).show(context);
+      );
     });
   }
 }

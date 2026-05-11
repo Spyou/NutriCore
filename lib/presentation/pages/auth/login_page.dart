@@ -62,10 +62,7 @@ class _LoginPageState extends State<LoginPage> {
 
   void _onGooglePressed() {
     HapticFeedback.selectionClick();
-    CustomThemeFlushbar.show(
-      title: 'Coming soon',
-      message: 'Google sign-in will be available shortly.',
-    );
+    _authController.signInWithGoogle();
   }
 
   void _showForgotPasswordDialog() {
@@ -108,6 +105,8 @@ class _LoginPageState extends State<LoginPage> {
                 leadingIcon: Icons.mail_outline_rounded,
                 keyboardType: TextInputType.emailAddress,
                 autofillHint: AutofillHints.email,
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) => _submitReset(emailController),
               ),
               const SizedBox(height: 20),
               Row(
@@ -131,12 +130,7 @@ class _LoginPageState extends State<LoginPage> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    onPressed: () {
-                      final email = emailController.text.trim();
-                      if (email.isEmpty) return;
-                      _authController.resetPassword(email);
-                      Get.back();
-                    },
+                    onPressed: () => _submitReset(emailController),
                     child: const Text('Send link'),
                   ),
                 ],
@@ -145,7 +139,20 @@ class _LoginPageState extends State<LoginPage> {
           ),
         ),
       ),
-    );
+    ).then((_) => emailController.dispose());
+  }
+
+  void _submitReset(TextEditingController emailController) {
+    final email = emailController.text.trim();
+    if (email.isEmpty || !GetUtils.isEmail(email)) {
+      CustomThemeFlushbar.show(
+        title: 'Invalid email',
+        message: 'Enter a valid email',
+      );
+      return;
+    }
+    _authController.resetPassword(email);
+    Get.back();
   }
 
   @override
@@ -153,8 +160,11 @@ class _LoginPageState extends State<LoginPage> {
     final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      body: AnimatedAuthBackground(
-        child: SafeArea(
+      body: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+        child: AnimatedAuthBackground(
+          child: SafeArea(
           child: LayoutBuilder(
             builder: (context, constraints) {
               return SingleChildScrollView(
@@ -210,6 +220,10 @@ class _LoginPageState extends State<LoginPage> {
                               keyboardType: TextInputType.emailAddress,
                               autofillHint: AutofillHints.email,
                               validator: _validateEmail,
+                              autofocus: true,
+                              textInputAction: TextInputAction.next,
+                              onSubmitted: (_) =>
+                                  _passwordFieldKey.currentState?.focus(),
                             ),
                           ),
                           const SizedBox(height: 14),
@@ -224,6 +238,8 @@ class _LoginPageState extends State<LoginPage> {
                               showEyeToggle: true,
                               autofillHint: AutofillHints.password,
                               validator: _validatePassword,
+                              textInputAction: TextInputAction.done,
+                              onSubmitted: (_) => _login(),
                             ),
                           ),
                           const SizedBox(height: 10),
@@ -293,6 +309,7 @@ class _LoginPageState extends State<LoginPage> {
                 ),
               );
             },
+          ),
           ),
         ),
       ),

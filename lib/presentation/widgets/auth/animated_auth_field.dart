@@ -10,6 +10,9 @@ class AnimatedAuthField extends StatefulWidget {
   final void Function(String)? onChanged;
   final bool showEyeToggle;
   final String? autofillHint;
+  final TextInputAction? textInputAction;
+  final void Function(String)? onSubmitted;
+  final bool autofocus;
 
   const AnimatedAuthField({
     super.key,
@@ -22,6 +25,9 @@ class AnimatedAuthField extends StatefulWidget {
     this.onChanged,
     this.showEyeToggle = false,
     this.autofillHint,
+    this.textInputAction,
+    this.onSubmitted,
+    this.autofocus = false,
   });
 
   @override
@@ -51,6 +57,12 @@ class AnimatedAuthFieldState extends State<AnimatedAuthField>
     _focusNode.dispose();
     _shake.dispose();
     super.dispose();
+  }
+
+  void focus() => _focusNode.requestFocus();
+
+  void clearError() {
+    if (_errorText != null) setState(() => _errorText = null);
   }
 
   bool validateAndShake() {
@@ -130,6 +142,9 @@ class AnimatedAuthFieldState extends State<AnimatedAuthField>
                     focusNode: _focusNode,
                     obscureText: _obscure,
                     keyboardType: widget.keyboardType,
+                    textInputAction: widget.textInputAction,
+                    onFieldSubmitted: widget.onSubmitted,
+                    autofocus: widget.autofocus,
                     autofillHints: widget.autofillHint != null
                         ? [widget.autofillHint!]
                         : null,

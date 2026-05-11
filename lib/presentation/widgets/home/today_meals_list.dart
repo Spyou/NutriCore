@@ -10,7 +10,9 @@ class TodayMealsList extends StatelessWidget {
   const TodayMealsList({super.key});
 
   void _goToNutritionTab() {
-    Get.find<MainController>().changeIndex(1);
+    if (Get.isRegistered<MainController>()) {
+      Get.find<MainController>().changeIndex(1);
+    }
   }
 
   @override

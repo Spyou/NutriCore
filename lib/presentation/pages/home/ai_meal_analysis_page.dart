@@ -9,8 +9,6 @@ import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:nutri_check/core/utils/components/custom_flushbar.dart';
 
-import '../../../core/constants/app_colors.dart';
-import '../../../core/constants/app_text_styles.dart';
 import '../../controllers/nutrition_controller.dart';
 
 class AIMealAnalysisPage extends StatefulWidget {
@@ -73,6 +71,7 @@ class _AIMealAnalysisPageState extends State<AIMealAnalysisPage>
     if (_apiKeyMissing) {
       return _buildApiKeyMissingScreen(context);
     }
+    final scheme = Theme.of(context).colorScheme;
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -80,16 +79,16 @@ class _AIMealAnalysisPageState extends State<AIMealAnalysisPage>
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              AppColors.primary.withValues(alpha: 0.1),
-              AppColors.background,
-              AppColors.background,
+              scheme.primary.withValues(alpha: 0.1),
+              scheme.surface,
+              scheme.surface,
             ],
           ),
         ),
         child: SafeArea(
           child: Column(
             children: [
-              _buildCustomAppBar(),
+              _buildCustomAppBar(context),
               Expanded(
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.all(20),
@@ -97,15 +96,15 @@ class _AIMealAnalysisPageState extends State<AIMealAnalysisPage>
                     opacity: _fadeAnimation,
                     child: Column(
                       children: [
-                        _buildImageSection(),
+                        _buildImageSection(context),
                         const SizedBox(height: 24),
-                        _buildActionButtons(),
+                        _buildActionButtons(context),
                         const SizedBox(height: 24),
-                        if (_isAnalyzing) _buildAnalyzingWidget(),
+                        if (_isAnalyzing) _buildAnalyzingWidget(context),
                         if (_analysisResult != null)
                           ScaleTransition(
                             scale: _scaleAnimation,
-                            child: _buildAnalysisResults(),
+                            child: _buildAnalysisResults(context),
                           ),
                       ],
                     ),
@@ -119,12 +118,14 @@ class _AIMealAnalysisPageState extends State<AIMealAnalysisPage>
     );
   }
 
-  Widget _buildCustomAppBar() {
+  Widget _buildCustomAppBar(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [AppColors.primary, AppColors.primary.withValues(alpha: 0.8)],
+          colors: [scheme.primary, scheme.primary.withValues(alpha: 0.8)],
         ),
         borderRadius: const BorderRadius.only(
           bottomLeft: Radius.circular(24),
@@ -132,7 +133,7 @@ class _AIMealAnalysisPageState extends State<AIMealAnalysisPage>
         ),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.3),
+            color: scheme.primary.withValues(alpha: 0.3),
             blurRadius: 10,
             offset: const Offset(0, 5),
           ),
@@ -157,16 +158,17 @@ class _AIMealAnalysisPageState extends State<AIMealAnalysisPage>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'AI Meal Analysis',
-                  style: AppTextStyles.headingMedium(
-                    context,
-                  ).copyWith(color: Colors.white, fontWeight: FontWeight.bold),
+                  'Meal Photo Analysis',
+                  style: textTheme.titleLarge?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 Text(
                   'NutriCore',
-                  style: AppTextStyles.bodySmall(
-                    context,
-                  ).copyWith(color: Colors.white.withValues(alpha: 0.8)),
+                  style: textTheme.bodySmall?.copyWith(
+                    color: Colors.white.withValues(alpha: 0.8),
+                  ),
                 ),
               ],
             ),
@@ -184,19 +186,21 @@ class _AIMealAnalysisPageState extends State<AIMealAnalysisPage>
     );
   }
 
-  Widget _buildImageSection() {
+  Widget _buildImageSection(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     return Container(
       width: double.infinity,
       height: 320,
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [AppColors.surface, AppColors.surface.withValues(alpha: 0.8)],
+          colors: [scheme.surface, scheme.surface.withValues(alpha: 0.8)],
         ),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+        border: Border.all(color: scheme.primary.withValues(alpha: 0.2)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
+            color: scheme.shadow.withValues(alpha: 0.1),
             blurRadius: 15,
             offset: const Offset(0, 5),
           ),
@@ -227,7 +231,7 @@ class _AIMealAnalysisPageState extends State<AIMealAnalysisPage>
                     child: Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.6),
+                        color: scheme.scrim.withValues(alpha: 0.6),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: const Icon(
@@ -248,8 +252,8 @@ class _AIMealAnalysisPageState extends State<AIMealAnalysisPage>
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
-                        AppColors.primary.withValues(alpha: 0.1),
-                        AppColors.primary.withValues(alpha: 0.05),
+                        scheme.primary.withValues(alpha: 0.1),
+                        scheme.primary.withValues(alpha: 0.05),
                       ],
                     ),
                     borderRadius: BorderRadius.circular(50),
@@ -257,25 +261,25 @@ class _AIMealAnalysisPageState extends State<AIMealAnalysisPage>
                   child: Icon(
                     Icons.restaurant,
                     size: 64,
-                    color: AppColors.primary,
+                    color: scheme.primary,
                   ),
                 ),
                 const SizedBox(height: 24),
                 Text(
                   'Capture Your Meal',
-                  style: AppTextStyles.headingSmall(context).copyWith(
+                  style: textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
+                    color: scheme.onSurface,
                   ),
                 ),
                 const SizedBox(height: 8),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 40),
                   child: Text(
-                    'Take a photo and let AI analyze the nutritional content instantly',
-                    style: AppTextStyles.bodyMedium(
-                      context,
-                    ).copyWith(color: AppColors.textSecondary),
+                    'Take a photo and analyze the nutritional content instantly',
+                    style: textTheme.bodyMedium?.copyWith(
+                      color: scheme.onSurface.withValues(alpha: 0.65),
+                    ),
                     textAlign: TextAlign.center,
                   ),
                 ),
@@ -284,16 +288,18 @@ class _AIMealAnalysisPageState extends State<AIMealAnalysisPage>
     );
   }
 
-  Widget _buildActionButtons() {
+  Widget _buildActionButtons(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Row(
       children: [
         Expanded(
           child: _buildActionButton(
+            context: context,
             icon: Icons.camera_alt,
             label: 'Camera',
             gradient: [
-              AppColors.primary,
-              AppColors.primary.withValues(alpha: 0.8),
+              scheme.primary,
+              scheme.primary.withValues(alpha: 0.8),
             ],
             onPressed: () => _pickImage(ImageSource.camera),
           ),
@@ -301,11 +307,12 @@ class _AIMealAnalysisPageState extends State<AIMealAnalysisPage>
         const SizedBox(width: 16),
         Expanded(
           child: _buildActionButton(
+            context: context,
             icon: Icons.photo_library,
             label: 'Gallery',
             gradient: [
-              AppColors.secondary,
-              AppColors.secondary.withValues(alpha: 0.8),
+              scheme.secondary,
+              scheme.secondary.withValues(alpha: 0.8),
             ],
             onPressed: () => _pickImage(ImageSource.gallery),
           ),
@@ -315,6 +322,7 @@ class _AIMealAnalysisPageState extends State<AIMealAnalysisPage>
   }
 
   Widget _buildActionButton({
+    required BuildContext context,
     required IconData icon,
     required String label,
     required List<Color> gradient,
@@ -354,15 +362,17 @@ class _AIMealAnalysisPageState extends State<AIMealAnalysisPage>
     );
   }
 
-  Widget _buildAnalyzingWidget() {
+  Widget _buildAnalyzingWidget(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     return Container(
       padding: const EdgeInsets.all(32),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: scheme.surface,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.1),
+            color: scheme.primary.withValues(alpha: 0.1),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -375,30 +385,30 @@ class _AIMealAnalysisPageState extends State<AIMealAnalysisPage>
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  AppColors.primary.withValues(alpha: 0.1),
-                  AppColors.primary.withValues(alpha: 0.05),
+                  scheme.primary.withValues(alpha: 0.1),
+                  scheme.primary.withValues(alpha: 0.05),
                 ],
               ),
               borderRadius: BorderRadius.circular(50),
             ),
             child: CircularProgressIndicator(
-              color: AppColors.primary,
+              color: scheme.primary,
               strokeWidth: 3,
             ),
           ),
           const SizedBox(height: 24),
           Text(
-            'AI is analyzing your meal...',
-            style: AppTextStyles.headingSmall(
-              context,
-            ).copyWith(fontWeight: FontWeight.bold),
+            'Analyzing your meal...',
+            style: textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
           ),
           const SizedBox(height: 8),
           Text(
             'Identifying ingredients and calculating nutrition',
-            style: AppTextStyles.bodyMedium(
-              context,
-            ).copyWith(color: AppColors.textSecondary),
+            style: textTheme.bodyMedium?.copyWith(
+              color: scheme.onSurface.withValues(alpha: 0.65),
+            ),
             textAlign: TextAlign.center,
           ),
         ],
@@ -406,21 +416,22 @@ class _AIMealAnalysisPageState extends State<AIMealAnalysisPage>
     );
   }
 
-  Widget _buildAnalysisResults() {
+  Widget _buildAnalysisResults(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            AppColors.success.withValues(alpha: 0.05),
-            AppColors.surface,
+            scheme.tertiary.withValues(alpha: 0.05),
+            scheme.surface,
           ],
         ),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.success.withValues(alpha: 0.2)),
+        border: Border.all(color: scheme.tertiary.withValues(alpha: 0.2)),
         boxShadow: [
           BoxShadow(
-            color: AppColors.success.withValues(alpha: 0.1),
+            color: scheme.tertiary.withValues(alpha: 0.1),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -429,23 +440,25 @@ class _AIMealAnalysisPageState extends State<AIMealAnalysisPage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildResultsHeader(),
+          _buildResultsHeader(context),
           const SizedBox(height: 20),
-          _buildMealInfo(),
+          _buildMealInfo(context),
           const SizedBox(height: 20),
-          _buildNutritionGrid(),
+          _buildNutritionGrid(context),
           if (_analysisResult!['ingredients'] != null) ...[
             const SizedBox(height: 20),
-            _buildIngredientsSection(),
+            _buildIngredientsSection(context),
           ],
           const SizedBox(height: 24),
-          _buildAddToLogButton(),
+          _buildAddToLogButton(context),
         ],
       ),
     );
   }
 
-  Widget _buildResultsHeader() {
+  Widget _buildResultsHeader(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     return Row(
       children: [
         Container(
@@ -453,8 +466,8 @@ class _AIMealAnalysisPageState extends State<AIMealAnalysisPage>
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
-                AppColors.success,
-                AppColors.success.withValues(alpha: 0.8),
+                scheme.tertiary,
+                scheme.tertiary.withValues(alpha: 0.8),
               ],
             ),
             borderRadius: BorderRadius.circular(12),
@@ -468,16 +481,16 @@ class _AIMealAnalysisPageState extends State<AIMealAnalysisPage>
             children: [
               Text(
                 'Analysis Complete!',
-                style: AppTextStyles.headingSmall(context).copyWith(
+                style: textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.bold,
-                  color: AppColors.success,
+                  color: scheme.tertiary,
                 ),
               ),
               Text(
-                'AI detected nutritional information',
-                style: AppTextStyles.bodySmall(
-                  context,
-                ).copyWith(color: AppColors.textSecondary),
+                'Detected nutritional information',
+                style: textTheme.bodySmall?.copyWith(
+                  color: scheme.onSurface.withValues(alpha: 0.65),
+                ),
               ),
             ],
           ),
@@ -486,17 +499,19 @@ class _AIMealAnalysisPageState extends State<AIMealAnalysisPage>
     );
   }
 
-  Widget _buildMealInfo() {
+  Widget _buildMealInfo(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.primary.withValues(alpha: 0.05),
+        color: scheme.primary.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.1)),
+        border: Border.all(color: scheme.primary.withValues(alpha: 0.1)),
       ),
       child: Row(
         children: [
-          Icon(Icons.restaurant_menu, color: AppColors.primary, size: 24),
+          Icon(Icons.restaurant_menu, color: scheme.primary, size: 24),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -504,17 +519,17 @@ class _AIMealAnalysisPageState extends State<AIMealAnalysisPage>
               children: [
                 Text(
                   _analysisResult!['meal_name'] ?? 'Detected Meal',
-                  style: AppTextStyles.bodyLarge(context).copyWith(
+                  style: textTheme.bodyLarge?.copyWith(
                     fontWeight: FontWeight.bold,
-                    color: AppColors.primary,
+                    color: scheme.primary,
                   ),
                 ),
                 if (_analysisResult!['portion_size'] != null)
                   Text(
                     'Portion: ${_analysisResult!['portion_size']}',
-                    style: AppTextStyles.bodySmall(
-                      context,
-                    ).copyWith(color: AppColors.textSecondary),
+                    style: textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurface.withValues(alpha: 0.65),
+                    ),
                   ),
               ],
             ),
@@ -524,35 +539,36 @@ class _AIMealAnalysisPageState extends State<AIMealAnalysisPage>
     );
   }
 
-  Widget _buildNutritionGrid() {
+  Widget _buildNutritionGrid(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     final nutritionItems = [
       {
         'icon': '🔥',
         'label': 'Calories',
         'value': '${_analysisResult!['calories'] ?? 0}',
         'unit': 'kcal',
-        'color': AppColors.warning,
+        'color': scheme.primary,
       },
       {
         'icon': '💪',
         'label': 'Protein',
         'value': '${_analysisResult!['protein'] ?? 0}',
         'unit': 'g',
-        'color': AppColors.primary,
+        'color': scheme.primary,
       },
       {
         'icon': '🌾',
         'label': 'Carbs',
         'value': '${_analysisResult!['carbs'] ?? 0}',
         'unit': 'g',
-        'color': AppColors.info,
+        'color': scheme.tertiary,
       },
       {
         'icon': '🥑',
         'label': 'Fat',
         'value': '${_analysisResult!['fat'] ?? 0}',
         'unit': 'g',
-        'color': AppColors.secondary,
+        'color': scheme.secondary,
       },
     ];
 
@@ -569,6 +585,7 @@ class _AIMealAnalysisPageState extends State<AIMealAnalysisPage>
       itemBuilder: (context, index) {
         final item = nutritionItems[index];
         return _buildNutritionCard(
+          context,
           item['icon'] as String,
           item['label'] as String,
           item['value'] as String,
@@ -580,12 +597,14 @@ class _AIMealAnalysisPageState extends State<AIMealAnalysisPage>
   }
 
   Widget _buildNutritionCard(
+    BuildContext context,
     String icon,
     String label,
     String value,
     String unit,
     Color color,
   ) {
+    final textTheme = Theme.of(context).textTheme;
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -604,9 +623,10 @@ class _AIMealAnalysisPageState extends State<AIMealAnalysisPage>
               const SizedBox(width: 6),
               Text(
                 label,
-                style: AppTextStyles.labelMedium(
-                  context,
-                ).copyWith(color: color, fontWeight: FontWeight.w600),
+                style: textTheme.labelMedium?.copyWith(
+                  color: color,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ],
           ),
@@ -618,16 +638,17 @@ class _AIMealAnalysisPageState extends State<AIMealAnalysisPage>
             children: [
               Text(
                 value,
-                style: AppTextStyles.headingSmall(
-                  context,
-                ).copyWith(fontWeight: FontWeight.bold, color: color),
+                style: textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
               ),
               const SizedBox(width: 3),
               Text(
                 unit,
-                style: AppTextStyles.labelSmall(
-                  context,
-                ).copyWith(color: color.withValues(alpha: 0.8)),
+                style: textTheme.labelSmall?.copyWith(
+                  color: color.withValues(alpha: 0.8),
+                ),
               ),
             ],
           ),
@@ -636,52 +657,58 @@ class _AIMealAnalysisPageState extends State<AIMealAnalysisPage>
     );
   }
 
-  Widget _buildIngredientsSection() {
+  Widget _buildIngredientsSection(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.info.withValues(alpha: 0.05),
+        color: scheme.secondary.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.info.withValues(alpha: 0.1)),
+        border: Border.all(color: scheme.secondary.withValues(alpha: 0.1)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(Icons.list_alt, color: AppColors.info, size: 20),
+              Icon(Icons.list_alt, color: scheme.secondary, size: 20),
               const SizedBox(width: 8),
               Text(
                 'Detected Ingredients',
-                style: AppTextStyles.bodyLarge(
-                  context,
-                ).copyWith(fontWeight: FontWeight.w600, color: AppColors.info),
+                style: textTheme.bodyLarge?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: scheme.secondary,
+                ),
               ),
             ],
           ),
           const SizedBox(height: 12),
           Text(
             _analysisResult!['ingredients'].toString(),
-            style: AppTextStyles.bodyMedium(
-              context,
-            ).copyWith(color: AppColors.textPrimary, height: 1.4),
+            style: textTheme.bodyMedium?.copyWith(
+              color: scheme.onSurface,
+              height: 1.4,
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildAddToLogButton() {
+  Widget _buildAddToLogButton(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [AppColors.success, AppColors.success.withValues(alpha: 0.8)],
+          colors: [scheme.tertiary, scheme.tertiary.withValues(alpha: 0.8)],
         ),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: AppColors.success.withValues(alpha: 0.3),
+            color: scheme.tertiary.withValues(alpha: 0.3),
             blurRadius: 12,
             offset: const Offset(0, 6),
           ),
@@ -701,9 +728,10 @@ class _AIMealAnalysisPageState extends State<AIMealAnalysisPage>
                 const SizedBox(width: 12),
                 Text(
                   'Add to Nutrition Log',
-                  style: AppTextStyles.bodyLarge(
-                    context,
-                  ).copyWith(color: Colors.white, fontWeight: FontWeight.bold),
+                  style: textTheme.bodyLarge?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ],
             ),
@@ -732,11 +760,9 @@ class _AIMealAnalysisPageState extends State<AIMealAnalysisPage>
         _analyzeImage();
       }
     } catch (e) {
-      Get.snackbar(
-        'Error',
-        'Failed to pick image: ${e.toString()}',
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
+      CustomThemeFlushbar.show(
+        title: 'Error',
+        message: 'Failed to pick image: ${e.toString()}',
       );
     }
   }
@@ -748,7 +774,7 @@ class _AIMealAnalysisPageState extends State<AIMealAnalysisPage>
       final nutritionController = Get.find<NutritionController>();
 
       final meal = {
-        'name': _analysisResult!['meal_name'] ?? 'AI Analyzed Meal',
+        'name': _analysisResult!['meal_name'] ?? 'Analyzed Meal',
         'calories': (_analysisResult!['calories'] ?? 0).round(),
         'proteins': (_analysisResult!['protein'] ?? 0.0).toDouble(),
         'carbs': (_analysisResult!['carbs'] ?? 0.0).toDouble(),
@@ -760,28 +786,23 @@ class _AIMealAnalysisPageState extends State<AIMealAnalysisPage>
         'time':
             '${DateTime.now().hour.toString().padLeft(2, '0')}:${DateTime.now().minute.toString().padLeft(2, '0')}',
         'quantity': 100.0,
-        'notes': 'AI analyzed meal: ${_analysisResult!['ingredients'] ?? ''}',
+        'notes': 'Analyzed meal: ${_analysisResult!['ingredients'] ?? ''}',
         'favorite': false,
-        'source': 'ai_analysis',
+        'source': 'photo_analysis',
       };
 
       nutritionController.addMeal(meal);
 
-      Get.snackbar(
-        '🍽️ Added to Log!',
-        '${meal['name']} added to your nutrition log',
-        backgroundColor: AppColors.success,
-        colorText: Colors.white,
-        duration: const Duration(seconds: 3),
+      CustomThemeFlushbar.show(
+        title: 'Added to Log',
+        message: '${meal['name']} added to your nutrition log',
       );
 
       Get.back();
     } catch (e) {
-      Get.snackbar(
-        'Error',
-        'Failed to add meal to log: ${e.toString()}',
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
+      CustomThemeFlushbar.show(
+        title: 'Error',
+        message: 'Failed to add meal to log: ${e.toString()}',
       );
     }
   }
@@ -868,17 +889,14 @@ All nutritional values should be numbers (integers for calories, decimals for ot
           _animationController.reset();
           _animationController.forward();
 
-          Get.snackbar(
-            '🎉 Analysis Complete!',
-            'Your meal has been analyzed successfully',
-            backgroundColor: AppColors.success,
-            colorText: Colors.white,
-            duration: const Duration(seconds: 3),
+          CustomThemeFlushbar.show(
+            title: 'Analysis Complete',
+            message: 'Your meal has been analyzed successfully',
           );
 
           if (kDebugMode) {
             print(
-              'Successfully parsed AI response: ${analysisData['meal_name']}',
+              'Successfully parsed response: ${analysisData['meal_name']}',
             );
           }
         } catch (jsonError) {
@@ -891,7 +909,7 @@ All nutritional values should be numbers (integers for calories, decimals for ot
           _parseResponseManually(responseText);
         }
       } else {
-        throw Exception('No response from AI');
+        throw Exception('No response from analysis');
       }
     } catch (e) {
       if (kDebugMode) {
@@ -937,7 +955,7 @@ All nutritional values should be numbers (integers for calories, decimals for ot
       ).firstMatch(responseText);
 
       final manualResult = {
-        'meal_name': mealNameMatch?.group(1) ?? 'AI Analyzed Meal',
+        'meal_name': mealNameMatch?.group(1) ?? 'Analyzed Meal',
         'calories': int.tryParse(caloriesMatch?.group(1) ?? '0') ?? 0,
         'protein': double.tryParse(proteinMatch?.group(1) ?? '0') ?? 0.0,
         'carbs': double.tryParse(carbsMatch?.group(1) ?? '0') ?? 0.0,
@@ -952,12 +970,9 @@ All nutritional values should be numbers (integers for calories, decimals for ot
         _analysisResult = manualResult;
       });
 
-      Get.snackbar(
-        'Analysis Complete!',
-        'Your meal has been analyzed successfully',
-        backgroundColor: AppColors.success,
-        colorText: Colors.white,
-        duration: const Duration(seconds: 3),
+      CustomThemeFlushbar.show(
+        title: 'Analysis Complete',
+        message: 'Your meal has been analyzed successfully',
       );
 
       if (kDebugMode) {
@@ -969,7 +984,7 @@ All nutritional values should be numbers (integers for calories, decimals for ot
       }
       CustomThemeFlushbar.show(
         title: 'Analysis Failed',
-        message: 'Could not parse the AI response. Please try again.',
+        message: 'Could not parse the response. Please try again.',
       );
     }
   }

@@ -498,7 +498,11 @@ class ScanPageState extends State<ScanPage>
             children: [
               _buildGlassButton(
                 icon: Icons.close,
-                onPressed: () => Get.find<MainController>().changeIndex(0),
+                onPressed: () {
+                  if (Get.isRegistered<MainController>()) {
+                    Get.find<MainController>().changeIndex(0);
+                  }
+                },
               ),
               Expanded(
                 child: Center(
@@ -652,7 +656,9 @@ class ScanPageState extends State<ScanPage>
           TextButton(
             onPressed: () {
               scanController.lookupError.value = '';
-              Get.find<MainController>().changeIndex(1);
+              if (Get.isRegistered<MainController>()) {
+                Get.find<MainController>().changeIndex(1);
+              }
             },
             child: Text(
               'Open search',

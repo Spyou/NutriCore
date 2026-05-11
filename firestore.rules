@@ -28,7 +28,14 @@ service cloud.firestore {
     }
 
     match /nutrition_entries/{docId} {
-      allow read, delete: if ownsResource();
+      // Allow reads when the requested doc id is prefixed with the
+      // caller's uid (this app uses `<uid>_<date>` doc ids). This lets
+      // listeners on not-yet-existing docs return empty instead of
+      // permission-denied. Existing-doc reads still require ownership.
+      allow read: if isSignedIn() &&
+        (docId.matches('^' + request.auth.uid + '_.*') ||
+         (resource != null && resource.data.userId == request.auth.uid));
+      allow delete: if ownsResource();
       allow create: if ownsIncoming();
       allow update: if ownsResource() && ownsIncoming();
     }

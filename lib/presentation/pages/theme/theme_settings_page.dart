@@ -1,31 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import 'package:nutri_check/core/constants/app_colors.dart';
-import 'package:nutri_check/core/constants/app_text_styles.dart';
 import 'package:nutri_check/core/services/theme_service.dart';
+import 'package:nutri_check/core/utils/components/custom_flushbar.dart';
 
 class ThemeSettingsPage extends GetView<ThemeService> {
   const ThemeSettingsPage({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     return Scaffold(
-      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: Text(
           'Theme Settings',
-          style: AppTextStyles.headingMedium(context),
+          style: textTheme.titleLarge,
         ),
         elevation: 0,
         backgroundColor: Colors.transparent,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios, color: AppColors.onSurface),
+          icon: Icon(Icons.arrow_back_ios, color: scheme.onSurface),
           onPressed: () => Get.back(),
         ),
         actions: [
           IconButton(
-            icon: Icon(Icons.refresh, color: AppColors.primary),
+            icon: Icon(Icons.refresh, color: scheme.primary),
             onPressed: () => controller.resetToDefaults(),
             tooltip: 'Reset to defaults',
           ),
@@ -58,17 +58,18 @@ class ThemeSettingsPage extends GetView<ThemeService> {
     );
   }
 
-  // 🔥 Theme Preview Section
   Widget _buildThemePreview(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: scheme.surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.outline.withValues(alpha: 0.2)),
+        border: Border.all(color: scheme.outline.withValues(alpha: 0.2)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: scheme.shadow.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -79,13 +80,13 @@ class ThemeSettingsPage extends GetView<ThemeService> {
         children: [
           Row(
             children: [
-              Icon(Icons.preview, color: AppColors.primary, size: 24),
+              Icon(Icons.preview, color: scheme.primary, size: 24),
               const SizedBox(width: 12),
               Text(
                 'Theme Preview',
-                style: AppTextStyles.headingMedium(
-                  context,
-                ).copyWith(fontWeight: FontWeight.bold),
+                style: textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ],
           ),
@@ -97,8 +98,8 @@ class ThemeSettingsPage extends GetView<ThemeService> {
                   context,
                   'Primary',
                   Icons.palette,
-                  AppColors.primaryContainer,
-                  AppColors.onPrimaryContainer,
+                  scheme.primaryContainer,
+                  scheme.onPrimaryContainer,
                 ),
               ),
               const SizedBox(width: 12),
@@ -107,8 +108,8 @@ class ThemeSettingsPage extends GetView<ThemeService> {
                   context,
                   'Secondary',
                   Icons.color_lens,
-                  AppColors.secondaryContainer,
-                  AppColors.onSecondaryContainer,
+                  scheme.secondaryContainer,
+                  scheme.onSecondaryContainer,
                 ),
               ),
               const SizedBox(width: 12),
@@ -117,8 +118,8 @@ class ThemeSettingsPage extends GetView<ThemeService> {
                   context,
                   'Tertiary',
                   Icons.brush,
-                  AppColors.tertiaryContainer,
-                  AppColors.onTertiaryContainer,
+                  scheme.tertiaryContainer,
+                  scheme.onTertiaryContainer,
                 ),
               ),
             ],
@@ -128,23 +129,23 @@ class ThemeSettingsPage extends GetView<ThemeService> {
             () => Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppColors.surfaceVariant,
+                color: scheme.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
                 children: [
                   Icon(
                     controller.themeIcon,
-                    color: AppColors.primary,
+                    color: scheme.primary,
                     size: 20,
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       controller.themeStatusText,
-                      style: AppTextStyles.bodyMedium(
-                        context,
-                      ).copyWith(fontWeight: FontWeight.w500),
+                      style: textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
                   Container(
@@ -153,13 +154,13 @@ class ThemeSettingsPage extends GetView<ThemeService> {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.1),
+                      color: scheme.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
                       controller.useMaterial3.value ? 'M3' : 'M2',
-                      style: AppTextStyles.labelSmall(context).copyWith(
-                        color: AppColors.primary,
+                      style: textTheme.labelSmall?.copyWith(
+                        color: scheme.primary,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -180,6 +181,7 @@ class ThemeSettingsPage extends GetView<ThemeService> {
     Color backgroundColor,
     Color textColor,
   ) {
+    final textTheme = Theme.of(context).textTheme;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -192,33 +194,37 @@ class ThemeSettingsPage extends GetView<ThemeService> {
           const SizedBox(height: 8),
           Text(
             label,
-            style: AppTextStyles.labelMedium(
-              context,
-            ).copyWith(color: textColor, fontWeight: FontWeight.w600),
+            style: textTheme.labelMedium?.copyWith(
+              color: textColor,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),
     );
   }
 
-  // 🔥 Theme Mode Toggle Section
   Widget _buildThemeModeSection(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     return _buildSection(
       context,
       title: 'Theme Mode',
       icon: Icons.brightness_6,
-      iconColor: AppColors.primary,
+      iconColor: scheme.primary,
       child: Obx(
         () => Column(
           children: [
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: Text('Dark Mode', style: AppTextStyles.bodyLarge(context)),
+              title: Text('Dark Mode', style: textTheme.bodyLarge),
               subtitle: Text(
                 controller.isDarkMode.value
                     ? 'Dark theme reduces eye strain in low light'
                     : 'Light theme provides better visibility',
-                style: AppTextStyles.bodySmall(context),
+                style: textTheme.bodySmall?.copyWith(
+                  color: scheme.onSurface.withValues(alpha: 0.65),
+                ),
               ),
               value: controller.isDarkMode.value,
               onChanged: (_) {
@@ -232,7 +238,7 @@ class ThemeSettingsPage extends GetView<ThemeService> {
                       ? Icons.dark_mode
                       : Icons.light_mode,
                   key: ValueKey(controller.isDarkMode.value),
-                  color: AppColors.primary,
+                  color: scheme.primary,
                 ),
               ),
             ),
@@ -252,13 +258,14 @@ class ThemeSettingsPage extends GetView<ThemeService> {
     );
   }
 
-  // 🔥 Material 3 Toggle Section
   Widget _buildMaterial3Section(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     return _buildSection(
       context,
       title: 'Material Design',
       icon: Icons.auto_awesome,
-      iconColor: AppColors.secondary,
+      iconColor: scheme.secondary,
       child: Obx(
         () => Column(
           children: [
@@ -266,13 +273,15 @@ class ThemeSettingsPage extends GetView<ThemeService> {
               contentPadding: EdgeInsets.zero,
               title: Text(
                 'Material 3 Design',
-                style: AppTextStyles.bodyLarge(context),
+                style: textTheme.bodyLarge,
               ),
               subtitle: Text(
                 controller.useMaterial3.value
                     ? 'Modern Material 3 design system with dynamic colors'
                     : 'Classic Material 2 design with traditional styling',
-                style: AppTextStyles.bodySmall(context),
+                style: textTheme.bodySmall?.copyWith(
+                  color: scheme.onSurface.withValues(alpha: 0.65),
+                ),
               ),
               value: controller.useMaterial3.value,
               onChanged: (_) {
@@ -284,8 +293,8 @@ class ThemeSettingsPage extends GetView<ThemeService> {
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   color: controller.useMaterial3.value
-                      ? AppColors.secondary.withValues(alpha: 0.1)
-                      : AppColors.outline.withValues(alpha: 0.1),
+                      ? scheme.secondary.withValues(alpha: 0.1)
+                      : scheme.outline.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
@@ -293,8 +302,8 @@ class ThemeSettingsPage extends GetView<ThemeService> {
                       ? Icons.new_releases
                       : Icons.history,
                   color: controller.useMaterial3.value
-                      ? AppColors.secondary
-                      : AppColors.outline,
+                      ? scheme.secondary
+                      : scheme.outline,
                 ),
               ),
             ),
@@ -307,21 +316,23 @@ class ThemeSettingsPage extends GetView<ThemeService> {
   }
 
   Widget _buildFeatureComparison(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surfaceVariant.withValues(alpha: 0.5),
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.outline.withValues(alpha: 0.2)),
+        border: Border.all(color: scheme.outline.withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             'Design System Features:',
-            style: AppTextStyles.labelLarge(
-              context,
-            ).copyWith(fontWeight: FontWeight.w600),
+            style: textTheme.labelLarge?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
           ),
           const SizedBox(height: 8),
           Obx(
@@ -356,6 +367,8 @@ class ThemeSettingsPage extends GetView<ThemeService> {
   }
 
   Widget _buildFeatureRow(BuildContext context, String feature, bool enabled) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
@@ -363,15 +376,15 @@ class ThemeSettingsPage extends GetView<ThemeService> {
           Icon(
             enabled ? Icons.check_circle : Icons.circle_outlined,
             size: 16,
-            color: enabled ? AppColors.success : AppColors.outline,
+            color: enabled ? scheme.tertiary : scheme.outline,
           ),
           const SizedBox(width: 8),
           Text(
             feature,
-            style: AppTextStyles.bodySmall(context).copyWith(
+            style: textTheme.bodySmall?.copyWith(
               color: enabled
-                  ? AppColors.onSurface
-                  : AppColors.onSurface.withValues(alpha: 0.6),
+                  ? scheme.onSurface
+                  : scheme.onSurface.withValues(alpha: 0.6),
             ),
           ),
         ],
@@ -379,13 +392,14 @@ class ThemeSettingsPage extends GetView<ThemeService> {
     );
   }
 
-  // 🔥 Dynamic Color Toggle Section
   Widget _buildDynamicColorSection(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     return _buildSection(
       context,
       title: 'Dynamic Colors',
       icon: Icons.auto_fix_high,
-      iconColor: AppColors.tertiary,
+      iconColor: scheme.tertiary,
       child: Obx(
         () => Column(
           children: [
@@ -393,13 +407,15 @@ class ThemeSettingsPage extends GetView<ThemeService> {
               contentPadding: EdgeInsets.zero,
               title: Text(
                 'System Colors',
-                style: AppTextStyles.bodyLarge(context),
+                style: textTheme.bodyLarge,
               ),
               subtitle: Text(
                 controller.useDynamicColor.value
                     ? 'Colors automatically adapt to your wallpaper'
                     : 'Using custom app color scheme',
-                style: AppTextStyles.bodySmall(context),
+                style: textTheme.bodySmall?.copyWith(
+                  color: scheme.onSurface.withValues(alpha: 0.65),
+                ),
               ),
               value: controller.useDynamicColor.value,
               onChanged: (_) {
@@ -413,14 +429,14 @@ class ThemeSettingsPage extends GetView<ThemeService> {
                   gradient: controller.useDynamicColor.value
                       ? LinearGradient(
                           colors: [
-                            AppColors.tertiary.withValues(alpha: 0.3),
-                            AppColors.primary.withValues(alpha: 0.3),
+                            scheme.tertiary.withValues(alpha: 0.3),
+                            scheme.primary.withValues(alpha: 0.3),
                           ],
                         )
                       : null,
                   color: controller.useDynamicColor.value
                       ? null
-                      : AppColors.outline.withValues(alpha: 0.1),
+                      : scheme.outline.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
@@ -428,8 +444,8 @@ class ThemeSettingsPage extends GetView<ThemeService> {
                       ? Icons.wallpaper
                       : Icons.color_lens,
                   color: controller.useDynamicColor.value
-                      ? AppColors.tertiary
-                      : AppColors.outline,
+                      ? scheme.tertiary
+                      : scheme.outline,
                 ),
               ),
             ),
@@ -454,8 +470,9 @@ class ThemeSettingsPage extends GetView<ThemeService> {
     );
   }
 
-  // 🔥 Color Selection Section
   Widget _buildColorSelectionSection(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     return Obx(
       () => AnimatedSwitcher(
         duration: const Duration(milliseconds: 300),
@@ -465,13 +482,13 @@ class ThemeSettingsPage extends GetView<ThemeService> {
                 context,
                 title: 'Custom Colors',
                 icon: Icons.palette,
-                iconColor: AppColors.primary,
+                iconColor: scheme.primary,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       'Choose your preferred color scheme:',
-                      style: AppTextStyles.bodyMedium(context),
+                      style: textTheme.bodyMedium,
                     ),
                     const SizedBox(height: 16),
                     _buildColorGrid(context),
@@ -495,6 +512,7 @@ class ThemeSettingsPage extends GetView<ThemeService> {
   }
 
   Widget _buildColorOption(BuildContext context, Color color) {
+    final scheme = Theme.of(context).colorScheme;
     final isSelected = controller.seedColor.value == color;
 
     return GestureDetector(
@@ -510,7 +528,7 @@ class ThemeSettingsPage extends GetView<ThemeService> {
           color: color,
           borderRadius: BorderRadius.circular(30),
           border: Border.all(
-            color: isSelected ? AppColors.onSurface : Colors.transparent,
+            color: isSelected ? scheme.onSurface : Colors.transparent,
             width: 3,
           ),
           boxShadow: [
@@ -531,30 +549,36 @@ class ThemeSettingsPage extends GetView<ThemeService> {
 
   Color _getContrastColor(Color color) {
     final luminance = color.computeLuminance();
-    return luminance > 0.5 ? Colors.black : Colors.white;
+    // Contrast color for arbitrary swatch: kept literal for legibility on a
+    // user-chosen color (not a theme token).
+    return luminance > 0.5 ? const Color(0xFF000000) : const Color(0xFFFFFFFF);
   }
 
   Widget _buildCustomColorPicker(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surfaceVariant.withValues(alpha: 0.5),
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.outline.withValues(alpha: 0.2)),
+        border: Border.all(color: scheme.outline.withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             'Custom Color',
-            style: AppTextStyles.labelLarge(
-              context,
-            ).copyWith(fontWeight: FontWeight.w600),
+            style: textTheme.labelLarge?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
           ),
           const SizedBox(height: 8),
           Text(
             'Tap to pick any color you like',
-            style: AppTextStyles.bodySmall(context),
+            style: textTheme.bodySmall?.copyWith(
+              color: scheme.onSurface.withValues(alpha: 0.65),
+            ),
           ),
           const SizedBox(height: 12),
           GestureDetector(
@@ -563,19 +587,22 @@ class ThemeSettingsPage extends GetView<ThemeService> {
               width: double.infinity,
               height: 50,
               decoration: BoxDecoration(
+                // Rainbow gradient is the visual identity of the color picker
+                // and must show actual hues, not theme tokens.
                 gradient: const LinearGradient(
                   colors: [
-                    Colors.red,
-                    Colors.orange,
-                    Colors.yellow,
-                    Colors.green,
-                    Colors.blue,
-                    Colors.indigo,
-                    Colors.purple,
+                    Color(0xFFE53935),
+                    Color(0xFFFB8C00),
+                    Color(0xFFFDD835),
+                    Color(0xFF43A047),
+                    Color(0xFF1E88E5),
+                    Color(0xFF3949AB),
+                    Color(0xFF8E24AA),
                   ],
                 ),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.outline.withValues(alpha: 0.3)),
+                border:
+                    Border.all(color: scheme.outline.withValues(alpha: 0.3)),
               ),
               child: Center(
                 child: Row(
@@ -585,7 +612,7 @@ class ThemeSettingsPage extends GetView<ThemeService> {
                     const SizedBox(width: 8),
                     Text(
                       'Pick Custom Color',
-                      style: AppTextStyles.labelLarge(context).copyWith(
+                      style: textTheme.labelLarge?.copyWith(
                         color: Colors.white,
                         fontWeight: FontWeight.w600,
                       ),
@@ -600,30 +627,33 @@ class ThemeSettingsPage extends GetView<ThemeService> {
     );
   }
 
-  // 🔥 Preset Themes Section
   Widget _buildPresetThemesSection(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return _buildSection(
       context,
       title: 'Preset Themes',
       icon: Icons.style,
-      iconColor: AppColors.secondary,
+      iconColor: scheme.secondary,
+      // Preset swatches must show their actual seed color, not theme tokens.
       child: Column(
         children: [
-          _buildPresetTheme(context, 'Nature', Colors.green, Icons.eco),
+          _buildPresetTheme(
+              context, 'Nature', const Color(0xFF2E7D32), Icons.eco),
           const SizedBox(height: 8),
-          _buildPresetTheme(context, 'Ocean', Colors.blue, Icons.waves),
+          _buildPresetTheme(
+              context, 'Ocean', const Color(0xFF1565C0), Icons.waves),
           const SizedBox(height: 8),
           _buildPresetTheme(
             context,
             'Sunset',
-            Colors.orange,
+            const Color(0xFFEF6C00),
             Icons.wb_twilight,
           ),
           const SizedBox(height: 8),
           _buildPresetTheme(
             context,
             'Berry',
-            Colors.purple,
+            const Color(0xFF8E24AA),
             Icons.local_florist,
           ),
         ],
@@ -637,6 +667,8 @@ class ThemeSettingsPage extends GetView<ThemeService> {
     Color color,
     IconData icon,
   ) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     return GestureDetector(
       onTap: () {
         HapticFeedback.selectionClick();
@@ -645,12 +677,12 @@ class ThemeSettingsPage extends GetView<ThemeService> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: scheme.surface,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: controller.seedColor.value == color
                 ? color
-                : AppColors.outline.withValues(alpha: 0.2),
+                : scheme.outline.withValues(alpha: 0.2),
             width: controller.seedColor.value == color ? 2 : 1,
           ),
         ),
@@ -668,9 +700,9 @@ class ThemeSettingsPage extends GetView<ThemeService> {
             Expanded(
               child: Text(
                 name,
-                style: AppTextStyles.bodyLarge(
-                  context,
-                ).copyWith(fontWeight: FontWeight.w500),
+                style: textTheme.bodyLarge?.copyWith(
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
             if (controller.seedColor.value == color)
@@ -681,13 +713,13 @@ class ThemeSettingsPage extends GetView<ThemeService> {
     );
   }
 
-  // 🔥 Advanced Options Section
   Widget _buildAdvancedOptionsSection(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return _buildSection(
       context,
       title: 'Advanced Options',
       icon: Icons.settings,
-      iconColor: AppColors.tertiary,
+      iconColor: scheme.tertiary,
       child: Column(
         children: [
           _buildAdvancedOption(
@@ -695,10 +727,8 @@ class ThemeSettingsPage extends GetView<ThemeService> {
             'High Contrast',
             'Increase color contrast for better accessibility',
             Icons.contrast,
-            false, // You can add this to ThemeService if needed
-            (value) {
-              // Handle high contrast toggle
-            },
+            false,
+            (value) {},
           ),
           const SizedBox(height: 12),
           _buildAdvancedOption(
@@ -706,10 +736,8 @@ class ThemeSettingsPage extends GetView<ThemeService> {
             'Reduce Animations',
             'Minimize animations for better performance',
             Icons.animation,
-            false, // You can add this to ThemeService if needed
-            (value) {
-              // Handle animation toggle
-            },
+            false,
+            (value) {},
           ),
         ],
       ),
@@ -724,15 +752,17 @@ class ThemeSettingsPage extends GetView<ThemeService> {
     bool value,
     ValueChanged<bool> onChanged,
   ) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surfaceVariant.withValues(alpha: 0.3),
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         children: [
-          Icon(icon, color: AppColors.tertiary, size: 24),
+          Icon(icon, color: scheme.tertiary, size: 24),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
@@ -740,11 +770,16 @@ class ThemeSettingsPage extends GetView<ThemeService> {
               children: [
                 Text(
                   title,
-                  style: AppTextStyles.bodyMedium(
-                    context,
-                  ).copyWith(fontWeight: FontWeight.w500),
+                  style: textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
-                Text(subtitle, style: AppTextStyles.bodySmall(context)),
+                Text(
+                  subtitle,
+                  style: textTheme.bodySmall?.copyWith(
+                    color: scheme.onSurface.withValues(alpha: 0.65),
+                  ),
+                ),
               ],
             ),
           ),
@@ -754,13 +789,13 @@ class ThemeSettingsPage extends GetView<ThemeService> {
     );
   }
 
-  // 🔥 Actions Section
   Widget _buildActionsSection(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return _buildSection(
       context,
       title: 'Actions',
       icon: Icons.build,
-      iconColor: AppColors.primary,
+      iconColor: scheme.primary,
       child: Column(
         children: [
           SizedBox(
@@ -770,8 +805,8 @@ class ThemeSettingsPage extends GetView<ThemeService> {
               icon: const Icon(Icons.refresh),
               label: const Text('Reset to Defaults'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryContainer,
-                foregroundColor: AppColors.onPrimaryContainer,
+                backgroundColor: scheme.primaryContainer,
+                foregroundColor: scheme.onPrimaryContainer,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -799,7 +834,6 @@ class ThemeSettingsPage extends GetView<ThemeService> {
     );
   }
 
-  // 🔥 Helper Widgets
   Widget _buildSection(
     BuildContext context, {
     required String title,
@@ -807,15 +841,17 @@ class ThemeSettingsPage extends GetView<ThemeService> {
     required Color iconColor,
     required Widget child,
   }) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: scheme.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.outline.withValues(alpha: 0.1)),
+        border: Border.all(color: scheme.outline.withValues(alpha: 0.1)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
+            color: scheme.shadow.withValues(alpha: 0.02),
             blurRadius: 6,
             offset: const Offset(0, 2),
           ),
@@ -837,9 +873,9 @@ class ThemeSettingsPage extends GetView<ThemeService> {
               const SizedBox(width: 12),
               Text(
                 title,
-                style: AppTextStyles.headingSmall(
-                  context,
-                ).copyWith(fontWeight: FontWeight.bold),
+                style: textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ],
           ),
@@ -851,24 +887,27 @@ class ThemeSettingsPage extends GetView<ThemeService> {
   }
 
   Widget _buildInfoCard(BuildContext context, String text, IconData icon) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.primaryContainer.withValues(alpha: 0.3),
+        color: scheme.primaryContainer.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+        border: Border.all(color: scheme.primary.withValues(alpha: 0.2)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: AppColors.primary, size: 16),
+          Icon(icon, color: scheme.primary, size: 16),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               text,
-              style: AppTextStyles.bodySmall(
-                context,
-              ).copyWith(color: AppColors.primary, height: 1.4),
+              style: textTheme.bodySmall?.copyWith(
+                color: scheme.primary,
+                height: 1.4,
+              ),
             ),
           ),
         ],
@@ -876,33 +915,34 @@ class ThemeSettingsPage extends GetView<ThemeService> {
     );
   }
 
-  // 🔥 Dialog Methods
   void _showResetDialog(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     Get.dialog(
       AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
-            Icon(Icons.refresh, color: AppColors.warning),
+            Icon(Icons.refresh, color: scheme.error),
             const SizedBox(width: 12),
             Text(
               'Reset Theme Settings',
-              style: AppTextStyles.headingSmall(context),
+              style: textTheme.titleMedium,
             ),
           ],
         ),
         content: Text(
           'This will reset all theme settings to their default values. Are you sure you want to continue?',
-          style: AppTextStyles.bodyMedium(context),
+          style: textTheme.bodyMedium,
         ),
         actions: [
           TextButton(
             onPressed: () => Get.back(),
             child: Text(
               'Cancel',
-              style: AppTextStyles.labelLarge(
-                context,
-              ).copyWith(color: AppColors.outline),
+              style: textTheme.labelLarge?.copyWith(
+                color: scheme.outline,
+              ),
             ),
           ),
           ElevatedButton(
@@ -911,8 +951,8 @@ class ThemeSettingsPage extends GetView<ThemeService> {
               controller.resetToDefaults();
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.warning,
-              foregroundColor: Colors.white,
+              backgroundColor: scheme.error,
+              foregroundColor: scheme.onError,
             ),
             child: const Text('Reset'),
           ),
@@ -922,12 +962,13 @@ class ThemeSettingsPage extends GetView<ThemeService> {
   }
 
   void _showColorPicker(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
     Color selectedColor = controller.seedColor.value;
 
     Get.dialog(
       AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Pick a Color', style: AppTextStyles.headingSmall(context)),
+        title: Text('Pick a Color', style: textTheme.titleMedium),
         content: SizedBox(
           width: 300,
           height: 300,
@@ -939,6 +980,8 @@ class ThemeSettingsPage extends GetView<ThemeService> {
             ),
             itemCount: Colors.primaries.length,
             itemBuilder: (context, index) {
+              // Swatch grid intentionally shows real material primary hues —
+              // these are the choices the user picks from.
               final color = Colors.primaries[index];
               return GestureDetector(
                 onTap: () {
@@ -977,30 +1020,9 @@ class ThemeSettingsPage extends GetView<ThemeService> {
 
   void _exportThemeSettings(BuildContext context) {
     final themeInfo = controller.currentThemeInfo;
-
-    Get.snackbar(
-      '💾 Theme Settings',
-      'Theme configuration exported successfully',
-      duration: const Duration(seconds: 3),
-      backgroundColor: AppColors.success,
-      colorText: Colors.white,
-      messageText: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Theme configuration exported:',
-            style: TextStyle(color: Colors.white),
-          ),
-          Text(
-            themeInfo.toString(),
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 12,
-              fontFamily: 'monospace',
-            ),
-          ),
-        ],
-      ),
+    CustomThemeFlushbar.show(
+      title: 'Theme Settings',
+      message: 'Theme configuration exported: $themeInfo',
     );
   }
 }

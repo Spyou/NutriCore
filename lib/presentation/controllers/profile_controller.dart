@@ -11,6 +11,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:nutri_check/core/utils/components/custom_flushbar.dart';
 import 'package:nutri_check/domain/entities/user_profile.dart';
+import 'package:nutri_check/presentation/pages/auth/login_page.dart';
 import 'package:nutri_check/domain/repositories/user_repository.dart';
 import 'package:nutri_check/domain/repositories/nutrition_repository.dart';
 import 'package:nutri_check/domain/repositories/preferences_repository.dart';
@@ -1424,7 +1425,7 @@ class ProfileController extends GetxController {
 
       await user.delete();
 
-      Get.offAllNamed('/login');
+      Get.offAll(() => const LoginPage());
 
       CustomThemeFlushbar.show(
         title: 'Account Deleted',
@@ -1441,42 +1442,101 @@ class ProfileController extends GetxController {
   }
 
   Future<bool> _showDeleteConfirmation() async {
-    final confirmed = await Get.dialog<bool>(
-      AlertDialog(
-        title: const Text('Delete Account'),
-        content: const Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Are you sure you want to delete your account?'),
-            SizedBox(height: 8),
-            Text(
-              'This will permanently delete:',
-              style: TextStyle(fontWeight: FontWeight.bold),
+    final ctx = Get.context;
+    if (ctx == null) return false;
+
+    final confirmed = await showModalBottomSheet<bool>(
+      context: ctx,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      useSafeArea: true,
+      builder: (sheetCtx) {
+        final scheme = Theme.of(sheetCtx).colorScheme;
+        final textTheme = Theme.of(sheetCtx).textTheme;
+        return SafeArea(
+          top: false,
+          child: Container(
+            decoration: BoxDecoration(
+              color: scheme.surface,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(24),
+              ),
             ),
-            Text('\u2022 All your profile data'),
-            Text('\u2022 All meal logs and nutrition data'),
-            Text('\u2022 All scanned products'),
-            Text('\u2022 All statistics and history'),
-            SizedBox(height: 8),
-            Text(
-              'This action cannot be undone.',
-              style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+            padding: EdgeInsets.only(
+              left: 20,
+              right: 20,
+              top: 12,
+              bottom: 16 + MediaQuery.of(sheetCtx).viewInsets.bottom,
             ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Get.back(result: false),
-            child: const Text('Cancel'),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Drag handle
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: scheme.onSurface.withValues(alpha: 0.18),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Delete account?',
+                  style: textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'This permanently removes your account, all logged meals, '
+                  'and weight history. This cannot be undone.',
+                  style: textTheme.bodyMedium?.copyWith(
+                    color: scheme.onSurface.withValues(alpha: 0.75),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () =>
+                            Navigator.of(sheetCtx).pop(false),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          side: BorderSide(color: scheme.outlineVariant),
+                        ),
+                        child: const Text('Cancel'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: () => Navigator.of(sheetCtx).pop(true),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: scheme.error,
+                          foregroundColor: scheme.onError,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text('Delete'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
-          ElevatedButton(
-            onPressed: () => Get.back(result: true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Delete Account'),
-          ),
-        ],
-      ),
+        );
+      },
     );
 
     return confirmed == true;
@@ -1529,6 +1589,42 @@ class ProfileController extends GetxController {
     try {
       _saveSettingsLocally();
 
+      // Clear per-user local caches before tearing down the auth session
+      // so the next signed-in user doesn't see stale data bleed through.
+      try {
+        final allKeys = storage.getKeys();
+        final toRemove = <String>[];
+        for (final k in allKeys) {
+          final ks = k.toString();
+          if (ks.startsWith('search_cache:') ||
+              ks.startsWith('barcode_cache:')) {
+            toRemove.add(ks);
+          }
+        }
+        for (final k in toRemove) {
+          await storage.remove(k);
+        }
+        await storage.remove('recent_searches');
+        await storage.remove('weight_history');
+        await storage.remove(_achievementsStorageKey);
+        await storage.remove(_goalHitDaysStorageKey);
+      } catch (e) {
+        if (kDebugMode) {
+          print('Error clearing local caches during sign-out: $e');
+        }
+      }
+
+      // Clear in-memory Rx state.
+      achievementUnlocks.clear();
+      goalHitDays.clear();
+      monthlyWeight.clear();
+      achievements.clear();
+      weeklyCalories.clear();
+      totalMealsLogged.value = 0;
+      totalCaloriesConsumed.value = 0.0;
+      streakDays.value = 0;
+      totalDaysTracked.value = 0;
+
       final authController = Get.find<AuthController>();
       await authController.signOut();
 
@@ -1538,7 +1634,7 @@ class ProfileController extends GetxController {
         await storage.write('settings', settings);
       }
 
-      Get.offAllNamed('/login');
+      Get.offAll(() => const LoginPage());
     } catch (e) {
       if (kDebugMode) {
         print('Error signing out: $e');

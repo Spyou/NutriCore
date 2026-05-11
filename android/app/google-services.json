@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "1003927448309-t4lb3opmqc0u690umb18k9gcelccdp96.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.spyou.nutri_check",
+            "certificate_hash": "4783410bd0c935f29f43b88dfc48477b7cab0dea"
+          }
+        },
+        {
           "client_id": "1003927448309-jpcicg2m0c6f9r4vsp9pq39ifgvcn7ar.apps.googleusercontent.com",
           "client_type": 3
         }
@@ -29,6 +37,13 @@
             {
               "client_id": "1003927448309-jpcicg2m0c6f9r4vsp9pq39ifgvcn7ar.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "1003927448309-fk00tvh8dujtl8ejbs35bi8o2rtiakoq.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.spyou.nutriCheck"
+              }
             }
           ]
         }

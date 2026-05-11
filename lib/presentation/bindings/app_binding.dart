@@ -62,9 +62,12 @@ class AppBinding extends Bindings {
       NutritionController(Get.find(), Get.find(), Get.find()),
       permanent: true,
     );
-    Get.lazyPut(() => MainController());
-    Get.lazyPut(() => HomeController());
-    Get.lazyPut(() => SearchController(preferencesRepository: Get.find()));
-    Get.lazyPut(() => ScanController());
+    Get.lazyPut(() => MainController(), fenix: true);
+    Get.lazyPut(() => HomeController(), fenix: true);
+    Get.lazyPut(
+      () => SearchController(preferencesRepository: Get.find()),
+      fenix: true,
+    );
+    Get.lazyPut(() => ScanController(), fenix: true);
   }
 }

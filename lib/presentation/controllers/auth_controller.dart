@@ -1,8 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:nutri_check/core/utils/components/custom_flushbar.dart';
 import 'package:nutri_check/presentation/pages/auth/login_page.dart';
 
@@ -136,6 +136,96 @@ class AuthController extends GetxController {
     }
   }
 
+  Future<void> signInWithGoogle() async {
+    try {
+      isLoading.value = true;
+      final GoogleSignIn googleSignIn = GoogleSignIn();
+      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+      if (googleUser == null) {
+        // User aborted the dialog — silent return.
+        return;
+      }
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
+      final OAuthCredential credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+      // Known incompatibility between some firebase_auth + google_sign_in
+      // versions throws a PigeonUserDetails cast error even when the
+      // sign-in succeeds. Catch it and verify via currentUser before
+      // surfacing as a real failure.
+      try {
+        await FirebaseAuth.instance.signInWithCredential(credential);
+      } catch (e) {
+        if (kDebugMode) {
+          print('signInWithCredential threw, will verify via currentUser: $e');
+        }
+      }
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        throw Exception('Google sign-in did not produce a Firebase user');
+      }
+      await _ensureUserDocument(
+        user.uid,
+        user.displayName ?? '',
+        user.email ?? '',
+        photoUrl: user.photoURL,
+      );
+      CustomThemeFlushbar.show(
+        title: 'Welcome',
+        message: 'Signed in as ${user.displayName ?? user.email ?? "you"}',
+      );
+    } catch (e) {
+      CustomThemeFlushbar.show(
+        title: 'Sign-in failed',
+        message: 'Couldn\'t sign in with Google. Try again.',
+      );
+      if (kDebugMode) print('Google sign-in error: $e');
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  Future<void> _ensureUserDocument(
+    String uid,
+    String name,
+    String email, {
+    String? photoUrl,
+  }) async {
+    final existing = await _userService.getUserData(uid);
+    if (existing == null) {
+      final userModel = UserModel(
+        uid: uid,
+        email: email,
+        displayName: name.isEmpty ? null : name,
+        photoURL: photoUrl,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+      await _userService.createUserData(userModel);
+      _userModel.value = userModel;
+    } else {
+      final needsName =
+          (existing.displayName == null || existing.displayName!.isEmpty) &&
+              name.isNotEmpty;
+      final needsPhoto = (existing.photoURL == null ||
+              existing.photoURL!.isEmpty) &&
+          photoUrl != null &&
+          photoUrl.isNotEmpty;
+      if (needsName || needsPhoto) {
+        final updated = existing.copyWith(
+          displayName: needsName ? name : null,
+          photoURL: needsPhoto ? photoUrl : null,
+        );
+        await _userService.updateUserData(updated);
+        _userModel.value = updated;
+      } else {
+        _userModel.value = existing;
+      }
+    }
+  }
+
   Future<void> signOut() async {
     try {
       await _auth.signOut();
@@ -156,12 +246,9 @@ class AuthController extends GetxController {
     try {
       isLoading.value = true;
       await _auth.sendPasswordResetEmail(email: email);
-      Get.snackbar(
-        'Success',
-        'Password reset email sent! Check your inbox.',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.green,
-        colorText: Colors.white,
+      CustomThemeFlushbar.show(
+        title: 'Success',
+        message: 'Password reset email sent! Check your inbox.',
       );
     } on FirebaseAuthException catch (e) {
       CustomThemeFlushbar.show(title: 'Error', message: _getErrorMessage(e));

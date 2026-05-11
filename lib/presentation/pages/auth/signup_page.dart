@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 
-import '../../../core/utils/components/custom_flushbar.dart';
 import '../../controllers/auth_controller.dart';
 import '../../widgets/auth/animated_auth_background.dart';
 import '../../widgets/auth/animated_auth_field.dart';
@@ -86,10 +85,7 @@ class _SignUpPageState extends State<SignUpPage> {
 
   void _onGooglePressed() {
     HapticFeedback.selectionClick();
-    CustomThemeFlushbar.show(
-      title: 'Coming soon',
-      message: 'Google sign-up will be available shortly.',
-    );
+    _authController.signInWithGoogle();
   }
 
   @override
@@ -97,8 +93,11 @@ class _SignUpPageState extends State<SignUpPage> {
     final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      body: AnimatedAuthBackground(
-        child: SafeArea(
+      body: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+        child: AnimatedAuthBackground(
+          child: SafeArea(
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(28, 20, 28, 24),
             child: Column(
@@ -146,6 +145,8 @@ class _SignUpPageState extends State<SignUpPage> {
                     leadingIcon: Icons.person_outline_rounded,
                     autofillHint: AutofillHints.name,
                     validator: _validateName,
+                    textInputAction: TextInputAction.next,
+                    onSubmitted: (_) => _emailFieldKey.currentState?.focus(),
                   ),
                 ),
                 const SizedBox(height: 14),
@@ -159,6 +160,8 @@ class _SignUpPageState extends State<SignUpPage> {
                     keyboardType: TextInputType.emailAddress,
                     autofillHint: AutofillHints.email,
                     validator: _validateEmail,
+                    textInputAction: TextInputAction.next,
+                    onSubmitted: (_) => _passwordFieldKey.currentState?.focus(),
                   ),
                 ),
                 const SizedBox(height: 14),
@@ -176,7 +179,16 @@ class _SignUpPageState extends State<SignUpPage> {
                         showEyeToggle: true,
                         autofillHint: AutofillHints.newPassword,
                         validator: _validatePassword,
-                        onChanged: (v) => setState(() => _password = v),
+                        textInputAction: TextInputAction.next,
+                        onSubmitted: (_) =>
+                            _confirmFieldKey.currentState?.focus(),
+                        onChanged: (v) {
+                          setState(() => _password = v);
+                          if (_confirmController.text.isNotEmpty &&
+                              _confirmController.text == v) {
+                            _confirmFieldKey.currentState?.clearError();
+                          }
+                        },
                       ),
                       PasswordStrengthIndicator(password: _password),
                     ],
@@ -193,6 +205,8 @@ class _SignUpPageState extends State<SignUpPage> {
                     obscure: true,
                     showEyeToggle: true,
                     validator: _validateConfirm,
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) => _signUp(),
                   ),
                 ),
                 const SizedBox(height: 28),
@@ -230,6 +244,7 @@ class _SignUpPageState extends State<SignUpPage> {
                 ),
               ],
             ),
+          ),
           ),
         ),
       ),

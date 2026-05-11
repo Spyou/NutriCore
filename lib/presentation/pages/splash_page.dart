@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../core/constants/app_colors.dart';
-import '../../core/constants/app_text_styles.dart';
-
 class SplashPage extends StatefulWidget {
   const SplashPage({super.key});
 
@@ -54,11 +51,16 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: AppColors.primaryGradient,
+            colors: [
+              scheme.primary,
+              scheme.primary.withValues(alpha: 0.8),
+            ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -79,11 +81,11 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
                         width: 120,
                         height: 120,
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: scheme.onPrimary,
                           borderRadius: BorderRadius.circular(30),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.2),
+                              color: scheme.shadow.withValues(alpha: 0.2),
                               blurRadius: 20,
                               offset: const Offset(0, 10),
                             ),
@@ -92,7 +94,7 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
                         child: Icon(
                           Icons.local_fire_department,
                           size: 60,
-                          color: AppColors.primary,
+                          color: scheme.primary,
                         ),
                       ),
                       const SizedBox(height: 30),
@@ -100,8 +102,8 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
                       // App Name
                       Text(
                         'NutriTracker',
-                        style: AppTextStyles.displayLarge(context).copyWith(
-                          color: AppColors.textOnPrimary,
+                        style: textTheme.displayLarge?.copyWith(
+                          color: scheme.onPrimary,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -110,15 +112,16 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
                       // Tagline
                       Text(
                         'Track your nutrition, live healthier',
-                        style: AppTextStyles.bodyLarge(context).copyWith(
-                          color: AppColors.textOnPrimary.withValues(alpha: 0.8),
+                        style: textTheme.bodyLarge?.copyWith(
+                          color: scheme.onPrimary.withValues(alpha: 0.8),
                         ),
                       ),
                       const SizedBox(height: 50),
 
                       // Loading indicator
-                      const CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      CircularProgressIndicator(
+                        valueColor:
+                            AlwaysStoppedAnimation<Color>(scheme.onPrimary),
                         strokeWidth: 2,
                       ),
                     ],
