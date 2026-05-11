@@ -4,9 +4,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
 import 'package:nutri_check/core/utils/components/custom_flushbar.dart';
 import 'package:nutri_check/domain/entities/user_profile.dart';
 import 'package:nutri_check/domain/repositories/user_repository.dart';
@@ -52,6 +54,12 @@ class ProfileController extends GetxController {
   var totalCaloriesConsumed = 0.0.obs;
   var streakDays = 0.obs;
   var weeklyCalories = <double>[].obs;
+
+  /// Rolling weight history (most-recent-last), populated from local
+  /// `weight_history` storage entries shaped as `"YYYY-MM-DD:weight"`.
+  /// Shape: `RxList<double>` capped at 30 entries (one per day).
+  /// Consumers that need date-stamped pairs should read `storage.read('weight_history')`
+  /// directly and split each entry on `:` -> `[dateString, weightString]`.
   var monthlyWeight = <double>[].obs;
   var totalDaysTracked = 0.obs;
 
@@ -69,6 +77,64 @@ class ProfileController extends GetxController {
 
   final ImagePicker _picker = ImagePicker();
   final storage = GetStorage();
+
+  static const String _achievementsStorageKey = 'achievements_unlocks';
+  static const String _goalHitDaysStorageKey = 'goal_hit_days';
+
+  // Map of achievement key -> unlock epoch millis. Empty = never unlocked.
+  final RxMap<String, int> achievementUnlocks = <String, int>{}.obs;
+
+  // Set of YYYY-MM-DD strings where the user hit their calorie goal.
+  final RxSet<String> goalHitDays = <String>{}.obs;
+
+  // Reactive list of all achievements with computed state (read by the UI).
+  // Each entry: { key, title, description, icon, unlocked, unlockedAt,
+  // progress, progressMax }.
+  final RxList<Map<String, dynamic>> achievements =
+      <Map<String, dynamic>>[].obs;
+
+  static const List<Map<String, dynamic>> _catalog = [
+    {
+      'key': 'first_meal',
+      'title': 'First bite',
+      'description': 'Log your first meal',
+    },
+    {
+      'key': 'week_streak',
+      'title': '7-day streak',
+      'description': 'Log meals 7 days in a row',
+    },
+    {
+      'key': 'month_streak',
+      'title': '30-day streak',
+      'description': 'Log meals 30 days in a row',
+    },
+    {
+      'key': 'hundred_meals',
+      'title': '100 meals',
+      'description': 'Log 100 meals in total',
+    },
+    {
+      'key': 'goal_hit_once',
+      'title': 'On target',
+      'description': 'Hit your calorie goal in a single day',
+    },
+    {
+      'key': 'goal_hit_week',
+      'title': 'Consistent week',
+      'description': 'Hit your calorie goal on 5 days within a week',
+    },
+    {
+      'key': 'weight_logged',
+      'title': 'Step on the scale',
+      'description': 'Log your weight for the first time',
+    },
+    {
+      'key': 'half_year',
+      'title': 'Half-year hero',
+      'description': 'Log meals 180 days in a row',
+    },
+  ];
 
   var lastLoginDate = DateTime.now().obs;
   var profileCompleteness = 0.0.obs;
@@ -102,8 +168,231 @@ class ProfileController extends GetxController {
       _setupReactiveListeners();
       _setupNutritionListeners();
       _calculateProfileCompleteness();
+      await _loadAchievementsState();
+      _setupAchievementListeners();
+      _checkAchievements();
     } catch (e) {
       _showErrorSnackbar('Failed to initialize profile');
+    }
+  }
+
+  void _setupAchievementListeners() {
+    _workers.addAll([
+      ever<int>(totalMealsLogged, (_) => _checkAchievements()),
+      ever<int>(streakDays, (_) => _checkAchievements()),
+      ever<double>(currentWeight, (_) => _checkAchievements()),
+      ever<List<double>>(monthlyWeight, (_) => _checkAchievements()),
+    ]);
+    try {
+      if (Get.isRegistered<NutritionController>()) {
+        final nc = Get.find<NutritionController>();
+        _workers.add(ever<double>(
+          nc.totalCalories,
+          (_) => _checkCalorieGoalHit(),
+        ));
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _loadAchievementsState() async {
+    try {
+      final raw = storage.read(_achievementsStorageKey);
+      if (raw is Map) {
+        achievementUnlocks.assignAll(
+          raw.map((k, v) => MapEntry(k.toString(), (v as num).toInt())),
+        );
+      }
+      final days = storage.read(_goalHitDaysStorageKey);
+      if (days is List) {
+        goalHitDays.assignAll(days.map((e) => e.toString()).toSet());
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _persistAchievements() async {
+    try {
+      await storage.write(
+        _achievementsStorageKey,
+        Map<String, int>.from(achievementUnlocks),
+      );
+    } catch (_) {}
+  }
+
+  Future<void> _persistGoalHitDays() async {
+    try {
+      final list = goalHitDays.toList()..sort();
+      await storage.write(_goalHitDaysStorageKey, list);
+    } catch (_) {}
+  }
+
+  void _checkCalorieGoalHit() {
+    if (!Get.isRegistered<NutritionController>()) return;
+    final nc = Get.find<NutritionController>();
+    final consumed = nc.totalCalories.value;
+    final goal = nc.calorieGoal.value;
+    if (goal <= 0) return;
+    final ratio = consumed / goal;
+    if (ratio >= 0.95 && ratio <= 1.05) {
+      final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+      if (!goalHitDays.contains(today)) {
+        goalHitDays.add(today);
+        _persistGoalHitDays();
+        _checkAchievements();
+      }
+    }
+  }
+
+  void _checkAchievements() {
+    final newlyUnlocked = <String>[];
+    for (final def in _catalog) {
+      final key = def['key'] as String;
+      if (achievementUnlocks.containsKey(key)) continue;
+      if (_evaluate(key)) {
+        achievementUnlocks[key] = DateTime.now().millisecondsSinceEpoch;
+        newlyUnlocked.add(key);
+      }
+    }
+    if (newlyUnlocked.isNotEmpty) {
+      _persistAchievements();
+      for (final key in newlyUnlocked.take(2)) {
+        final def = _catalog.firstWhere((e) => e['key'] == key);
+        HapticFeedback.mediumImpact();
+        CustomThemeFlushbar.show(
+          title: 'Achievement unlocked',
+          message: '${def['title']} — ${def['description']}',
+        );
+      }
+    }
+    _refreshAchievementsList();
+  }
+
+  bool _evaluate(String key) {
+    final meals = totalMealsLogged.value;
+    final streak = streakDays.value;
+    switch (key) {
+      case 'first_meal':
+        return meals >= 1;
+      case 'week_streak':
+        return streak >= 7;
+      case 'month_streak':
+        return streak >= 30;
+      case 'half_year':
+        return streak >= 180;
+      case 'hundred_meals':
+        return meals >= 100;
+      case 'goal_hit_once':
+        return goalHitDays.isNotEmpty;
+      case 'goal_hit_week':
+        return _hasGoalHitWeek(goalHitDays.toList()..sort());
+      case 'weight_logged':
+        return monthlyWeight.isNotEmpty;
+      default:
+        return false;
+    }
+  }
+
+  bool _hasGoalHitWeek(List<String> sortedDays) {
+    if (sortedDays.length < 5) return false;
+    final set = sortedDays.toSet();
+    for (final d in sortedDays) {
+      final date = DateTime.tryParse(d);
+      if (date == null) continue;
+      int count = 0;
+      for (int i = 0; i < 7; i++) {
+        final check = date.subtract(Duration(days: i));
+        final k = DateFormat('yyyy-MM-dd').format(check);
+        if (set.contains(k)) count++;
+      }
+      if (count >= 5) return true;
+    }
+    return false;
+  }
+
+  void _refreshAchievementsList() {
+    achievements.assignAll(_catalog.map((def) {
+      final key = def['key'] as String;
+      final unlockedAt = achievementUnlocks[key];
+      final progress = _progressFor(key);
+      return {
+        'key': key,
+        'title': def['title'],
+        'description': def['description'],
+        'icon': _iconFor(key),
+        'unlocked': unlockedAt != null,
+        'unlockedAt': unlockedAt == null
+            ? null
+            : DateTime.fromMillisecondsSinceEpoch(unlockedAt),
+        'progress': progress['current'],
+        'progressMax': progress['max'],
+      };
+    }).toList());
+  }
+
+  Map<String, int> _progressFor(String key) {
+    final meals = totalMealsLogged.value;
+    final streak = streakDays.value;
+    switch (key) {
+      case 'first_meal':
+        return {'current': meals.clamp(0, 1), 'max': 1};
+      case 'week_streak':
+        return {'current': streak.clamp(0, 7), 'max': 7};
+      case 'month_streak':
+        return {'current': streak.clamp(0, 30), 'max': 30};
+      case 'half_year':
+        return {'current': streak.clamp(0, 180), 'max': 180};
+      case 'hundred_meals':
+        return {'current': meals.clamp(0, 100), 'max': 100};
+      case 'goal_hit_once':
+        return {'current': goalHitDays.length.clamp(0, 1), 'max': 1};
+      case 'goal_hit_week':
+        return {'current': 0, 'max': 5};
+      case 'weight_logged':
+        return {'current': monthlyWeight.isEmpty ? 0 : 1, 'max': 1};
+      default:
+        return {'current': 0, 'max': 1};
+    }
+  }
+
+  IconData _iconFor(String key) {
+    switch (key) {
+      case 'first_meal':
+        return Icons.emoji_food_beverage_rounded;
+      case 'week_streak':
+        return Icons.local_fire_department_rounded;
+      case 'month_streak':
+        return Icons.whatshot_rounded;
+      case 'hundred_meals':
+        return Icons.restaurant_menu_rounded;
+      case 'goal_hit_once':
+        return Icons.flag_rounded;
+      case 'goal_hit_week':
+        return Icons.workspace_premium_rounded;
+      case 'weight_logged':
+        return Icons.monitor_weight_outlined;
+      case 'half_year':
+        return Icons.military_tech_rounded;
+      default:
+        return Icons.emoji_events_rounded;
+    }
+  }
+
+  Future<void> updateWeight(double kg) async {
+    try {
+      if (kg <= 0 || kg > 1000) {
+        throw Exception('Weight must be between 1 and 1000 kg');
+      }
+      final oldWeight = currentWeight.value;
+      currentWeight.value = kg;
+      weightController.text = kg.toString();
+      await _syncWeightWithNutrition(oldWeight, kg);
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error updating weight: $e');
+      }
+      CustomThemeFlushbar.show(
+        title: 'Update Failed',
+        message: 'Failed to update weight: ${e.toString()}',
+      );
     }
   }
 

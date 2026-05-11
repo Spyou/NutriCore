@@ -1,17 +1,19 @@
 import 'dart:ui';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import 'package:nutri_check/core/services/theme_service.dart';
 import 'package:nutri_check/presentation/controllers/nutrition_controller.dart';
-import 'package:nutri_check/presentation/pages/notification/notification_settings_page.dart';
 import 'package:nutri_check/presentation/pages/profile/about_me.dart';
-import 'package:nutri_check/presentation/pages/theme/theme_settings_page.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../controllers/profile_controller.dart';
+import '../../widgets/profile/achievements_row.dart';
+import '../../widgets/profile/bmi_indicator.dart';
+import '../../widgets/profile/edit_profile_sheet.dart';
+import '../../widgets/profile/weight_history_card.dart';
+import 'settings_subpage.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
@@ -21,7 +23,6 @@ class ProfilePage extends StatelessWidget {
     return GetBuilder<ProfileController>(
       init: Get.find<ProfileController>(),
       builder: (controller) => Scaffold(
-        backgroundColor: AppColors.background,
         body: RefreshIndicator(
           onRefresh: () async {
             final nutritionController = Get.find<NutritionController>();
@@ -33,7 +34,9 @@ class ProfilePage extends StatelessWidget {
           child: Obx(
             () => controller.isLoading.value
                 ? Center(
-                    child: CircularProgressIndicator(color: AppColors.primary),
+                    child: CircularProgressIndicator(
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
                   )
                 : CustomScrollView(
                     slivers: [
@@ -41,12 +44,29 @@ class ProfilePage extends StatelessWidget {
                       SliverToBoxAdapter(
                         child: Column(
                           children: [
-                            _buildProfileHeader(controller),
-                            _buildStatsCards(controller),
-                            _buildHealthMetrics(controller),
-                            _buildSettingsSection(controller),
-                            _developerInfo(),
-                            const SizedBox(height: 20), // Bottom padding
+                            _buildProfileCard(context, controller),
+                            const SizedBox(height: 16),
+                            _buildStatsRow(context, controller),
+                            const SizedBox(height: 16),
+                            const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 16),
+                              child: WeightHistoryCard(),
+                            ),
+                            const SizedBox(height: 16),
+                            const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 16),
+                              child: BmiIndicator(),
+                            ),
+                            const SizedBox(height: 16),
+                            const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 16),
+                              child: AchievementsRow(),
+                            ),
+                            const SizedBox(height: 16),
+                            _buildSettingsRow(context),
+                            const SizedBox(height: 24),
+                            _developerInfo(context),
+                            const SizedBox(height: 20),
                           ],
                         ),
                       ),
@@ -89,10 +109,10 @@ class ProfilePage extends StatelessWidget {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  AppColors.primary.withValues(alpha: 
+                  AppColors.primary.withValues(alpha:
                     0.95 + (0.05 * shrinkPercentage),
                   ),
-                  AppColors.tertiary.withValues(alpha: 
+                  AppColors.tertiary.withValues(alpha:
                     0.85 + (0.15 * shrinkPercentage),
                   ),
                 ],
@@ -254,359 +274,145 @@ class ProfilePage extends StatelessWidget {
           );
         },
       ),
-      actions: [
-        // Edit profile button
-        Padding(
-          padding: const EdgeInsets.only(right: 16),
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(22),
-              onTap: () {
-                HapticFeedback.lightImpact();
-                _showEditProfileDialog(controller);
-              },
-              child: Icon(
-                Icons.edit_outlined,
-                color: AppColors.textOnPrimary,
-                size: 20,
-              ),
-            ),
-          ),
-        ),
-      ],
     );
   }
 
-  Widget _buildProfileHeader(ProfileController controller) {
+  Widget _buildProfileCard(BuildContext context, ProfileController controller) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    Widget avatarFallback() => Container(
+      color: scheme.primary.withValues(alpha: 0.08),
+      alignment: Alignment.center,
+      child: Icon(
+        Icons.person_rounded,
+        size: 32,
+        color: scheme.primary.withValues(alpha: 0.4),
+      ),
+    );
+
     return Container(
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       padding: const EdgeInsets.all(20),
-      child: Column(
-        children: [
-          // Profile Image
-          Stack(
-            children: [
-              Obx(
-                () => CircleAvatar(
-                  radius: 60,
-                  backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                  backgroundImage: controller.profileImageUrl.value.isNotEmpty
-                      ? NetworkImage(controller.profileImageUrl.value)
-                      : null,
-                  child: controller.profileImageUrl.value.isEmpty
-                      ? Icon(Icons.person, size: 60, color: AppColors.primary)
-                      : null,
-                ),
-              ),
-              Positioned(
-                bottom: 0,
-                right: 0,
-                child: GestureDetector(
-                  onTap: controller.updateProfileImage,
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.white, width: 2),
-                    ),
-                    child: Obx(
-                      () => controller.isUploadingImage.value
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2,
-                              ),
-                            )
-                          : const Icon(
-                              Icons.camera_alt,
-                              color: Colors.white,
-                              size: 16,
-                            ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // Name and Email
-          Obx(
-            () => Text(
-              controller.userName.value,
-              style: AppTextStyles.headingLarge(
-                Get.context!,
-              ).copyWith(fontWeight: FontWeight.bold),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Obx(
-            () => Text(
-              controller.userEmail.value,
-              style: AppTextStyles.bodyMedium(
-                Get.context!,
-              ).copyWith(color: AppColors.textSecondary),
-            ),
-          ),
-          const SizedBox(height: 8),
-
-          // Bio
-          Obx(
-            () => controller.userBio.value.isNotEmpty
-                ? Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      controller.userBio.value,
-                      style: AppTextStyles.bodyMedium(Get.context!),
-                      textAlign: TextAlign.center,
-                    ),
-                  )
-                : const SizedBox.shrink(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatsCards(ProfileController controller) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Row(
-        children: [
-          Expanded(
-            child: Obx(
-              () => _buildStatCard(
-                'Meals Logged',
-                controller.totalMealsLogged.value.toString(),
-                Icons.restaurant,
-                AppColors.primary,
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Obx(
-              () => _buildStatCard(
-                'Total Calories',
-                controller
-                    .formattedTotalCalories, // 🔥 FIXED: Use formatted getter
-                Icons.local_fire_department,
-                AppColors.calories,
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Obx(
-              () => _buildStatCard(
-                'Streak Days',
-                controller.streakDays.value.toString(),
-                Icons.flash_on,
-                AppColors.success,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatCard(
-    String title,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0.0, end: 1.0),
-      duration: const Duration(milliseconds: 800),
-      curve: Curves.elasticOut,
-      builder: (context, animationValue, child) {
-        return Transform.scale(
-          scale: 0.8 + (0.2 * animationValue),
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: color.withValues(alpha: 0.2), width: 1),
-              boxShadow: [
-                BoxShadow(
-                  color: color.withValues(alpha: 0.1),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Column(
-              children: [
-                // Animated icon with color transition
-                TweenAnimationBuilder<double>(
-                  tween: Tween(begin: 0.0, end: 1.0),
-                  duration: const Duration(milliseconds: 1200),
-                  builder: (context, iconValue, child) {
-                    return Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: color.withValues(alpha: 0.1 * iconValue),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(
-                        icon,
-                        color: Color.lerp(Colors.grey, color, iconValue),
-                        size: 24,
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 12),
-
-                // Animated counter
-                TweenAnimationBuilder<double>(
-                  tween: Tween(
-                    begin: 0.0,
-                    end:
-                        double.tryParse(
-                          value.replaceAll(RegExp(r'[^0-9.]'), ''),
-                        ) ??
-                        0.0,
-                  ),
-                  duration: const Duration(milliseconds: 1500),
-                  builder: (context, counterValue, child) {
-                    String displayValue;
-                    if (value.contains('k')) {
-                      displayValue =
-                          '${(counterValue / 1000).toStringAsFixed(1)}k';
-                    } else {
-                      displayValue = counterValue.toInt().toString();
-                    }
-
-                    return Text(
-                      displayValue,
-                      style: AppTextStyles.headingSmall(context).copyWith(
-                        color: color,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 20,
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 4),
-
-                // Title
-                Text(
-                  title,
-                  style: AppTextStyles.labelMedium(
-                    context,
-                  ).copyWith(color: AppColors.textSecondary),
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildHealthMetrics(ProfileController controller) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 20),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 20),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        color: scheme.surface,
+        border: Border.all(color: scheme.outlineVariant),
+        borderRadius: BorderRadius.circular(24),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Health Metrics',
-            style: AppTextStyles.headingMedium(Get.context!),
-          ),
-          const SizedBox(height: 16),
-
-          // Weight Progress
-          Obx(
-            () => Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _buildMetricItem(
-                  'Current Weight',
-                  '${controller.currentWeight.value.toInt()} kg',
-                  AppColors.info,
-                ),
-                _buildMetricItem(
-                  'Target Weight',
-                  '${controller.targetWeight.value.toInt()} kg',
-                  AppColors.success,
-                ),
-                _buildMetricItem(
-                  'To Goal',
-                  '${(controller.currentWeight.value - controller.targetWeight.value).abs().toInt()} kg',
-                  AppColors.warning,
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          // BMI Section
-          Obx(
-            () => Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: controller.bmiColor.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: controller.bmiColor.withValues(alpha: 0.3)),
-              ),
-              child: Row(
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Stack(
                 children: [
-                  Icon(
-                    Icons.monitor_weight,
-                    color: controller.bmiColor,
-                    size: 24,
+                  Obx(
+                    () => SizedBox(
+                      width: 64,
+                      height: 64,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(32),
+                        child: controller.profileImageUrl.value.isEmpty
+                            ? avatarFallback()
+                            : CachedNetworkImage(
+                                imageUrl: controller.profileImageUrl.value,
+                                fit: BoxFit.cover,
+                                placeholder: (_, __) => avatarFallback(),
+                                errorWidget: (_, __, ___) => avatarFallback(),
+                              ),
+                      ),
+                    ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'BMI: ${controller.bmi.toStringAsFixed(1)}',
-                          style: AppTextStyles.bodyLarge(Get.context!).copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: controller.bmiColor,
-                          ),
+                  Positioned(
+                    bottom: 0,
+                    right: 0,
+                    child: GestureDetector(
+                      onTap: controller.updateProfileImage,
+                      child: Container(
+                        width: 24,
+                        height: 24,
+                        decoration: BoxDecoration(
+                          color: scheme.primary,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: scheme.surface, width: 2),
                         ),
-                        Text(
-                          controller.bmiCategory,
-                          style: AppTextStyles.bodyMedium(
-                            Get.context!,
-                          ).copyWith(color: controller.bmiColor),
+                        alignment: Alignment.center,
+                        child: Obx(
+                          () => controller.isUploadingImage.value
+                              ? SizedBox(
+                                  width: 10,
+                                  height: 10,
+                                  child: CircularProgressIndicator(
+                                    color: scheme.onPrimary,
+                                    strokeWidth: 1.5,
+                                  ),
+                                )
+                              : Icon(
+                                  Icons.camera_alt_rounded,
+                                  color: scheme.onPrimary,
+                                  size: 14,
+                                ),
                         ),
-                      ],
+                      ),
                     ),
                   ),
                 ],
               ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Obx(
+                      () => Text(
+                        controller.userName.value,
+                        style: textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w800,
+                          color: scheme.onSurface,
+                          letterSpacing: -0.4,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Obx(
+                      () => Text(
+                        controller.userEmail.value,
+                        style: textTheme.bodySmall?.copyWith(
+                          color: scheme.onSurface.withValues(alpha: 0.6),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Obx(
+            () => controller.userBio.value.isEmpty
+                ? const SizedBox.shrink()
+                : Padding(
+                    padding: const EdgeInsets.only(bottom: 14),
+                    child: Text(
+                      controller.userBio.value,
+                      style: textTheme.bodyMedium?.copyWith(
+                        color: scheme.onSurface.withValues(alpha: 0.8),
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+          ),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.tonalIcon(
+              onPressed: () => EditProfileSheet.show(context),
+              icon: const Icon(Icons.edit_outlined, size: 16),
+              label: const Text('Edit profile'),
             ),
           ),
         ],
@@ -614,112 +420,184 @@ class ProfilePage extends StatelessWidget {
     );
   }
 
-  Widget _buildMetricItem(String label, String value, Color color) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: AppTextStyles.headingSmall(
-            Get.context!,
-          ).copyWith(color: color, fontWeight: FontWeight.bold),
-        ),
-        Text(
-          label,
-          style: AppTextStyles.labelMedium(
-            Get.context!,
-          ).copyWith(color: AppColors.textSecondary),
-        ),
-      ],
+  Widget _buildStatsRow(BuildContext context, ProfileController controller) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        children: [
+          Expanded(
+            child: _buildStatTile(
+              context,
+              icon: Icons.restaurant_menu_rounded,
+              accent: scheme.primary,
+              label: 'Meals logged',
+              valueBuilder: () =>
+                  Obx(() => _statValueText(context, controller.totalMealsLogged.value.toString())),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _buildStatTile(
+              context,
+              icon: Icons.local_fire_department_rounded,
+              accent: scheme.primary,
+              label: 'Streak days',
+              valueBuilder: () =>
+                  Obx(() => _statValueText(context, controller.streakDays.value.toString())),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _buildStatTile(
+              context,
+              icon: Icons.calendar_month_rounded,
+              accent: scheme.tertiary,
+              label: 'This week',
+              valueBuilder: () {
+                final nutrition = Get.find<NutritionController>();
+                return Obx(() {
+                  final count = nutrition.weekCalories
+                      .where((c) => c > 0)
+                      .length;
+                  return _statValueText(context, '$count / 7');
+                });
+              },
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildSettingsSection(ProfileController controller) {
+  Widget _statValueText(BuildContext context, String value) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    return Text(
+      value,
+      style: textTheme.headlineSmall?.copyWith(
+        fontWeight: FontWeight.w800,
+        color: scheme.onSurface,
+      ),
+    );
+  }
+
+  Widget _buildStatTile(
+    BuildContext context, {
+    required IconData icon,
+    required Color accent,
+    required String label,
+    required Widget Function() valueBuilder,
+  }) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 10),
-      padding: const EdgeInsets.symmetric(horizontal: 10),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        color: scheme.surface,
+        border: Border.all(color: scheme.outlineVariant),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Settings', style: AppTextStyles.headingMedium(Get.context!)),
-          const SizedBox(height: 16),
-
-          // Notifications
-          ListTile(
-            leading: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: AppColors.warning.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(Icons.notifications, color: AppColors.warning),
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: accent.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
             ),
-            title: const Text('Notification Settings'),
-            subtitle: const Text('Customize meal reminders and alerts'),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-            onTap: () => Get.to(() => const NotificationSettingsPage()),
+            alignment: Alignment.center,
+            child: Icon(icon, size: 20, color: accent),
           ),
-
-          // Weekly Reports
-          Obx(
-            () => SwitchListTile(
-              title: const Text('Weekly Reports'),
-              subtitle: const Text('Get weekly nutrition summaries'),
-              value: controller.weeklyReportsEnabled.value,
-              onChanged: (value) =>
-                  controller.updateSettings(weeklyReports: value),
-              activeThumbColor: AppColors.primary,
+          const SizedBox(height: 12),
+          valueBuilder(),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: textTheme.labelSmall?.copyWith(
+              color: scheme.onSurface.withValues(alpha: 0.6),
+              fontWeight: FontWeight.w600,
             ),
           ),
-
-          const SizedBox(height: 16),
-
-          _buildThemeSection(),
-
-          const Divider(),
-
-          // Account Actions
-          ListTile(
-            leading: Icon(Icons.edit, color: AppColors.primary),
-            title: const Text('Edit Profile'),
-            onTap: () => _showEditProfileDialog(controller),
-          ),
-
-          ListTile(
-            leading: Icon(Icons.file_download, color: AppColors.primary),
-            title: const Text('Export Profile'),
-            onTap: () => controller.exportUserData(),
-          ),
-
-          ListTile(
-            leading: Icon(Icons.logout, color: AppColors.warning),
-            title: const Text('Sign Out'),
-            onTap: controller.signOut,
-          ),
-
-          ListTile(
-            leading: Icon(Icons.delete_forever, color: AppColors.error),
-            title: const Text('Delete Account'),
-            onTap: controller.deleteAccount,
-          ),
-          const Divider(),
         ],
       ),
     );
   }
 
-  Widget _developerInfo() {
-    // Developer info section
+  Widget _buildSettingsRow(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: () => Get.to(() => const SettingsSubPage()),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: scheme.surface,
+              border: Border.all(color: scheme.outlineVariant),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: scheme.primary.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  alignment: Alignment.center,
+                  child: Icon(
+                    Icons.settings_outlined,
+                    color: scheme.primary,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Settings',
+                        style: textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: scheme.onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Notifications, appearance, account',
+                        style: textTheme.labelSmall?.copyWith(
+                          color: scheme.onSurface.withValues(alpha: 0.6),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: scheme.onSurface.withValues(alpha: 0.5),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _developerInfo(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -727,230 +605,14 @@ class ProfilePage extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10),
           child: Text(
             'Developer',
-            style: AppTextStyles.headingMedium(Get.context!),
+            style: textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: scheme.onSurface,
+            ),
           ),
         ),
         const DeveloperAndDonationSection(),
       ],
-    );
-  }
-
-  void _showEditProfileDialog(ProfileController controller) {
-    final nameController = TextEditingController(
-      text: controller.userName.value,
-    );
-    final bioController = TextEditingController(text: controller.userBio.value);
-    final weightController = TextEditingController(
-      text: controller.currentWeight.value.toString(),
-    );
-    final targetController = TextEditingController(
-      text: controller.targetWeight.value.toString(),
-    );
-    final heightController = TextEditingController(
-      text: controller.height.value.toString(),
-    );
-    final ageController = TextEditingController(
-      text: controller.age.value.toString(),
-    );
-
-    Get.dialog(
-      AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Edit Profile'),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: nameController,
-                  decoration: InputDecoration(
-                    labelText: 'Full Name',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: bioController,
-                  decoration: InputDecoration(
-                    labelText: 'Bio',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  maxLines: 3,
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: weightController,
-                        decoration: InputDecoration(
-                          labelText: 'Weight (kg)',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        keyboardType: TextInputType.number,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextField(
-                        controller: targetController,
-                        decoration: InputDecoration(
-                          labelText: 'Target (kg)',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        keyboardType: TextInputType.number,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: heightController,
-                        decoration: InputDecoration(
-                          labelText: 'Height (cm)',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        keyboardType: TextInputType.number,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextField(
-                        controller: ageController,
-                        decoration: InputDecoration(
-                          labelText: 'Age',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        keyboardType: TextInputType.number,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          Semantics(
-            label: 'Cancel editing profile',
-            button: true,
-            child: TextButton(
-              onPressed: () => Get.back(),
-              child: const Text('Cancel'),
-            ),
-          ),
-          Obx(
-            () => Semantics(
-              label: controller.isSaving.value
-                  ? 'Saving profile changes'
-                  : 'Save profile changes',
-              button: true,
-              enabled: !controller.isSaving.value,
-              child: ElevatedButton(
-              onPressed: controller.isSaving.value
-                  ? null
-                  : () async {
-                      // 🔥 SAFE INPUT VALIDATION
-                      final name = nameController.text.trim();
-                      final bio = bioController.text.trim();
-                      final weightText = weightController.text.trim();
-                      final targetText = targetController.text.trim();
-                      final heightText = heightController.text.trim();
-                      final ageText = ageController.text.trim();
-
-                      // Validate inputs
-                      double? weight;
-                      double? target;
-                      double? height;
-                      int? age;
-
-                      try {
-                        if (weightText.isNotEmpty) {
-                          weight = double.parse(weightText);
-                          if (weight <= 0 || weight > 500) {
-                            throw Exception('Invalid weight range');
-                          }
-                        }
-
-                        if (targetText.isNotEmpty) {
-                          target = double.parse(targetText);
-                          if (target <= 0 || target > 500) {
-                            throw Exception('Invalid target weight range');
-                          }
-                        }
-
-                        if (heightText.isNotEmpty) {
-                          height = double.parse(heightText);
-                          if (height <= 0 || height > 300) {
-                            throw Exception('Invalid height range');
-                          }
-                        }
-
-                        if (ageText.isNotEmpty) {
-                          age = int.parse(ageText);
-                          if (age <= 0 || age > 150) {
-                            throw Exception('Invalid age range');
-                          }
-                        }
-
-                        // Update profile with validated data
-                        await controller.updateProfile(
-                          name: name.isNotEmpty ? name : null,
-                          bio: bio.isNotEmpty ? bio : null,
-                          currentWeight: weight,
-                          targetWeight: target,
-                          userHeight: height,
-                          userAge: age,
-                        );
-
-                        Get.back();
-                      } catch (validationError) {
-                        Get.snackbar(
-                          '❌ Validation Error',
-                          'Please enter valid data: ${validationError.toString()}',
-                          backgroundColor: Colors.orange,
-                          colorText: Colors.white,
-                        );
-                      }
-                    },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: controller.isSaving.value
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2,
-                      ),
-                    )
-                  : const Text('Save'),
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -970,88 +632,5 @@ class ProfilePage extends StatelessWidget {
       'Dec',
     ];
     return '${months[date.month - 1]} ${date.year}';
-  }
-
-  Widget _buildThemeSection() {
-    final themeService = Get.find<ThemeService>();
-
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Appearance', style: AppTextStyles.headingMedium(Get.context!)),
-          const SizedBox(height: 16),
-
-          // Dark/Light Mode Toggle
-          Obx(
-            () => ListTile(
-              leading: Icon(
-                themeService.isDarkMode.value
-                    ? Icons.dark_mode
-                    : Icons.light_mode,
-                color: AppColors.primary,
-              ),
-              title: const Text('Dark Mode'),
-              subtitle: Text(
-                themeService.isDarkMode.value
-                    ? 'Dark theme enabled'
-                    : 'Light theme enabled',
-              ),
-              trailing: Switch(
-                value: themeService.isDarkMode.value,
-                onChanged: (_) => themeService.toggleThemeMode(),
-              ),
-            ),
-          ),
-
-          // Material 3 Toggle
-          Obx(
-            () => ListTile(
-              leading: Icon(Icons.auto_awesome, color: AppColors.secondary),
-              title: const Text('Material 3'),
-              subtitle: Text(
-                themeService.useMaterial3.value
-                    ? 'Material 3 enabled'
-                    : 'Material 2 enabled',
-              ),
-              trailing: Switch(
-                value: themeService.useMaterial3.value,
-                onChanged: (_) => themeService.toggleMaterial3(),
-              ),
-            ),
-          ),
-
-          // Dynamic Color Toggle
-          Obx(
-            () => ListTile(
-              leading: Icon(Icons.auto_fix_high, color: AppColors.tertiary),
-              title: const Text('Dynamic Colors'),
-              subtitle: Text(
-                themeService.useDynamicColor.value
-                    ? 'Using system colors'
-                    : 'Using custom colors',
-              ),
-              trailing: Switch(
-                value: themeService.useDynamicColor.value,
-                onChanged: (_) => themeService.toggleDynamicColor(),
-              ),
-            ),
-          ),
-
-          // Theme Settings Button
-          ListTile(
-            leading: Icon(Icons.palette, color: AppColors.primary),
-            title: const Text('Theme Settings'),
-            subtitle: const Text('Customize colors and appearance'),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-            onTap: () => Get.to(() => const ThemeSettingsPage()),
-          ),
-        ],
-      ),
-    );
   }
 }
