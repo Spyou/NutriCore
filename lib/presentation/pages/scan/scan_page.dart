@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -7,10 +8,9 @@ import 'package:nutri_check/core/utils/components/custom_flushbar.dart';
 import 'package:nutri_check/presentation/controllers/main_controller.dart';
 import 'package:openfoodfacts/openfoodfacts.dart';
 
-import '../../../core/constants/app_colors.dart';
-import '../../../core/constants/app_text_styles.dart';
-import '../../controllers/scan_controller.dart'; // 🔥 ADDED
+import '../../controllers/scan_controller.dart';
 import '../../widgets/product_details_sheet.dart';
+import '../../widgets/shared/add_to_meal_sheet.dart';
 
 class ScanPage extends StatefulWidget {
   const ScanPage({super.key});
@@ -36,6 +36,16 @@ class ScanPageState extends State<ScanPage>
   List<Product> recentProducts = [];
   List<String> scannedCodes = [];
 
+  // 2-frame confirmation
+  String? _lastDetectedCode;
+  int _sameCodeFrames = 0;
+
+  // Looking-up pill state
+  String? _lookingUpCode;
+
+  // Not-found state
+  String _lookupError = '';
+
   @override
   bool get wantKeepAlive => false;
 
@@ -49,13 +59,16 @@ class ScanPageState extends State<ScanPage>
     cameraController = MobileScannerController(
       facing: CameraFacing.back,
       torchEnabled: false,
-      detectionSpeed: DetectionSpeed.noDuplicates,
+      detectionSpeed: DetectionSpeed.normal,
       autoStart: false,
-      formats: [
+      cameraResolution: const Size(1920, 1080),
+      formats: const [
         BarcodeFormat.ean13,
         BarcodeFormat.ean8,
         BarcodeFormat.upcA,
         BarcodeFormat.upcE,
+        BarcodeFormat.code128,
+        BarcodeFormat.itf,
       ],
     );
 
@@ -82,6 +95,14 @@ class ScanPageState extends State<ScanPage>
       if (mounted && product != null) {
         setState(() {
           currentProduct = product;
+        });
+      }
+    });
+
+    ever(scanController.lookupError, (err) {
+      if (mounted) {
+        setState(() {
+          _lookupError = err;
         });
       }
     });
@@ -149,7 +170,7 @@ class ScanPageState extends State<ScanPage>
     try {
       _isOperationInProgress = true;
       if (kDebugMode) {
-        print('▶️ Starting camera...');
+        print('Starting camera...');
       }
 
       await cameraController.start();
@@ -246,32 +267,35 @@ class ScanPageState extends State<ScanPage>
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
         children: [
           MobileScanner(
-            fit: BoxFit.cover,
+            fit: BoxFit.contain,
             controller: cameraController,
             onDetect: _onBarcodeDetected,
           ),
 
-          _buildCustomOverlay(),
-          _buildTopAppBar(),
-          _buildBottomPanel(),
+          _buildCustomOverlay(scheme),
+          _buildTopAppBar(scheme),
+          _buildLookingUpPill(scheme),
+          _buildBottomPanel(scheme),
 
-          if (isLoading) _buildLoadingOverlay(),
+          if (isLoading) _buildLoadingOverlay(scheme),
         ],
       ),
     );
   }
 
-  Widget _buildCustomOverlay() {
+  Widget _buildCustomOverlay(ColorScheme scheme) {
+    final textTheme = Theme.of(context).textTheme;
     return Container(
       decoration: ShapeDecoration(
         shape: ScannerOverlayShape(
-          borderColor: AppColors.primary,
+          borderColor: scheme.primary,
           borderLength: 50,
           borderWidth: 4,
           cutOutSize: 280,
@@ -291,9 +315,10 @@ class ScanPageState extends State<ScanPage>
               ),
               child: Text(
                 'Point camera at barcode',
-                style: AppTextStyles.bodyMedium(
-                  context,
-                ).copyWith(color: Colors.white, fontWeight: FontWeight.w500),
+                style: textTheme.bodyMedium?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
           ],
@@ -302,36 +327,104 @@ class ScanPageState extends State<ScanPage>
     );
   }
 
+  Widget _buildLookingUpPill(ColorScheme scheme) {
+    final textTheme = Theme.of(context).textTheme;
+    return Positioned(
+      top: kToolbarHeight + 32,
+      left: 24,
+      right: 24,
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 220),
+        child: _lookingUpCode == null
+            ? const SizedBox.shrink(key: ValueKey('empty'))
+            : Center(
+                key: const ValueKey('pill'),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: scheme.primary.withValues(alpha: 0.92),
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.25),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            scheme.onPrimary,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        'Barcode detected . looking up',
+                        style: textTheme.labelMedium?.copyWith(
+                          color: scheme.onPrimary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+      ),
+    );
+  }
+
   void _onBarcodeDetected(BarcodeCapture capture) {
     if (isLoading || !_isCameraRunning || _isOperationInProgress) return;
 
-    final List<Barcode> barcodes = capture.barcodes;
-    if (barcodes.isEmpty) return;
+    final raw = capture.barcodes.isNotEmpty
+        ? capture.barcodes.first.rawValue
+        : null;
+    if (raw == null || raw.isEmpty) return;
 
-    final barcode = barcodes.first.rawValue;
-    if (barcode == null || barcode.isEmpty) return;
+    // 2-frame confirmation
+    if (_lastDetectedCode != raw) {
+      _lastDetectedCode = raw;
+      _sameCodeFrames = 1;
+      return;
+    }
+    _sameCodeFrames++;
+    if (_sameCodeFrames < 2) return;
+    _sameCodeFrames = 0;
 
-    if (!_isValidFoodBarcode(barcode)) {
-      _showInvalidBarcodeMessage(barcode);
+    if (!_isValidFoodBarcode(raw)) {
+      _showInvalidBarcodeMessage(raw);
       return;
     }
 
-    if (scannedCodes.contains(barcode)) {
+    if (scannedCodes.contains(raw)) {
       HapticFeedback.lightImpact();
       return;
     }
 
     setState(() {
-      scannedBarcode = barcode;
+      scannedBarcode = raw;
       isLoading = true;
+      _lookingUpCode = raw;
     });
 
     scanController
-        .scanBarcode(barcode)
+        .scanBarcode(raw)
         .then((_) {
           if (mounted) {
             setState(() {
               isLoading = false;
+              _lookingUpCode = null;
             });
           }
         })
@@ -339,6 +432,7 @@ class ScanPageState extends State<ScanPage>
           if (mounted) {
             setState(() {
               isLoading = false;
+              _lookingUpCode = null;
             });
           }
         });
@@ -357,7 +451,11 @@ class ScanPageState extends State<ScanPage>
     setState(() {
       scannedBarcode = '';
       currentProduct = null;
+      _lastDetectedCode = null;
+      _sameCodeFrames = 0;
+      _lookingUpCode = null;
     });
+    scanController.lookupError.value = '';
 
     if (!_isCameraRunning && mainController.currentIndex.value == 2) {
       _startCameraDelayed();
@@ -380,7 +478,6 @@ class ScanPageState extends State<ScanPage>
     }
   }
 
-  // calories using ScanController
   int _getCalories(Product product) {
     try {
       return product.nutriments
@@ -392,7 +489,8 @@ class ScanPageState extends State<ScanPage>
     }
   }
 
-  Widget _buildTopAppBar() {
+  Widget _buildTopAppBar(ColorScheme scheme) {
+    final textTheme = Theme.of(context).textTheme;
     return SafeArea(
       child: Column(
         children: [
@@ -408,7 +506,7 @@ class ScanPageState extends State<ScanPage>
                     children: [
                       Text(
                         'Product Scanner',
-                        style: AppTextStyles.headingMedium(context).copyWith(
+                        style: textTheme.titleLarge?.copyWith(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
                         ),
@@ -420,14 +518,15 @@ class ScanPageState extends State<ScanPage>
                             vertical: 2,
                           ),
                           decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.2),
+                            color: scheme.primary.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
                             '${scannedCodes.length} scanned',
-                            style: AppTextStyles.labelSmall(
-                              context,
-                            ).copyWith(color: AppColors.primary),
+                            style: textTheme.labelSmall?.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
                     ],
@@ -473,7 +572,9 @@ class ScanPageState extends State<ScanPage>
     );
   }
 
-  Widget _buildBottomPanel() {
+  Widget _buildBottomPanel(ColorScheme scheme) {
+    final showNotFound =
+        _lookupError.isNotEmpty && scanController.currentProduct.value == null;
     return Align(
       alignment: Alignment.bottomCenter,
       child: Container(
@@ -490,27 +591,22 @@ class ScanPageState extends State<ScanPage>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (currentProduct != null) _buildLastScannedCard(),
+                if (showNotFound) _buildNotFoundCard(scheme),
+                if (currentProduct != null) _buildLastScannedCard(scheme),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
                     _buildActionButton(
                       icon: Icons.keyboard_outlined,
                       label: 'Manual',
-                      color: AppColors.info,
+                      color: scheme.tertiary,
                       onPressed: _showManualInput,
                     ),
                     _buildActionButton(
                       icon: Icons.refresh_rounded,
                       label: 'Reset',
-                      color: AppColors.secondary,
+                      color: scheme.secondary,
                       onPressed: _resetScanner,
-                    ),
-                    _buildActionButton(
-                      icon: Icons.cloud_upload_outlined,
-                      label: 'Save All',
-                      color: AppColors.success,
-                      onPressed: _saveAllToFirebase,
                     ),
                   ],
                 ),
@@ -522,12 +618,59 @@ class ScanPageState extends State<ScanPage>
     );
   }
 
-  Widget _buildLastScannedCard() {
+  Widget _buildNotFoundCard(ColorScheme scheme) {
+    final textTheme = Theme.of(context).textTheme;
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surface.withValues(alpha: 0.95),
+        color: scheme.surface.withValues(alpha: 0.95),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: scheme.error.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.search_off_rounded, color: scheme.error, size: 36),
+          const SizedBox(height: 8),
+          Text(
+            'Not in our database',
+            style: textTheme.titleSmall?.copyWith(
+              color: scheme.onSurface,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Try searching by name instead',
+            style: textTheme.bodySmall?.copyWith(
+              color: scheme.onSurface.withValues(alpha: 0.65),
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          TextButton(
+            onPressed: () {
+              scanController.lookupError.value = '';
+              Get.find<MainController>().changeIndex(1);
+            },
+            child: Text(
+              'Open search',
+              style: textTheme.labelLarge?.copyWith(color: scheme.primary),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLastScannedCard(ColorScheme scheme) {
+    final textTheme = Theme.of(context).textTheme;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: scheme.surface.withValues(alpha: 0.95),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -539,24 +682,29 @@ class ScanPageState extends State<ScanPage>
       ),
       child: Row(
         children: [
-          Container(
-            width: 50,
-            height: 50,
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: SizedBox(
+              width: 50,
+              height: 50,
+              child: CachedNetworkImage(
+                imageUrl: currentProduct!.imageFrontSmallUrl ??
+                    currentProduct!.imageFrontUrl ??
+                    '',
+                fit: BoxFit.cover,
+                placeholder: (_, __) => Container(
+                  color: scheme.primary.withValues(alpha: 0.08),
+                ),
+                errorWidget: (_, __, ___) => Container(
+                  color: scheme.primary.withValues(alpha: 0.08),
+                  child: Icon(
+                    Icons.fastfood_rounded,
+                    color: scheme.primary,
+                    size: 22,
+                  ),
+                ),
+              ),
             ),
-            child: currentProduct!.imageFrontUrl != null
-                ? ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Image.network(
-                      currentProduct!.imageFrontUrl!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) =>
-                          Icon(Icons.fastfood, color: AppColors.primary),
-                    ),
-                  )
-                : Icon(Icons.fastfood, color: AppColors.primary),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -565,39 +713,74 @@ class ScanPageState extends State<ScanPage>
               children: [
                 Text(
                   currentProduct!.productName ?? 'Unknown Product',
-                  style: AppTextStyles.bodyLarge(
-                    context,
-                  ).copyWith(fontWeight: FontWeight.w600),
+                  style: textTheme.bodyLarge?.copyWith(
+                    color: scheme.onSurface,
+                    fontWeight: FontWeight.w600,
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text(
                   'Barcode: $scannedBarcode',
-                  style: AppTextStyles.labelMedium(
-                    context,
-                  ).copyWith(color: AppColors.textSecondary),
+                  style: textTheme.labelMedium?.copyWith(
+                    color: scheme.onSurface.withValues(alpha: 0.65),
+                  ),
                 ),
                 Text(
                   '${_getCalories(currentProduct!)} kcal per 100g',
-                  style: AppTextStyles.labelMedium(context).copyWith(
-                    color: AppColors.primary,
+                  style: textTheme.labelMedium?.copyWith(
+                    color: scheme.primary,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
             ),
           ),
+          // Quick log pill
+          Material(
+            color: scheme.primary,
+            borderRadius: BorderRadius.circular(20),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(20),
+              onTap: () => AddToMealSheet.show(context, currentProduct!),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.add_rounded,
+                      color: scheme.onPrimary,
+                      size: 16,
+                    ),
+                    const SizedBox(width: 2),
+                    Text(
+                      'Log',
+                      style: textTheme.labelMedium?.copyWith(
+                        color: scheme.onPrimary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
           GestureDetector(
             onTap: () => _showProductDetails(currentProduct!),
             child: Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: AppColors.primary,
-                borderRadius: BorderRadius.circular(8),
+                color: scheme.primary.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.visibility,
-                color: Colors.white,
+                color: scheme.primary,
                 size: 20,
               ),
             ),
@@ -612,6 +795,7 @@ class ScanPageState extends State<ScanPage>
     required VoidCallback onPressed,
     int? badge,
   }) {
+    final scheme = Theme.of(context).colorScheme;
     return Stack(
       children: [
         IconButton(
@@ -625,13 +809,13 @@ class ScanPageState extends State<ScanPage>
             child: Container(
               padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
-                color: AppColors.primary,
+                color: scheme.primary,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Text(
                 badge.toString(),
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: scheme.onPrimary,
                   fontSize: 10,
                   fontWeight: FontWeight.bold,
                 ),
@@ -648,6 +832,7 @@ class ScanPageState extends State<ScanPage>
     required Color color,
     required VoidCallback onPressed,
   }) {
+    final textTheme = Theme.of(context).textTheme;
     return GestureDetector(
       onTap: onPressed,
       child: Container(
@@ -664,9 +849,10 @@ class ScanPageState extends State<ScanPage>
             const SizedBox(height: 4),
             Text(
               label,
-              style: AppTextStyles.labelMedium(
-                context,
-              ).copyWith(color: color, fontWeight: FontWeight.w600),
+              style: textTheme.labelMedium?.copyWith(
+                color: color,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ],
         ),
@@ -674,32 +860,34 @@ class ScanPageState extends State<ScanPage>
     );
   }
 
-  Widget _buildLoadingOverlay() {
+  Widget _buildLoadingOverlay(ColorScheme scheme) {
+    final textTheme = Theme.of(context).textTheme;
     return Container(
       color: Colors.black.withValues(alpha: 0.8),
       child: Center(
         child: Container(
           padding: const EdgeInsets.all(32),
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            color: scheme.surface,
             borderRadius: BorderRadius.circular(16),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              CircularProgressIndicator(color: AppColors.primary),
+              CircularProgressIndicator(color: scheme.primary),
               const SizedBox(height: 16),
               Text(
                 'Looking up product...',
-                style: AppTextStyles.bodyLarge(
-                  context,
-                ).copyWith(fontWeight: FontWeight.w500),
+                style: textTheme.bodyLarge?.copyWith(
+                  color: scheme.onSurface,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
               Text(
                 'Please wait while we fetch nutrition info',
-                style: AppTextStyles.bodySmall(
-                  context,
-                ).copyWith(color: AppColors.textSecondary),
+                style: textTheme.bodySmall?.copyWith(
+                  color: scheme.onSurface.withValues(alpha: 0.65),
+                ),
               ),
             ],
           ),
@@ -728,70 +916,13 @@ class ScanPageState extends State<ScanPage>
 
   bool _isKnownFoodBarcodePattern(String code) {
     final foodPrefixes = [
-      '0',
-      '1',
-      '2',
-      '3',
-      '4',
-      '5',
-      '6',
-      '7',
-      '8',
-      '9',
-      '50',
-      '51',
-      '52',
-      '53',
-      '54',
-      '55',
-      '56',
-      '57',
-      '58',
-      '59',
-      '60',
-      '61',
-      '62',
-      '63',
-      '64',
-      '65',
-      '66',
-      '67',
-      '68',
-      '69',
-      '70',
-      '71',
-      '72',
-      '73',
-      '74',
-      '75',
-      '76',
-      '77',
-      '78',
-      '79',
-      '500',
-      '501',
-      '502',
-      '503',
-      '504',
-      '505',
-      '506',
-      '507',
-      '508',
-      '509',
-      '890',
-      '891',
-      '892',
-      '893',
-      '894',
-      '895',
-      '896',
-      '897',
-      '898',
-      '899',
-      '93',
-      '94',
-      '45',
-      '49',
+      '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+      '50', '51', '52', '53', '54', '55', '56', '57', '58', '59',
+      '60', '61', '62', '63', '64', '65', '66', '67', '68', '69',
+      '70', '71', '72', '73', '74', '75', '76', '77', '78', '79',
+      '500', '501', '502', '503', '504', '505', '506', '507', '508', '509',
+      '890', '891', '892', '893', '894', '895', '896', '897', '898', '899',
+      '93', '94', '45', '49',
     ];
 
     for (String prefix in foodPrefixes) {
@@ -843,126 +974,188 @@ class ScanPageState extends State<ScanPage>
   }
 
   void _showInvalidBarcodeMessage(String code) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.warning_amber, color: Colors.white, size: 20),
-            const SizedBox(width: 8),
-            Expanded(child: Text('Invalid food barcode: $code')),
-          ],
-        ),
-        backgroundColor: Colors.orange.shade700,
-        duration: const Duration(seconds: 2),
-      ),
+    CustomThemeFlushbar.show(
+      title: 'Invalid barcode',
+      message: "That code ($code) isn't a valid food product barcode.",
     );
     HapticFeedback.lightImpact();
   }
 
   void _showManualInput() {
     final TextEditingController controller = TextEditingController();
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
 
-    Get.dialog(
-      AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Enter Barcode'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: controller,
-              decoration: InputDecoration(
-                hintText: 'Enter product barcode',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                prefixIcon: Icon(Icons.qr_code, color: AppColors.primary),
-                helperText: 'Enter 8-13 digit barcode number',
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetCtx) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(sheetCtx).viewInsets.bottom,
+          ),
+          child: Container(
+            decoration: BoxDecoration(
+              color: scheme.surface,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(24),
               ),
-              keyboardType: TextInputType.number,
-              inputFormatters: [
-                FilteringTextInputFormatter.digitsOnly,
-                LengthLimitingTextInputFormatter(13),
+            ),
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: scheme.onSurface.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Enter barcode',
+                  style: textTheme.titleLarge?.copyWith(
+                    color: scheme.onSurface,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: controller,
+                  autofocus: true,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    LengthLimitingTextInputFormatter(13),
+                  ],
+                  style: textTheme.bodyLarge?.copyWith(
+                    color: scheme.onSurface,
+                  ),
+                  decoration: InputDecoration(
+                    filled: true,
+                    fillColor:
+                        scheme.surfaceContainerHighest.withValues(alpha: 0.4),
+                    hintText: 'Enter product barcode',
+                    prefixIcon: Icon(
+                      Icons.qr_code_rounded,
+                      color: scheme.primary,
+                    ),
+                    helperText: '8-13 digit code',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide.none,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide.none,
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(color: scheme.primary, width: 1.4),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.of(sheetCtx).pop(),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          side: BorderSide(
+                            color: scheme.onSurface.withValues(alpha: 0.2),
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        child: Text(
+                          'Cancel',
+                          style: textTheme.labelLarge?.copyWith(
+                            color: scheme.onSurface,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: () {
+                          final barcode = controller.text.trim();
+                          if (barcode.isNotEmpty &&
+                              _isValidFoodBarcode(barcode)) {
+                            Navigator.of(sheetCtx).pop();
+                            setState(() {
+                              scannedBarcode = barcode;
+                              isLoading = true;
+                              _lookingUpCode = barcode;
+                            });
+                            scanController.scanBarcode(barcode).then((_) {
+                              if (mounted) {
+                                setState(() {
+                                  isLoading = false;
+                                  _lookingUpCode = null;
+                                });
+                              }
+                            }).catchError((_) {
+                              if (mounted) {
+                                setState(() {
+                                  isLoading = false;
+                                  _lookingUpCode = null;
+                                });
+                              }
+                            });
+                          } else {
+                            CustomThemeFlushbar.show(
+                              title: 'Invalid barcode',
+                              message:
+                                  'Please enter a valid food product barcode.',
+                            );
+                          }
+                        },
+                        style: FilledButton.styleFrom(
+                          backgroundColor: scheme.primary,
+                          foregroundColor: scheme.onPrimary,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        child: Text(
+                          'Look up',
+                          style: textTheme.labelLarge?.copyWith(
+                            color: scheme.onPrimary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Get.back(), child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () {
-              final barcode = controller.text.trim();
-              if (barcode.isNotEmpty && _isValidFoodBarcode(barcode)) {
-                Get.back();
-                setState(() {
-                  scannedBarcode = barcode;
-                  isLoading = true;
-                });
-                scanController.scanBarcode(barcode).then((_) {
-                  if (mounted) {
-                    setState(() {
-                      isLoading = false;
-                    });
-                  }
-                });
-              } else {
-                Get.snackbar(
-                  'Invalid Barcode',
-                  'Please enter a valid food product barcode',
-                  backgroundColor: Colors.orange,
-                  colorText: Colors.white,
-                );
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: const Text('Search'),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  Future<void> _saveAllToFirebase() async {
-    if (recentProducts.isEmpty) {
-      Get.snackbar(
-        'No Products',
-        'No products to save',
-        backgroundColor: Colors.orange,
-        colorText: Colors.white,
-      );
-      return;
-    }
-
-    try {
-      CustomThemeFlushbar.show(
-        title: 'Saving...',
-        message: 'Saving ${recentProducts.length} products to Firebase',
-      );
-      scanController.refreshRecentProducts();
-
-      CustomThemeFlushbar.show(
-        title: 'Success',
-        message: '${recentProducts.length} products saved successfully',
-      );
-    } catch (e) {
-      CustomThemeFlushbar.show(
-        title: 'Save Failed',
-        message: 'Failed to save products: ${e.toString()}',
-      );
-    }
-  }
-
   void _showScanHistory() {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     Get.bottomSheet(
       Container(
         height: MediaQuery.of(context).size.height * 0.7,
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: scheme.surface,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         ),
         child: Column(
@@ -972,7 +1165,7 @@ class ScanPageState extends State<ScanPage>
               height: 4,
               margin: const EdgeInsets.symmetric(vertical: 12),
               decoration: BoxDecoration(
-                color: AppColors.textTertiary,
+                color: scheme.onSurface.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -982,32 +1175,40 @@ class ScanPageState extends State<ScanPage>
                 children: [
                   Text(
                     'Scan History',
-                    style: AppTextStyles.headingMedium(context),
+                    style: textTheme.titleLarge?.copyWith(
+                      color: scheme.onSurface,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   const Spacer(),
                   IconButton(
                     onPressed: () => Get.back(),
-                    icon: const Icon(Icons.close),
+                    icon: Icon(Icons.close, color: scheme.onSurface),
                   ),
                 ],
               ),
             ),
-            const Divider(height: 1),
+            Divider(
+              height: 1,
+              color: scheme.onSurface.withValues(alpha: 0.08),
+            ),
             Expanded(
               child: recentProducts.isEmpty
                   ? Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(
+                          Icon(
                             Icons.history,
                             size: 64,
-                            color: Colors.grey,
+                            color: scheme.onSurface.withValues(alpha: 0.4),
                           ),
                           const SizedBox(height: 16),
                           Text(
                             'No products scanned yet',
-                            style: TextStyle(color: Colors.grey[600]),
+                            style: textTheme.bodyMedium?.copyWith(
+                              color: scheme.onSurface.withValues(alpha: 0.65),
+                            ),
                           ),
                         ],
                       ),
@@ -1017,21 +1218,49 @@ class ScanPageState extends State<ScanPage>
                       itemBuilder: (context, index) {
                         final product = recentProducts[index];
                         return ListTile(
-                          leading: product.imageFrontUrl != null
-                              ? Image.network(
-                                  product.imageFrontUrl!,
-                                  width: 50,
-                                  height: 50,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) =>
-                                      const Icon(Icons.fastfood),
-                                )
-                              : const Icon(Icons.fastfood),
-                          title: Text(product.productName ?? 'Unknown Product'),
-                          subtitle: Text(product.brands ?? ''),
-                          trailing: const Icon(
+                          leading: ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: SizedBox(
+                              width: 50,
+                              height: 50,
+                              child: CachedNetworkImage(
+                                imageUrl: product.imageFrontSmallUrl ??
+                                    product.imageFrontUrl ??
+                                    '',
+                                fit: BoxFit.cover,
+                                placeholder: (_, __) => Container(
+                                  color: scheme.primary
+                                      .withValues(alpha: 0.08),
+                                ),
+                                errorWidget: (_, __, ___) => Container(
+                                  color: scheme.primary
+                                      .withValues(alpha: 0.08),
+                                  child: Icon(
+                                    Icons.fastfood_rounded,
+                                    color: scheme.primary,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          title: Text(
+                            product.productName ?? 'Unknown Product',
+                            style: textTheme.bodyLarge?.copyWith(
+                              color: scheme.onSurface,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          subtitle: Text(
+                            product.brands ?? '',
+                            style: textTheme.bodySmall?.copyWith(
+                              color:
+                                  scheme.onSurface.withValues(alpha: 0.65),
+                            ),
+                          ),
+                          trailing: Icon(
                             Icons.arrow_forward_ios,
                             size: 16,
+                            color: scheme.onSurface.withValues(alpha: 0.5),
                           ),
                           onTap: () => _showProductDetails(product),
                         );
@@ -1046,10 +1275,12 @@ class ScanPageState extends State<ScanPage>
   }
 
   void _showProductDetails(Product product) {
-    Get.bottomSheet(
-      ProductDetailsSheet(product: product),
+    showModalBottomSheet<void>(
+      context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
+      useSafeArea: true,
+      builder: (_) => ProductDetailsSheet(product: product),
     );
   }
 }

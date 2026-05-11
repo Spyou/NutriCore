@@ -16,6 +16,61 @@ class ScanController extends GetxController {
   var recentProducts = <Product>[].obs;
   var currentProduct = Rxn<Product>();
   var isLoading = false.obs;
+  var lookupError = ''.obs;
+
+  static const Duration _barcodeCacheTtl = Duration(minutes: 10);
+  static const String _barcodeCachePrefix = 'barcode_cache:';
+
+  /// Fields requested for a single-product barcode lookup. Narrowed to
+  /// exactly what the details sheet + AddToMealSheet render so the OFF
+  /// payload stays small and the response returns faster.
+  static const List<ProductField> _barcodeFields = [
+    ProductField.BARCODE,
+    ProductField.NAME,
+    ProductField.BRANDS,
+    ProductField.CATEGORIES,
+    ProductField.NUTRIMENTS,
+    ProductField.IMAGE_FRONT_URL,
+    ProductField.IMAGE_FRONT_SMALL_URL,
+    ProductField.INGREDIENTS_TEXT,
+    ProductField.QUANTITY,
+  ];
+
+  /// Reads a cached barcode lookup. Returns null on miss, expiry, or any
+  /// deserialization failure.
+  Product? _readBarcodeCache(String code) {
+    try {
+      final dynamic raw = box.read('$_barcodeCachePrefix$code');
+      if (raw is! Map) return null;
+      final Map<String, dynamic> entry = Map<String, dynamic>.from(raw);
+      final int savedAt = (entry['savedAt'] as num?)?.toInt() ?? 0;
+      final int now = DateTime.now().millisecondsSinceEpoch;
+      if (now - savedAt > _barcodeCacheTtl.inMilliseconds) return null;
+      final dynamic productRaw = entry['product'];
+      if (productRaw is! Map) return null;
+      return Product.fromJson(Map<String, dynamic>.from(productRaw));
+    } catch (e) {
+      if (kDebugMode) {
+        print('Barcode cache read failed: $e');
+      }
+      return null;
+    }
+  }
+
+  /// Persists [product] under the barcode cache key. Silently skips on
+  /// any serialization failure so a cache miss never crashes the scan flow.
+  Future<void> _writeBarcodeCache(String code, Product product) async {
+    try {
+      box.write('$_barcodeCachePrefix$code', {
+        'savedAt': DateTime.now().millisecondsSinceEpoch,
+        'product': product.toJson(),
+      });
+    } catch (e) {
+      if (kDebugMode) {
+        print('Barcode cache write failed: $e');
+      }
+    }
+  }
 
   @override
   void onInit() {
@@ -207,7 +262,24 @@ class ScanController extends GetxController {
   }
 
   Future<void> scanBarcode(String barcode) async {
-    if (scannedCodes.contains(barcode)) {
+    return _scanBarcodeInternal(barcode, bypassCache: false);
+  }
+
+  /// Public force-refresh entry point. Skips the local cache so a stale
+  /// or incomplete OFF payload can be re-fetched on demand.
+  Future<void> rescanBarcode(String code) async {
+    return _scanBarcodeInternal(code, bypassCache: true);
+  }
+
+  Future<void> _scanBarcodeInternal(
+    String barcode, {
+    required bool bypassCache,
+  }) async {
+    // Reset the not-found state at the very start of every lookup so the
+    // UI can rebind cleanly on rescan.
+    lookupError.value = '';
+
+    if (!bypassCache && scannedCodes.contains(barcode)) {
       if (kDebugMode) {
         print('Already scanned: $barcode');
       }
@@ -223,7 +295,7 @@ class ScanController extends GetxController {
 
     try {
       if (kDebugMode) {
-        print('Scanning: $barcode');
+        print('Scanning: $barcode (bypassCache=$bypassCache)');
       }
       isLoading.value = true;
 
@@ -232,12 +304,46 @@ class ScanController extends GetxController {
       if (await Vibration.hasVibrator()) {
         Vibration.vibrate(duration: 100);
       }
-      scannedCodes.add(barcode);
+
+      // Cache hit short-circuit. Only consult the cache on a normal scan;
+      // a forced rescan always hits the network for a fresh payload.
+      if (!bypassCache) {
+        final cached = _readBarcodeCache(barcode);
+        if (cached != null) {
+          if (kDebugMode) {
+            print('Barcode cache hit: $barcode → ${cached.productName}');
+          }
+          currentProduct.value = cached;
+          if (!scannedCodes.contains(barcode)) {
+            scannedCodes.add(barcode);
+          }
+          if (!recentProducts.any((p) => p.barcode == cached.barcode)) {
+            recentProducts.insert(0, cached);
+            if (recentProducts.length > 50) {
+              recentProducts.removeLast();
+            }
+          }
+          _saveDataSafely();
+          Get.bottomSheet(
+            isScrollControlled: true,
+            ProductDetailsSheet(product: cached),
+          );
+          return;
+        }
+      }
+
+      if (!scannedCodes.contains(barcode)) {
+        scannedCodes.add(barcode);
+      }
+
+      // Use ProductQueryVersion(2) — mirrors what search controller uses
+      // and returns faster than v3 in our usage. The narrowed field list
+      // keeps the payload small.
       final config = ProductQueryConfiguration(
         barcode,
         language: OpenFoodFactsLanguage.ENGLISH,
-        fields: [ProductField.ALL],
-        version: ProductQueryVersion.v3,
+        fields: _barcodeFields,
+        version: const ProductQueryVersion(2),
       );
 
       final result = await OpenFoodAPIClient.getProductV3(config);
@@ -260,6 +366,7 @@ class ScanController extends GetxController {
         }
 
         _saveDataSafely();
+        await _writeBarcodeCache(barcode, product);
         if (kDebugMode) {
           print('Product added to history: ${product.productName}');
         }
@@ -269,7 +376,9 @@ class ScanController extends GetxController {
           ProductDetailsSheet(product: product),
         );
       } else {
-        // alert dialog
+        // Surface a not-found state so the page can render a friendly empty
+        // view instead of leaving the previous product on screen.
+        lookupError.value = 'Product not in our database';
         Get.dialog(
           AlertDialog(
             title: const Text('Product Not Found'),
