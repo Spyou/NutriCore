@@ -1,42 +1,58 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:another_flushbar/flushbar.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
+import 'package:nutri_check/core/config/app_config.dart';
 import 'package:nutri_check/core/utils/components/custom_flushbar.dart';
-import 'package:nutri_check/domain/entities/user.dart';
+import 'package:nutri_check/domain/entities/daily_intake.dart';
+import 'package:nutri_check/domain/entities/meal_entry.dart';
+import 'package:nutri_check/domain/entities/user_profile.dart';
+import 'package:nutri_check/domain/repositories/nutrition_repository.dart';
+import 'package:nutri_check/domain/repositories/preferences_repository.dart';
+import 'package:nutri_check/domain/usecases/calculate_bmr.dart';
 import 'package:nutri_check/presentation/controllers/auth_controller.dart';
 
 class NutritionController extends GetxController {
-  // Date
+  final NutritionRepository _nutritionRepo;
+  final PreferencesRepository _preferencesRepo;
+  final CalculateBMR _bmrCalculator;
+
+  NutritionController(
+    this._nutritionRepo,
+    this._preferencesRepo,
+    this._bmrCalculator,
+  );
+
+  final List<Worker> _workers = [];
+  StreamSubscription<DailyIntake>? _dailyIntakeSubscription;
+
   var selectedDate = DateTime.now().obs;
   var viewMode = 'daily'.obs;
 
-  // Nutrition Tracking
   var totalCalories = 0.0.obs;
-  var calorieGoal = 2000.0.obs;
+  var calorieGoal = AppConfig.defaultCalorieGoal.obs;
   var totalProteins = 0.0.obs;
-  var proteinGoal = 150.0.obs;
+  var proteinGoal = AppConfig.defaultProteinGoal.obs;
   var totalCarbs = 0.0.obs;
-  var carbGoal = 250.0.obs;
+  var carbGoal = AppConfig.defaultCarbGoal.obs;
   var totalFats = 0.0.obs;
-  var fatGoal = 65.0.obs;
+  var fatGoal = AppConfig.defaultFatGoal.obs;
 
-  // Additional Tracking
   var waterIntake = 0.0.obs;
-  var waterGoal = 8.0.obs;
-  var currentWeight = 70.0.obs;
-  var targetWeight = 65.0.obs;
+  var waterGoal = AppConfig.defaultWaterGoal.obs;
+  var currentWeight = AppConfig.defaultWeight.obs;
+  var targetWeight = AppConfig.defaultTargetWeight.obs;
   var stepsCount = 0.obs;
-  var stepsGoal = 10000.obs;
+  var stepsGoal = AppConfig.defaultStepsGoal.obs;
 
-  var todayMeals = <Map<String, dynamic>>[].obs;
-  var dailyMeals = <Map<String, dynamic>>[].obs;
-  var weeklyMeals = <Map<String, dynamic>>[].obs;
-  var monthlyMeals = <Map<String, dynamic>>[].obs;
+  final todayMeals = RxList<MealEntry>();
+  final dailyMeals = RxList<MealEntry>();
+  final weeklyMeals = RxList<MealEntry>();
+  final monthlyMeals = RxList<MealEntry>();
 
   var dailyStats = <String, dynamic>{}.obs;
   var weeklyStats = <String, dynamic>{}.obs;
@@ -47,46 +63,60 @@ class NutritionController extends GetxController {
   var weeklyCalories = <double>[].obs;
   var weightHistory = <Map<String, dynamic>>[].obs;
 
-  // UI States
   var isLoading = false.obs;
   var isLoadingViewData = false.obs;
   var selectedMealType = 'all'.obs;
   var searchQuery = ''.obs;
-  var filteredMeals = <Map<String, dynamic>>[].obs;
+  final filteredMeals = RxList<MealEntry>();
 
   final storage = GetStorage();
-  var userWeight = 70.0.obs;
-  var dailyCalorieGoal = 2000.obs;
+  var userWeight = AppConfig.defaultWeight.obs;
+  var dailyCalorieGoal = AppConfig.defaultCalorieGoal.toInt().obs;
   var bmr = 1500.0.obs;
-
-  // Get Storage
-  final GetStorage box = GetStorage();
 
   @override
   void onInit() {
     super.onInit();
-    _initializeController();
-    _setupReactiveFiltering();
     _loadFavoriteMeals();
-    ever(favoriteMeals, (_) => _saveFavoriteMeals());
+    _setupWorkers();
+    _initializeController();
   }
 
   @override
   void onReady() {
     super.onReady();
-    Future.delayed(Duration(milliseconds: 800), () {
-      _bindToFirebaseStream();
+    Future.delayed(const Duration(milliseconds: 800), () {
+      _bindToDailyIntakeStream();
     });
+  }
+
+  @override
+  void onClose() {
+    for (final worker in _workers) {
+      worker.dispose();
+    }
+    _workers.clear();
+    _dailyIntakeSubscription?.cancel();
+    super.onClose();
+  }
+
+  void _setupWorkers() {
+    _workers.addAll([
+      ever(favoriteMeals, (_) => _saveFavoriteMeals()),
+      ever(selectedMealType, (_) => _applyFilters()),
+      ever(searchQuery, (_) => _applyFilters()),
+      ever(todayMeals, (_) {
+        _calculateTotals();
+        _applyFilters();
+      }),
+    ]);
   }
 
   Future<void> _initializeController() async {
     try {
       _loadSavedWeight();
-      _loadFavorites();
-      _loadTemplates();
-      await loadDataFromFirebase();
-
-      await changeViewMode('daily');
+      await _loadPreferences();
+      await _loadDataForViewMode('daily');
     } catch (e) {
       if (kDebugMode) {
         print('Error initializing NutritionController: $e');
@@ -94,49 +124,61 @@ class NutritionController extends GetxController {
     }
   }
 
-  void _setupReactiveFiltering() {
-    filteredMeals.assignAll(todayMeals);
+  Future<void> _loadPreferences() async {
+    final authController = Get.find<AuthController>();
+    if (authController.user == null) return;
 
-    ever(selectedMealType, (_) => _applyFilters());
-
-    ever(searchQuery, (_) => _applyFilters());
-
-    ever(todayMeals, (_) => _applyFilters());
+    final result = await _preferencesRepo.getPreferences(
+      authController.user!.uid,
+    );
+    result.fold(
+      onSuccess: (prefs) {
+        calorieGoal.value = prefs.calorieGoal;
+        proteinGoal.value = prefs.proteinGoal;
+        carbGoal.value = prefs.carbGoal;
+        fatGoal.value = prefs.fatGoal;
+        waterGoal.value = prefs.waterGoal;
+        stepsGoal.value = prefs.stepsGoal;
+      },
+      onFailure: (_) {
+        if (authController.userModel != null) {
+          calorieGoal.value = authController.userModel!.calorieGoal;
+          proteinGoal.value = authController.userModel!.proteinGoal;
+          carbGoal.value = authController.userModel!.carbGoal;
+          fatGoal.value = authController.userModel!.fatGoal;
+          waterGoal.value = authController.userModel!.waterGoal;
+          stepsGoal.value = authController.userModel!.stepsGoal;
+          if (authController.userModel!.currentWeight != null) {
+            currentWeight.value = authController.userModel!.currentWeight!;
+          }
+        }
+      },
+    );
   }
 
   void _applyFilters() {
-    List<Map<String, dynamic>> filtered = todayMeals.toList();
+    List<MealEntry> filtered = todayMeals.toList();
 
     if (selectedMealType.value != 'all') {
       filtered = filtered.where((meal) {
-        return meal['type']?.toString().toLowerCase() ==
+        return meal.type.name.toLowerCase() ==
             selectedMealType.value.toLowerCase();
       }).toList();
     }
 
     if (searchQuery.value.isNotEmpty) {
       filtered = filtered.where((meal) {
-        final name = meal['name']?.toString().toLowerCase() ?? '';
-        final type = meal['type']?.toString().toLowerCase() ?? '';
+        final name = meal.name.toLowerCase();
+        final type = meal.type.name.toLowerCase();
         final query = searchQuery.value.toLowerCase();
-
         return name.contains(query) || type.contains(query);
       }).toList();
     }
 
     filteredMeals.assignAll(filtered);
-
-    if (kDebugMode) {
-      print(
-        'Applied filters - Type: ${selectedMealType.value}, Search: "${searchQuery.value}", Results: ${filtered.length}',
-      );
-    }
   }
 
   void searchMeals(String query) {
-    if (kDebugMode) {
-      print('Searching meals: "$query"');
-    }
     searchQuery.value = query;
   }
 
@@ -154,32 +196,21 @@ class NutritionController extends GetxController {
     if (savedWeight != null) {
       userWeight.value = savedWeight.toDouble();
       _updateNutritionGoals(userWeight.value);
-      if (kDebugMode) {
-        print('NutritionController: Loaded saved weight ${savedWeight}kg');
-      }
     }
   }
 
   Future<void> changeViewMode(String mode) async {
     if (viewMode.value == mode) return;
-
-    if (kDebugMode) {
-      print('Changing view mode to: $mode');
-    }
     viewMode.value = mode;
     await _loadDataForViewMode(mode);
     update();
   }
 
-  // Load data based on view mode
   Future<void> _loadDataForViewMode(String mode) async {
     try {
       isLoadingViewData.value = true;
 
       switch (mode) {
-        case 'daily':
-          await _loadDailyData();
-          break;
         case 'weekly':
           await _loadWeeklyData();
           break;
@@ -200,15 +231,7 @@ class NutritionController extends GetxController {
 
   Future<void> _loadDailyData() async {
     try {
-      final today = selectedDate.value;
-      final dateKey = _formatDateForFirebase(today);
-
-      if (kDebugMode) {
-        print('Loading daily data for: $dateKey');
-      }
-      // Get today's meals
-      dailyMeals.value = todayMeals.toList();
-      // Calculate daily stats
+      dailyMeals.assignAll(todayMeals);
       dailyStats.value = {
         'totalCalories': totalCalories.value,
         'totalProteins': totalProteins.value,
@@ -216,14 +239,8 @@ class NutritionController extends GetxController {
         'totalFats': totalFats.value,
         'totalMeals': todayMeals.length,
         'waterIntake': waterIntake.value,
-        'date': dateKey,
+        'date': _formatDateForFirebase(selectedDate.value),
       };
-
-      if (kDebugMode) {
-        print(
-          'Daily data loaded: ${dailyMeals.length} meals, ${totalCalories.value.toInt()} calories',
-        );
-      }
     } catch (e) {
       if (kDebugMode) {
         print('Error loading daily data: $e');
@@ -231,87 +248,70 @@ class NutritionController extends GetxController {
     }
   }
 
-  // Weekly data
   Future<void> _loadWeeklyData() async {
     try {
       final today = selectedDate.value;
       final startOfWeek = _getStartOfWeek(today);
-      final endOfWeek = startOfWeek.add(Duration(days: 6));
-
-      if (kDebugMode) {
-        print(
-          'Loading weekly data: ${_formatDateForFirebase(startOfWeek)} to ${_formatDateForFirebase(endOfWeek)}',
-        );
-      }
+      final endOfWeek = startOfWeek.add(const Duration(days: 6));
 
       final authController = Get.find<AuthController>();
       if (authController.user == null) return;
 
-      // Weekly totals
-      double weeklyCalories = 0;
-      double weeklyProteins = 0;
-      double weeklyCarbs = 0;
-      double weeklyFats = 0;
-      int weeklyMealsCount = 0;
-      List<Map<String, dynamic>> allWeeklyMeals = [];
-      for (int i = 0; i < 7; i++) {
-        final currentDay = startOfWeek.add(Duration(days: i));
-        final dayKey = _formatDateForFirebase(currentDay);
+      final result = await _nutritionRepo.getWeeklyIntake(
+        authController.user!.uid,
+        startOfWeek,
+      );
 
-        try {
-          final doc = await FirebaseFirestore.instance
-              .collection('nutrition_entries')
-              .doc('${authController.user!.uid}_$dayKey')
-              .get();
+      result.fold(
+        onSuccess: (dailyIntakes) {
+          double weeklyCaloriesTotal = 0;
+          double weeklyProteinsTotal = 0;
+          double weeklyCarbsTotal = 0;
+          double weeklyFatsTotal = 0;
+          int weeklyMealsCount = 0;
+          final List<MealEntry> allWeeklyMeals = [];
+          final Set<String> daysWithData = {};
 
-          if (doc.exists && doc.data() != null) {
-            final data = doc.data()!;
-            final dayMeals = List<Map<String, dynamic>>.from(
-              data['meals'] ?? [],
-            );
+          for (int i = 0; i < 7; i++) {
+            final currentDay = startOfWeek.add(Duration(days: i));
+            final dayKey = _formatDateForFirebase(currentDay);
 
-            for (var meal in dayMeals) {
-              weeklyCalories += (meal['calories'] ?? 0).toDouble();
-              weeklyProteins += (meal['proteins'] ?? 0).toDouble();
-              weeklyCarbs += (meal['carbs'] ?? 0).toDouble();
-              weeklyFats += (meal['fat'] ?? 0).toDouble();
-              weeklyMealsCount++;
+            final dayIntake = dailyIntakes
+                .where((di) => _formatDateForFirebase(di.date) == dayKey)
+                .firstOrNull;
 
-              // Add day info to meal
-              meal['day'] = _getDayName(currentDay);
-              meal['date'] = dayKey;
-              allWeeklyMeals.add(meal);
+            if (dayIntake != null && dayIntake.meals.isNotEmpty) {
+              daysWithData.add(dayKey);
+              weeklyCaloriesTotal += dayIntake.totalCalories;
+              weeklyProteinsTotal += dayIntake.totalProteins;
+              weeklyCarbsTotal += dayIntake.totalCarbs;
+              weeklyFatsTotal += dayIntake.totalFats;
+              weeklyMealsCount += dayIntake.meals.length;
+              allWeeklyMeals.addAll(dayIntake.meals);
             }
           }
-        } catch (e) {
+
+          weeklyMeals.assignAll(allWeeklyMeals);
+          weeklyStats.value = {
+            'totalCalories': weeklyCaloriesTotal,
+            'totalProteins': weeklyProteinsTotal,
+            'totalCarbs': weeklyCarbsTotal,
+            'totalFats': weeklyFatsTotal,
+            'totalMeals': weeklyMealsCount,
+            'averageCalories': weeklyMealsCount > 0
+                ? weeklyCaloriesTotal / 7
+                : 0,
+            'startDate': _formatDateForFirebase(startOfWeek),
+            'endDate': _formatDateForFirebase(endOfWeek),
+            'daysWithData': daysWithData.length,
+          };
+        },
+        onFailure: (failure) {
           if (kDebugMode) {
-            print('⚠️ Error loading day $dayKey: $e');
+            print('Error loading weekly data: ${failure.message}');
           }
-        }
-      }
-
-      // Update weekly data
-      weeklyMeals.value = allWeeklyMeals;
-      weeklyStats.value = {
-        'totalCalories': weeklyCalories,
-        'totalProteins': weeklyProteins,
-        'totalCarbs': weeklyCarbs,
-        'totalFats': weeklyFats,
-        'totalMeals': weeklyMealsCount,
-        'averageCalories': weeklyMealsCount > 0 ? weeklyCalories / 7 : 0,
-        'startDate': _formatDateForFirebase(startOfWeek),
-        'endDate': _formatDateForFirebase(endOfWeek),
-        'daysWithData': allWeeklyMeals
-            .map((meal) => meal['date'])
-            .toSet()
-            .length,
-      };
-
-      if (kDebugMode) {
-        print(
-          'Weekly data loaded: $weeklyMealsCount meals, ${weeklyCalories.toInt()} calories',
-        );
-      }
+        },
+      );
     } catch (e) {
       if (kDebugMode) {
         print('Error loading weekly data: $e');
@@ -319,91 +319,66 @@ class NutritionController extends GetxController {
     }
   }
 
-  // Monthly data
   Future<void> _loadMonthlyData() async {
     try {
       final today = selectedDate.value;
       final startOfMonth = DateTime(today.year, today.month, 1);
       final endOfMonth = DateTime(today.year, today.month + 1, 0);
 
-      if (kDebugMode) {
-        print(
-          'Loading monthly data: ${_formatDateForFirebase(startOfMonth)} to ${_formatDateForFirebase(endOfMonth)}',
-        );
-      }
-
       final authController = Get.find<AuthController>();
       if (authController.user == null) return;
 
-      // Monthly totals
-      double monthlyCalories = 0;
-      double monthlyProteins = 0;
-      double monthlyCarbs = 0;
-      double monthlyFats = 0;
-      int monthlyMealsCount = 0;
-      List<Map<String, dynamic>> allMonthlyMeals = [];
-      Set<String> daysWithData = {};
-      for (int day = 1; day <= endOfMonth.day; day++) {
-        final currentDay = DateTime(today.year, today.month, day);
-        final dayKey = _formatDateForFirebase(currentDay);
+      final result = await _nutritionRepo.getMonthlyIntake(
+        authController.user!.uid,
+        today,
+      );
 
-        try {
-          final doc = await FirebaseFirestore.instance
-              .collection('nutrition_entries')
-              .doc('${authController.user!.uid}_$dayKey')
-              .get();
+      result.fold(
+        onSuccess: (dailyIntakes) {
+          double monthlyCaloriesTotal = 0;
+          double monthlyProteinsTotal = 0;
+          double monthlyCarbsTotal = 0;
+          double monthlyFatsTotal = 0;
+          int monthlyMealsCount = 0;
+          final List<MealEntry> allMonthlyMeals = [];
+          final Set<String> daysWithData = {};
 
-          if (doc.exists && doc.data() != null) {
-            final data = doc.data()!;
-            final dayMeals = List<Map<String, dynamic>>.from(
-              data['meals'] ?? [],
-            );
-
-            if (dayMeals.isNotEmpty) {
+          for (final intake in dailyIntakes) {
+            final dayKey = _formatDateForFirebase(intake.date);
+            if (intake.meals.isNotEmpty) {
               daysWithData.add(dayKey);
             }
-
-            for (var meal in dayMeals) {
-              monthlyCalories += (meal['calories'] ?? 0).toDouble();
-              monthlyProteins += (meal['proteins'] ?? 0).toDouble();
-              monthlyCarbs += (meal['carbs'] ?? 0).toDouble();
-              monthlyFats += (meal['fat'] ?? 0).toDouble();
-              monthlyMealsCount++;
-              meal['date'] = dayKey;
-              meal['week'] = _getWeekOfMonth(currentDay);
-              allMonthlyMeals.add(meal);
-            }
+            monthlyCaloriesTotal += intake.totalCalories;
+            monthlyProteinsTotal += intake.totalProteins;
+            monthlyCarbsTotal += intake.totalCarbs;
+            monthlyFatsTotal += intake.totalFats;
+            monthlyMealsCount += intake.meals.length;
+            allMonthlyMeals.addAll(intake.meals);
           }
-        } catch (e) {
+
+          monthlyMeals.assignAll(allMonthlyMeals);
+          monthlyStats.value = {
+            'totalCalories': monthlyCaloriesTotal,
+            'totalProteins': monthlyProteinsTotal,
+            'totalCarbs': monthlyCarbsTotal,
+            'totalFats': monthlyFatsTotal,
+            'totalMeals': monthlyMealsCount,
+            'averageCalories': daysWithData.isNotEmpty
+                ? monthlyCaloriesTotal / daysWithData.length
+                : 0,
+            'startDate': _formatDateForFirebase(startOfMonth),
+            'endDate': _formatDateForFirebase(endOfMonth),
+            'daysWithData': daysWithData.length,
+            'totalDays': endOfMonth.day,
+            'monthName': _getMonthName(today.month),
+          };
+        },
+        onFailure: (failure) {
           if (kDebugMode) {
-            print('Error loading day $dayKey: $e');
+            print('Error loading monthly data: ${failure.message}');
           }
-        }
-      }
-
-      // Monthly data
-      monthlyMeals.value = allMonthlyMeals;
-      monthlyStats.value = {
-        'totalCalories': monthlyCalories,
-        'totalProteins': monthlyProteins,
-        'totalCarbs': monthlyCarbs,
-        'totalFats': monthlyFats,
-        'totalMeals': monthlyMealsCount,
-        'averageCalories': daysWithData.isNotEmpty
-            ? monthlyCalories / daysWithData.length
-            : 0,
-        'startDate': _formatDateForFirebase(startOfMonth),
-        'endDate': _formatDateForFirebase(endOfMonth),
-        'daysWithData': daysWithData.length,
-        'totalDays': endOfMonth.day,
-        'monthName': _getMonthName(today.month),
-      };
-
-      if (kDebugMode) {
-        print(
-          'Monthly data loaded: $monthlyMealsCount meals, ${monthlyCalories.toInt()} calories',
-        );
-      }
+        },
+      );
     } catch (e) {
       if (kDebugMode) {
         print('Error loading monthly data: $e');
@@ -411,11 +386,8 @@ class NutritionController extends GetxController {
     }
   }
 
-  // Get current data
-  List<Map<String, dynamic>> get currentMeals {
+  List<MealEntry> get currentMeals {
     switch (viewMode.value) {
-      case 'daily':
-        return dailyMeals;
       case 'weekly':
         return weeklyMeals;
       case 'monthly':
@@ -425,11 +397,8 @@ class NutritionController extends GetxController {
     }
   }
 
-  // Get current stats\
   Map<String, dynamic> get currentStats {
     switch (viewMode.value) {
-      case 'daily':
-        return dailyStats;
       case 'weekly':
         return weeklyStats;
       case 'monthly':
@@ -439,255 +408,227 @@ class NutritionController extends GetxController {
     }
   }
 
-  void _bindToFirebaseStream() {
+  void _bindToDailyIntakeStream() {
     final authController = Get.find<AuthController>();
 
-    if (kDebugMode) {
-      print('User: ${authController.user?.email ?? 'None'}');
-    }
-
-    if (authController.user != null) {
-      if (kDebugMode) {
-        print('Firestore stream for date: ${selectedDate.value}');
-      }
-
-      todayMeals.bindStream(_getMealsStream());
-
-      ever(todayMeals, (_) {
-        if (kDebugMode) {
-          print('Meals updated: ${todayMeals.length} meals');
-        }
-        _calculateTotals();
-        if (viewMode.value == 'daily') {
-          _loadDailyData();
-        }
-      });
-    } else {
-      if (kDebugMode) {
-        print('No user - retrying in 2 seconds...');
-      }
+    if (authController.user == null) {
       todayMeals.clear();
       _calculateTotals();
-
-      Future.delayed(Duration(seconds: 2), () {
-        if (kDebugMode) {
-          print('Retrying stream binding...');
-        }
-        _bindToFirebaseStream();
+      Future.delayed(const Duration(seconds: 2), () {
+        _bindToDailyIntakeStream();
       });
-    }
-  }
-
-  Stream<List<Map<String, dynamic>>> _getMealsStream() {
-    final authController = Get.find<AuthController>();
-    if (authController.user == null) {
-      if (kDebugMode) {
-        print(' No user for stream');
-      }
-      return Stream.value([]);
+      return;
     }
 
-    final dateKey = _formatDateForFirebase(selectedDate.value);
-    final docId = '${authController.user!.uid}_$dateKey';
-
-    if (kDebugMode) {
-      print('Listening to Firebase stream for: $docId');
-    }
-
-    return FirebaseFirestore.instance
-        .collection('nutrition_entries')
-        .doc(docId)
-        .snapshots()
-        .map((doc) {
-          if (kDebugMode) {
-            print('Stream data received: ${doc.exists}');
-          }
-
-          if (!doc.exists) {
-            if (kDebugMode) {
-              print('No document found for $docId');
+    _dailyIntakeSubscription?.cancel();
+    _dailyIntakeSubscription = _nutritionRepo
+        .watchDailyIntake(authController.user!.uid, selectedDate.value)
+        .listen(
+          (intake) {
+            todayMeals.assignAll(intake.meals);
+            waterIntake.value = intake.waterIntake;
+            stepsCount.value = intake.stepsCount;
+            if (intake.weight > 0) {
+              currentWeight.value = intake.weight;
             }
-            return <Map<String, dynamic>>[];
-          }
-
-          final data = doc.data() as Map<String, dynamic>;
-          final meals = (data['meals'] as List<dynamic>?) ?? [];
-
-          if (kDebugMode) {
-            print('Loaded ${meals.length} meals from Firebase');
-          }
-          if (data['waterIntake'] != null) {
-            waterIntake.value = (data['waterIntake']).toDouble();
-          }
-          if (data['stepsCount'] != null) {
-            stepsCount.value = data['stepsCount'];
-          }
-          if (data['weight'] != null) {
-            currentWeight.value = (data['weight']).toDouble();
-          }
-
-          return meals.cast<Map<String, dynamic>>();
-        });
+          },
+          onError: (e) {
+            if (kDebugMode) {
+              print('Stream error: $e');
+            }
+          },
+        );
   }
 
-  // Core Functions
   void _calculateTotals() {
     totalCalories.value = 0;
     totalProteins.value = 0;
     totalCarbs.value = 0;
     totalFats.value = 0;
 
-    for (var meal in todayMeals) {
+    for (final meal in todayMeals) {
       if (_shouldIncludeMeal(meal)) {
-        totalCalories.value += (meal['calories'] ?? 0).toDouble();
-        totalProteins.value += (meal['proteins'] ?? 0).toDouble();
-        totalCarbs.value += (meal['carbs'] ?? 0).toDouble();
-        totalFats.value += (meal['fat'] ?? 0).toDouble();
+        totalCalories.value += meal.calories;
+        totalProteins.value += meal.proteins;
+        totalCarbs.value += meal.carbs;
+        totalFats.value += meal.fat;
       }
-    }
-
-    if (kDebugMode) {
-      print('Calculated totals - Calories: ${totalCalories.value}');
     }
   }
 
-  bool _shouldIncludeMeal(Map<String, dynamic> meal) {
+  bool _shouldIncludeMeal(MealEntry meal) {
     if (selectedMealType.value == 'all') return true;
-    return meal['type'] == selectedMealType.value;
+    return meal.type.name == selectedMealType.value;
+  }
+
+  MealEntry _mapToMealEntry(Map<String, dynamic> meal) {
+    return MealEntry(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      name: meal['name']?.toString() ?? '',
+      type: MealTypeX.fromString(meal['type']?.toString() ?? 'snack'),
+      calories: (meal['calories'] ?? 0).toDouble(),
+      proteins: (meal['proteins'] ?? 0).toDouble(),
+      carbs: (meal['carbs'] ?? 0).toDouble(),
+      fat: (meal['fat'] ?? 0).toDouble(),
+      fiber: (meal['fiber'] ?? 0).toDouble(),
+      sugar: (meal['sugar'] ?? 0).toDouble(),
+      sodium: (meal['sodium'] ?? 0).toDouble(),
+      notes: meal['notes']?.toString(),
+      imageUrl: meal['imageUrl']?.toString(),
+      isFavorite: meal['favorite'] == true || meal['isFavorite'] == true,
+    );
   }
 
   Future<void> addMeal(Map<String, dynamic> meal) async {
-    if (kDebugMode) {
-      print('Adding meal: ${meal['name']}');
-    }
+    final mealEntry = _mapToMealEntry(meal);
 
-    meal['id'] = DateTime.now().millisecondsSinceEpoch.toString();
-
-    todayMeals.add(meal);
+    todayMeals.add(mealEntry);
     _calculateTotals();
     _checkNutritionLimits();
 
-    // Save to Firebase
-    final success = await _saveToFirebase();
+    final authController = Get.find<AuthController>();
+    if (authController.user == null) return;
 
-    if (success) {
-      if (kDebugMode) {
-        print('Meal successfully added and saved');
-      }
+    final result = await _nutritionRepo.addMeal(
+      authController.user!.uid,
+      selectedDate.value,
+      mealEntry,
+    );
 
-      // Refresh current
-      await _loadDataForViewMode(viewMode.value);
-    } else {
-      if (kDebugMode) {
-        print('Failed to save meal');
-      }
-      if (todayMeals.isNotEmpty) {
-        todayMeals.removeLast();
+    result.fold(
+      onSuccess: (_) async {
+        await _loadDataForViewMode(viewMode.value);
+      },
+      onFailure: (_) {
+        todayMeals.remove(mealEntry);
         _calculateTotals();
-      }
-    }
+      },
+    );
   }
 
   Future<void> deleteMeal(int index) async {
-    if (index >= 0 && index < todayMeals.length) {
-      final mealName = todayMeals[index]['name'];
-      if (kDebugMode) {
-        print('Deleting meal: $mealName');
-      }
-      final deletedMeal = todayMeals[index];
-      todayMeals.removeAt(index);
-      _calculateTotals();
+    if (index < 0 || index >= todayMeals.length) return;
 
-      final success = await _saveToFirebase();
+    final deletedMeal = todayMeals[index];
+    todayMeals.removeAt(index);
+    _calculateTotals();
 
-      if (success) {
-        if (kDebugMode) {
-          print('Meal deleted and synced to NutriCheck');
-        }
+    final authController = Get.find<AuthController>();
+    if (authController.user == null) return;
+
+    final result = await _nutritionRepo.deleteMeal(
+      authController.user!.uid,
+      selectedDate.value,
+      deletedMeal.id,
+    );
+
+    result.fold(
+      onSuccess: (_) async {
         await _loadDataForViewMode(viewMode.value);
-      } else {
+      },
+      onFailure: (_) {
         todayMeals.insert(index, deletedMeal);
         _calculateTotals();
-      }
-    }
+      },
+    );
   }
 
   Future<void> deleteMealById(String id) async {
-    final index = todayMeals.indexWhere((meal) => meal['id'] == id);
+    final index = todayMeals.indexWhere((meal) => meal.id == id);
     if (index != -1) {
       await deleteMeal(index);
     }
   }
 
   Future<void> editMeal(int index, Map<String, dynamic> updatedMeal) async {
-    if (index >= 0 && index < todayMeals.length) {
-      final originalMeal = todayMeals[index];
+    if (index < 0 || index >= todayMeals.length) return;
 
-      updatedMeal['id'] = todayMeals[index]['id'];
-      todayMeals[index] = updatedMeal;
-      _calculateTotals();
+    final originalMeal = todayMeals[index];
+    final updatedEntry = MealEntry(
+      id: originalMeal.id,
+      name: updatedMeal['name']?.toString() ?? originalMeal.name,
+      type: updatedMeal['type'] != null
+          ? MealTypeX.fromString(updatedMeal['type'])
+          : originalMeal.type,
+      calories: (updatedMeal['calories'] ?? originalMeal.calories).toDouble(),
+      proteins: (updatedMeal['proteins'] ?? originalMeal.proteins).toDouble(),
+      carbs: (updatedMeal['carbs'] ?? originalMeal.carbs).toDouble(),
+      fat: (updatedMeal['fat'] ?? originalMeal.fat).toDouble(),
+      fiber: (updatedMeal['fiber'] ?? originalMeal.fiber).toDouble(),
+      sugar: (updatedMeal['sugar'] ?? originalMeal.sugar).toDouble(),
+      sodium: (updatedMeal['sodium'] ?? originalMeal.sodium).toDouble(),
+      notes: updatedMeal['notes']?.toString() ?? originalMeal.notes,
+      imageUrl: updatedMeal['imageUrl']?.toString() ?? originalMeal.imageUrl,
+      isFavorite: updatedMeal['favorite'] == true,
+    );
 
-      final success = await _saveToFirebase();
+    todayMeals[index] = updatedEntry;
+    _calculateTotals();
 
-      if (success) {
+    final authController = Get.find<AuthController>();
+    if (authController.user == null) return;
+
+    final result = await _nutritionRepo.updateMeal(
+      authController.user!.uid,
+      selectedDate.value,
+      index,
+      updatedEntry,
+    );
+
+    result.fold(
+      onSuccess: (_) async {
         await _loadDataForViewMode(viewMode.value);
-      } else {
+      },
+      onFailure: (_) {
         todayMeals[index] = originalMeal;
         _calculateTotals();
-      }
-    }
+      },
+    );
   }
 
   Future<void> duplicateMeal(int index) async {
-    if (index >= 0 && index < todayMeals.length) {
-      final meal = Map<String, dynamic>.from(todayMeals[index]);
-      meal['id'] = DateTime.now().millisecondsSinceEpoch.toString();
-      meal['name'] = '${meal['name']} (Copy)';
-
-      await addMeal(meal);
-    }
+    if (index < 0 || index >= todayMeals.length) return;
+    final original = todayMeals[index];
+    await addMeal({
+      'name': '${original.name} (Copy)',
+      'calories': original.calories,
+      'proteins': original.proteins,
+      'carbs': original.carbs,
+      'fat': original.fat,
+      'fiber': original.fiber,
+      'sugar': original.sugar,
+      'sodium': original.sodium,
+      'type': original.type.name,
+      'notes': original.notes ?? '',
+      'imageUrl': original.imageUrl ?? '',
+      'favorite': original.isFavorite,
+    });
   }
 
   void _loadFavoriteMeals() {
     try {
-      if (kDebugMode) {
-        print('Loading favorite meals...');
-      }
-
-      List<dynamic>? savedFavoritesRaw = box.read('favorite_meals_v1');
+      final savedFavoritesRaw = storage.read<List<dynamic>>(
+        'favorite_meals_v1',
+      );
       if (savedFavoritesRaw != null) {
-        List<String> savedFavoritesJson = List<String>.from(savedFavoritesRaw);
-        List<Map<String, dynamic>> favorites = [];
-
-        for (String mealJson in savedFavoritesJson) {
+        final favorites = <Map<String, dynamic>>[];
+        for (final item in savedFavoritesRaw) {
           try {
-            Map<String, dynamic> meal = Map<String, dynamic>.from(
-              jsonDecode(mealJson),
+            favorites.add(
+              Map<String, dynamic>.from(jsonDecode(item.toString())),
             );
-            favorites.add(meal);
-          } catch (e) {
-            if (kDebugMode) {
-              print('Error parsing favorite meal: $e');
-            }
-          }
+          } catch (_) {}
         }
-
         favoriteMeals.assignAll(favorites);
-        if (kDebugMode) {
-          print('Loaded ${favorites.length} favorite meals');
-        }
       }
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error loading favorite meals: $e');
-      }
+    } catch (_) {
       favoriteMeals.clear();
     }
   }
 
   void _saveFavoriteMeals() {
     try {
-      List<String> favoritesJson = favoriteMeals.map((meal) {
+      final favoritesJson = favoriteMeals.map((meal) {
         return jsonEncode({
           'name': meal['name'] ?? '',
           'calories': meal['calories'] ?? 0,
@@ -698,32 +639,17 @@ class NutritionController extends GetxController {
           'sugar': meal['sugar'] ?? 0.0,
           'sodium': meal['sodium'] ?? 0.0,
           'type': meal['type'] ?? 'meal',
-          'time': meal['time'] ?? '',
-          'quantity': meal['quantity'] ?? 100.0,
-          'barcode': meal['barcode'] ?? '',
-          'brands': meal['brands'] ?? '',
           'imageUrl': meal['imageUrl'] ?? '',
           'notes': meal['notes'] ?? '',
-          'addedAt': meal['addedAt'] ?? DateTime.now().toIso8601String(),
         });
       }).toList();
-
-      box.write('favorite_meals_v1', favoritesJson);
-      if (kDebugMode) {
-        print('Saved ${favoriteMeals.length} favorite meals');
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error saving favorite meals: $e');
-      }
-    }
+      storage.write('favorite_meals_v1', favoritesJson);
+    } catch (_) {}
   }
 
-  // Favorites Management
   void toggleFavorite(Map<String, dynamic> meal) {
-    bool isFavorite = favoriteMeals.any((fav) => fav['name'] == meal['name']);
-
-    if (isFavorite) {
+    final isFav = favoriteMeals.any((fav) => fav['name'] == meal['name']);
+    if (isFav) {
       removeFromFavorites(meal);
     } else {
       addToFavorites(meal);
@@ -734,28 +660,26 @@ class NutritionController extends GetxController {
     return favoriteMeals.any((fav) => fav['name'] == meal['name']);
   }
 
-  // Clear all favorites
   void clearAllFavorites() {
     Get.dialog(
       AlertDialog(
-        title: Text('Clear All Favorites'),
-        content: Text(
+        title: const Text('Clear All Favorites'),
+        content: const Text(
           'Are you sure you want to remove all favorite meals? This action cannot be undone.',
         ),
         actions: [
-          TextButton(onPressed: () => Get.back(), child: Text('Cancel')),
+          TextButton(onPressed: () => Get.back(), child: const Text('Cancel')),
           ElevatedButton(
             onPressed: () {
               Get.back();
-
               favoriteMeals.clear();
-              CustomThemeFlushbar(
+              CustomThemeFlushbar.show(
                 title: 'Favorites Cleared',
                 message: 'All favorite meals have been removed',
               );
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: Text('Clear All'),
+            child: const Text('Clear All'),
           ),
         ],
       ),
@@ -764,162 +688,90 @@ class NutritionController extends GetxController {
 
   void addToFavorites(Map<String, dynamic> meal) {
     try {
-      bool alreadyFavorite = favoriteMeals.any(
+      final alreadyFavorite = favoriteMeals.any(
         (fav) => fav['name'] == meal['name'],
       );
-
       if (!alreadyFavorite) {
-        Map<String, dynamic> favoriteMeal = Map<String, dynamic>.from(meal);
+        final favoriteMeal = Map<String, dynamic>.from(meal);
         favoriteMeal['addedAt'] = DateTime.now().toIso8601String();
         favoriteMeal['favorite'] = true;
-
         favoriteMeals.insert(0, favoriteMeal);
-
         if (favoriteMeals.length > 50) {
           favoriteMeals.removeLast();
         }
-        CustomThemeFlushbar(
+        CustomThemeFlushbar.show(
           title: 'Added to Favorites',
           message: '${meal['name']} has been added to your favorites',
         );
-      } else {
-        if (kDebugMode) {
-          print('Already in favorites: ${meal['name']}');
-        }
       }
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error adding to favorites: $e');
-      }
-    }
+    } catch (_) {}
   }
 
   void removeFromFavorites(Map<String, dynamic> meal) {
     try {
       favoriteMeals.removeWhere((fav) => fav['name'] == meal['name']);
-      if (kDebugMode) {
-        print('Removed from favorites: ${meal['name']}');
+      final ctx = Get.context;
+      if (ctx != null) {
+        Flushbar(
+          title: 'Removed from Favorites',
+          message: '${meal['name']} has been removed from your favorites',
+          duration: const Duration(seconds: 2),
+          backgroundColor: Colors.grey[800]!,
+          margin: const EdgeInsets.all(8),
+          borderRadius: BorderRadius.circular(8),
+          flushbarPosition: FlushbarPosition.BOTTOM,
+        ).show(ctx);
       }
-
-      Flushbar(
-        title: 'Removed from Favorites',
-        message: '${meal['name']} has been removed from your favorites',
-        duration: Duration(seconds: 2),
-        backgroundColor: Colors.grey[800]!,
-        margin: EdgeInsets.all(8),
-        borderRadius: BorderRadius.circular(8),
-        flushbarPosition: FlushbarPosition.BOTTOM,
-      )..show(Get.context!);
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error removing from favorites: $e');
-      }
-    }
-  }
-
-  void _loadFavorites() {
-    favoriteMeals.addAll([
-      {
-        'id': 'fav1',
-        'name': 'Protein Shake',
-        'calories': 200,
-        'proteins': 25.0,
-        'carbs': 5.0,
-        'fat': 3.0,
-        'type': 'snack',
-      },
-      {
-        'id': 'fav2',
-        'name': 'Chicken Breast (100g)',
-        'calories': 165,
-        'proteins': 31.0,
-        'carbs': 0.0,
-        'fat': 3.6,
-        'type': 'lunch',
-      },
-    ]);
-  }
-
-  void _loadTemplates() {
-    mealTemplates.addAll([
-      {
-        'name': 'Quick Breakfast',
-        'meals': [
-          {
-            'name': 'Banana',
-            'calories': 105,
-            'proteins': 1.3,
-            'carbs': 27.0,
-            'fat': 0.4,
-          },
-          {
-            'name': 'Greek Yogurt',
-            'calories': 100,
-            'proteins': 17.0,
-            'carbs': 9.0,
-            'fat': 0.4,
-          },
-        ],
-      },
-      {
-        'name': 'Post-Workout',
-        'meals': [
-          {
-            'name': 'Protein Shake',
-            'calories': 200,
-            'proteins': 25.0,
-            'carbs': 5.0,
-            'fat': 3.0,
-          },
-          {
-            'name': 'Apple',
-            'calories': 95,
-            'proteins': 0.5,
-            'carbs': 25.0,
-            'fat': 0.3,
-          },
-        ],
-      },
-    ]);
+    } catch (_) {}
   }
 
   Future<void> addWater() async {
-    if (waterIntake.value < 20) {
-      waterIntake.value += 1;
-      await _saveToFirebase();
+    if (waterIntake.value >= 20) return;
+    waterIntake.value += 1;
+    final authController = Get.find<AuthController>();
+    if (authController.user == null) return;
+    final result = await _nutritionRepo.updateWaterIntake(
+      authController.user!.uid,
+      selectedDate.value,
+      waterIntake.value,
+    );
+    if (result.isFailure) {
+      waterIntake.value -= 1;
     }
   }
 
   Future<void> removeWater() async {
-    if (waterIntake.value > 0) {
-      waterIntake.value -= 1;
-      await _saveToFirebase();
+    if (waterIntake.value <= 0) return;
+    waterIntake.value -= 1;
+    final authController = Get.find<AuthController>();
+    if (authController.user == null) return;
+    final result = await _nutritionRepo.updateWaterIntake(
+      authController.user!.uid,
+      selectedDate.value,
+      waterIntake.value,
+    );
+    if (result.isFailure) {
+      waterIntake.value += 1;
     }
   }
 
-  // Weight Tracking
   void syncWeightChange(double newWeight) {
-    final oldWeight = userWeight.value;
     userWeight.value = newWeight;
-
-    // Update nutrition
     _updateNutritionGoals(newWeight);
-
-    if (kDebugMode) {
-      print(
-        'NutritionController: Weight synced from $oldWeight to $newWeight kg',
-      );
-    }
   }
 
   void _updateNutritionGoals(double weight) {
-    bmr.value = 88.362 + (13.397 * weight) + (4.799 * 175) - (5.677 * 25);
-    dailyCalorieGoal.value = (bmr.value * 1.5).round();
-    if (kDebugMode) {
-      print(
-        'Updated BMR: ${bmr.value.toInt()}, Daily Goal: ${dailyCalorieGoal.value}',
+    final authController = Get.find<AuthController>();
+    UserProfile userProfile;
+    if (authController.userModel != null) {
+      userProfile = authController.userModel!.toDomain().copyWith(
+        currentWeight: weight,
       );
+    } else {
+      userProfile = UserProfile(id: '', email: '', currentWeight: weight);
     }
+    bmr.value = _bmrCalculator.execute(userProfile);
+    dailyCalorieGoal.value = (bmr.value * 1.5).round();
   }
 
   Map<String, double> get personalizedTargets {
@@ -940,37 +792,39 @@ class NutritionController extends GetxController {
       'date': DateTime.now().toIso8601String(),
       'weight': weight,
     });
-    await _saveToFirebase();
+    final authController = Get.find<AuthController>();
+    if (authController.user == null) return;
+    await _nutritionRepo.updateWeight(
+      authController.user!.uid,
+      selectedDate.value,
+      weight,
+    );
   }
 
-  // Data Management
   Future<void> clearAllMeals() async {
     todayMeals.clear();
     _calculateTotals();
-    await _saveToFirebase();
-
-    // Refresh
+    await _saveDailyIntake();
     await _loadDataForViewMode(viewMode.value);
   }
 
   void exportData() {
-    CustomThemeFlushbar(
+    CustomThemeFlushbar.show(
       title: 'Export',
       message: 'Data exported successfully!',
     );
   }
 
   void importData() {
-    CustomThemeFlushbar(
+    CustomThemeFlushbar.show(
       title: 'Import',
       message: 'Data imported successfully!',
     );
   }
 
-  // Nutrition Analysis
   void _checkNutritionLimits() {
     if (totalCalories.value > calorieGoal.value * 1.2) {
-      CustomThemeFlushbar(
+      CustomThemeFlushbar.show(
         title: 'Calorie Alert',
         message:
             'You\'ve exceeded your daily calorie goal by ${(totalCalories.value - calorieGoal.value).toInt()} kcal',
@@ -979,20 +833,12 @@ class NutritionController extends GetxController {
   }
 
   Future<void> setSelectedDate(DateTime date) async {
-    if (kDebugMode) {
-      print('Date changed to: ${date.day}/${date.month}/${date.year}');
-    }
     selectedDate.value = date;
-
-    _bindToFirebaseStream();
-
+    _bindToDailyIntakeStream();
     await _loadDataForViewMode(viewMode.value);
   }
 
   void filterByMealType(String type) {
-    if (kDebugMode) {
-      print('Filtering by meal type: $type');
-    }
     selectedMealType.value = type;
     _calculateTotals();
   }
@@ -1001,25 +847,22 @@ class NutritionController extends GetxController {
     searchQuery.value = query;
   }
 
-  List<Map<String, dynamic>> get filteredMealsList {
+  List<MealEntry> get filteredMealsList {
     var filtered = currentMeals
         .where((meal) => _shouldIncludeMeal(meal))
         .toList();
-
     if (searchQuery.value.isNotEmpty) {
       filtered = filtered
           .where(
-            (meal) => meal['name'].toString().toLowerCase().contains(
+            (meal) => meal.name.toLowerCase().contains(
               searchQuery.value.toLowerCase(),
             ),
           )
           .toList();
     }
-
     return filtered;
   }
 
-  // Goals Management
   Future<void> updateGoals({
     double? calories,
     double? proteins,
@@ -1035,10 +878,38 @@ class NutritionController extends GetxController {
     if (water != null) waterGoal.value = water;
     if (steps != null) stepsGoal.value = steps;
 
-    await _updateUserGoalsInFirebase();
+    final authController = Get.find<AuthController>();
+    if (authController.user == null) return;
+
+    final result = await _preferencesRepo.updateGoals(
+      authController.user!.uid,
+      calorieGoal: calorieGoal.value,
+      proteinGoal: proteinGoal.value,
+      carbGoal: carbGoal.value,
+      fatGoal: fatGoal.value,
+      waterGoal: waterGoal.value,
+      stepsGoal: stepsGoal.value,
+    );
+
+    result.fold(
+      onSuccess: (_) {},
+      onFailure: (failure) {
+        if (kDebugMode) {
+          print('Error updating goals: ${failure.message}');
+        }
+      },
+    );
+
+    await authController.updateNutritionGoals(
+      calorieGoal: calorieGoal.value,
+      proteinGoal: proteinGoal.value,
+      carbGoal: carbGoal.value,
+      fatGoal: fatGoal.value,
+      waterGoal: waterGoal.value,
+      stepsGoal: stepsGoal.value,
+    );
   }
 
-  // Quick Actions
   Future<void> addQuickMeal(
     String mealName,
     Map<String, dynamic> nutrition,
@@ -1052,130 +923,45 @@ class NutritionController extends GetxController {
       'fiber': nutrition['fiber'] ?? 0,
       'sugar': nutrition['sugar'] ?? 0,
       'sodium': nutrition['sodium'] ?? 0,
-      'type': 'meal',
-      'time':
-          '${DateTime.now().hour.toString().padLeft(2, '0')}:${DateTime.now().minute.toString().padLeft(2, '0')}',
-      'image': null,
+      'type': 'snack',
       'notes': '',
       'favorite': false,
     });
   }
 
-  // Load data from Firebase
   Future<void> loadDataFromFirebase() async {
     final authController = Get.find<AuthController>();
-
-    if (authController.user == null) {
-      if (kDebugMode) {
-        print('No user logged in');
-      }
-      return;
-    }
+    if (authController.user == null) return;
 
     try {
       isLoading.value = true;
-      if (kDebugMode) {
-        print('Loading nutrition data from Firebase...');
-      }
-      if (authController.userModel != null) {
-        final userModel = authController.userModel!;
-        calorieGoal.value = userModel.calorieGoal;
-        proteinGoal.value = userModel.proteinGoal;
-        carbGoal.value = userModel.carbGoal;
-        fatGoal.value = userModel.fatGoal;
-        waterGoal.value = userModel.waterGoal;
-        stepsGoal.value = userModel.stepsGoal;
-
-        if (userModel.currentWeight != null) {
-          currentWeight.value = userModel.currentWeight!;
-        }
-      }
-
-      if (kDebugMode) {
-        print(
-          'Firebase data load completed. Total calories: ${totalCalories.value}',
-        );
-      }
+      await _loadPreferences();
     } catch (e) {
       if (kDebugMode) {
-        print('Error loading nutrition data from Firebase: $e');
+        print('Error loading nutrition data: $e');
       }
     } finally {
       isLoading.value = false;
     }
   }
 
-  Future<bool> _saveToFirebase() async {
+  Future<bool> _saveDailyIntake() async {
     final authController = Get.find<AuthController>();
+    if (authController.user == null) return false;
 
-    if (authController.user == null) {
-      if (kDebugMode) {
-        print('SAVE FAILED: No user logged in');
-      }
-      return false;
-    }
+    final dateKey = _formatDateForFirebase(selectedDate.value);
+    final intake = DailyIntake(
+      id: '${authController.user!.uid}_$dateKey',
+      userId: authController.user!.uid,
+      date: selectedDate.value,
+      meals: todayMeals.toList(),
+      waterIntake: waterIntake.value,
+      stepsCount: stepsCount.value,
+      weight: currentWeight.value,
+    );
 
-    try {
-      final dateKey = _formatDateForFirebase(selectedDate.value);
-      final docId = '${authController.user!.uid}_$dateKey';
-
-      if (kDebugMode) {
-        print('User ID: ${authController.user!.uid}');
-        print('Date Key: $dateKey');
-        print('Document ID: $docId');
-        print('Meals Count: ${todayMeals.length}');
-      }
-
-      final docData = {
-        'id': docId,
-        'userId': authController.user!.uid,
-        'date': selectedDate.value.toIso8601String(),
-        'meals': todayMeals
-            .map((meal) => Map<String, dynamic>.from(meal))
-            .toList(),
-        'waterIntake': waterIntake.value,
-        'stepsCount': stepsCount.value,
-        'weight': currentWeight.value > 0 ? currentWeight.value : null,
-        'createdAt': DateTime.now().toIso8601String(),
-        'updatedAt': DateTime.now().toIso8601String(),
-      };
-
-      // Attempt the Firebase write
-      await FirebaseFirestore.instance
-          .collection('nutrition_entries')
-          .doc(docId)
-          .set(docData);
-
-      if (kDebugMode) {
-        print('Firebase save successful');
-      }
-      return true;
-    } catch (e) {
-      if (kDebugMode) {
-        print('Firebase save error: $e');
-        print('Error Type: ${e.runtimeType}');
-      }
-      return false;
-    }
-  }
-
-  // Update user goals in Firebase
-  Future<void> _updateUserGoalsInFirebase() async {
-    try {
-      final authController = Get.find<AuthController>();
-      await authController.updateNutritionGoals(
-        calorieGoal: calorieGoal.value,
-        proteinGoal: proteinGoal.value,
-        carbGoal: carbGoal.value,
-        fatGoal: fatGoal.value,
-        waterGoal: waterGoal.value,
-        stepsGoal: stepsGoal.value,
-      );
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error updating goals in Firebase: $e');
-      }
-    }
+    final result = await _nutritionRepo.saveDailyIntake(intake);
+    return result.isSuccess;
   }
 
   String _formatDateForFirebase(DateTime date) {
@@ -1183,49 +969,36 @@ class NutritionController extends GetxController {
   }
 
   Future<void> manualRefresh() async {
-    if (kDebugMode) {
-      print('Manual refresh triggered for ${viewMode.value} view');
-    }
-    await _refreshFirebaseData();
+    await _refreshData();
     await _loadDataForViewMode(viewMode.value);
   }
 
-  Future<void> _refreshFirebaseData() async {
+  Future<void> _refreshData() async {
     final authController = Get.find<AuthController>();
     if (authController.user == null) return;
 
     try {
       isLoading.value = true;
+      final result = await _nutritionRepo.getDailyIntake(
+        authController.user!.uid,
+        selectedDate.value,
+      );
 
-      final dateKey = _formatDateForFirebase(selectedDate.value);
-      final docId = '${authController.user!.uid}_$dateKey';
-
-      if (kDebugMode) {
-        print('Manual refresh for: $docId');
-      }
-
-      final doc = await FirebaseFirestore.instance
-          .collection('nutrition_entries')
-          .doc(docId)
-          .get();
-
-      if (doc.exists) {
-        final data = doc.data() as Map<String, dynamic>;
-        final meals = (data['meals'] as List<dynamic>?) ?? [];
-
-        todayMeals.assignAll(meals.cast<Map<String, dynamic>>());
-        _calculateTotals();
-
-        if (kDebugMode) {
-          print('Manual refresh successful: ${meals.length} meals loaded');
-        }
-      } else {
-        if (kDebugMode) {
-          print('No data found for today');
-        }
-        todayMeals.clear();
-        _calculateTotals();
-      }
+      result.fold(
+        onSuccess: (intake) {
+          todayMeals.assignAll(intake.meals);
+          waterIntake.value = intake.waterIntake;
+          stepsCount.value = intake.stepsCount;
+          if (intake.weight > 0) {
+            currentWeight.value = intake.weight;
+          }
+          _calculateTotals();
+        },
+        onFailure: (_) {
+          todayMeals.clear();
+          _calculateTotals();
+        },
+      );
     } catch (e) {
       if (kDebugMode) {
         print('Manual refresh error: $e');
@@ -1235,64 +1008,46 @@ class NutritionController extends GetxController {
     }
   }
 
-  // User Data
   Future<void> updateUserWeight(double newWeight) async {
     final oldWeight = userWeight.value;
     userWeight.value = newWeight;
 
-    if (kDebugMode) {
-      print(
-        'Nutrition controller: Weight updated from $oldWeight to $newWeight',
+    final authController = Get.find<AuthController>();
+    if (authController.user != null) {
+      await _nutritionRepo.updateWeight(
+        authController.user!.uid,
+        selectedDate.value,
+        newWeight,
       );
     }
 
-    // Save to preferences
-    try {
-      final authController = Get.find<AuthController>();
-      if (authController.user != null) {
-        await FirebaseFirestore.instance
-            .collection('user_preferences')
-            .doc(authController.user!.uid)
-            .set({
-              'currentWeight': newWeight,
-              'updatedAt': DateTime.now().toIso8601String(),
-            }, SetOptions(merge: true));
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error saving weight to preferences: $e');
-      }
-    }
     _onWeightChanged(oldWeight, newWeight);
   }
 
   void _onWeightChanged(double oldWeight, double newWeight) {
     _updateRecommendedCalories(newWeight);
-
-    CustomThemeFlushbar(
+    CustomThemeFlushbar.show(
       title: 'Weight Updated',
       message: 'Nutrition recommendations updated for ${newWeight.toInt()}kg',
     );
   }
 
   void _updateRecommendedCalories(double weight) {
-    final bmr = 88.362 + (13.397 * weight) + (4.799 * 175) - (5.677 * 25);
-    final recommendedCalories = (bmr * 1.5).round();
-
-    if (kDebugMode) {
-      print(
-        'Updated recommended calories: $recommendedCalories kcal for ${weight}kg',
+    final authController = Get.find<AuthController>();
+    UserProfile userProfile;
+    if (authController.userModel != null) {
+      userProfile = authController.userModel!.toDomain().copyWith(
+        currentWeight: weight,
       );
+    } else {
+      userProfile = UserProfile(id: '', email: '', currentWeight: weight);
     }
+    _bmrCalculator.calculateTDEE(userProfile);
   }
 
-  // Sync meal data with profile changes
   void syncWithProfile(UserProfile profile) {
     userWeight.value = profile.currentWeight;
     _updateRecommendedCalories(profile.currentWeight);
-    if (kDebugMode) {
-      print('Nutrition data synced with profile updates');
-    }
   }
 
   double getAdjustedServingSize(double baseServing, double targetWeight) {
@@ -1302,7 +1057,6 @@ class NutritionController extends GetxController {
 
   Map<String, double> getPersonalizedNutritionGoals() {
     final weight = userWeight.value;
-
     return {
       'protein': weight * 0.8,
       'carbs': weight * 3.0,
@@ -1312,7 +1066,6 @@ class NutritionController extends GetxController {
     };
   }
 
-  // Refresh data
   Future<void> refreshData() async {
     await loadDataFromFirebase();
     await _loadDataForViewMode(viewMode.value);
@@ -1321,19 +1074,6 @@ class NutritionController extends GetxController {
   DateTime _getStartOfWeek(DateTime date) {
     final daysFromMonday = date.weekday - 1;
     return date.subtract(Duration(days: daysFromMonday));
-  }
-
-  String _getDayName(DateTime date) {
-    const days = [
-      'Monday',
-      'Tuesday',
-      'Wednesday',
-      'Thursday',
-      'Friday',
-      'Saturday',
-      'Sunday',
-    ];
-    return days[date.weekday - 1];
   }
 
   String _getMonthName(int month) {
@@ -1352,11 +1092,5 @@ class NutritionController extends GetxController {
       'December',
     ];
     return months[month - 1];
-  }
-
-  int _getWeekOfMonth(DateTime date) {
-    final firstDayOfMonth = DateTime(date.year, date.month, 1);
-    final daysDifference = date.difference(firstDayOfMonth).inDays;
-    return (daysDifference / 7).floor() + 1;
   }
 }

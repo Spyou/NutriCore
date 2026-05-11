@@ -1,10 +1,10 @@
 import 'dart:io';
 
 import 'package:another_flushbar/flushbar.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:get/get.dart';
-import 'package:get_storage/get_storage.dart';
 import 'package:nutri_check/core/utils/components/custom_flushbar.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:timezone/data/latest_all.dart' as tz_data;
@@ -15,8 +15,6 @@ class NotificationService extends GetxService {
 
   final FlutterLocalNotificationsPlugin _notifications =
       FlutterLocalNotificationsPlugin();
-  final _storage = GetStorage();
-
   @override
   Future<void> onInit() async {
     super.onInit();
@@ -32,13 +30,17 @@ class NotificationService extends GetxService {
 
     await _initializeNotifications();
 
-    print('✅ Working Notification Service initialized');
+    if (kDebugMode) {
+      print('Working Notification Service initialized');
+    }
   }
 
   Future<void> _requestPermissions() async {
     if (Platform.isAndroid) {
       await Permission.notification.request();
-      print('Basic notification permission requested');
+      if (kDebugMode) {
+        print('Basic notification permission requested');
+      }
     }
   }
 
@@ -48,7 +50,9 @@ class NotificationService extends GetxService {
         final status = await Permission.scheduleExactAlarm.status;
 
         if (status.isGranted) {
-          print('Exact alarm permission already granted');
+          if (kDebugMode) {
+            print('Exact alarm permission already granted');
+          }
           return true;
         } else if (status.isDenied) {
           final shouldRequest = await _showPermissionExplanation();
@@ -58,18 +62,24 @@ class NotificationService extends GetxService {
             final result = await Permission.scheduleExactAlarm.request();
 
             if (result.isGranted) {
-              print('Exact alarm permission granted');
+              if (kDebugMode) {
+                print('Exact alarm permission granted');
+              }
               _showPermissionGranted();
               return true;
             } else {
-              print('Exact alarm permission denied');
+              if (kDebugMode) {
+                print('Exact alarm permission denied');
+              }
               _showPermissionDenied();
               return false;
             }
           }
         }
       } catch (e) {
-        print('Error requesting exact alarm permission: $e');
+        if (kDebugMode) {
+          print('Error requesting exact alarm permission: $e');
+        }
       }
     }
 
@@ -79,7 +89,7 @@ class NotificationService extends GetxService {
   Future<bool> _showPermissionExplanation() async {
     return await Get.dialog<bool>(
           AlertDialog(
-            title: Row(
+            title: const Row(
               children: [
                 Icon(Icons.alarm, color: Colors.green),
                 SizedBox(width: 8),
@@ -90,23 +100,23 @@ class NotificationService extends GetxService {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                const Text(
                   'NutriCheck needs permission to send meal reminders at exact times.',
                   style: TextStyle(fontSize: 16),
                 ),
-                SizedBox(height: 12),
-                Text(
+                const SizedBox(height: 12),
+                const Text(
                   'This ensures you get:',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
-                Text('• Breakfast reminder at exactly 8:00 AM'),
-                Text('• Lunch reminder at exactly 1:00 PM'),
-                Text('• Dinner reminder at exactly 7:30 PM'),
-                SizedBox(height: 12),
+                const Text('• Breakfast reminder at exactly 8:00 AM'),
+                const Text('• Lunch reminder at exactly 1:00 PM'),
+                const Text('• Dinner reminder at exactly 7:30 PM'),
+                const SizedBox(height: 12),
                 Container(
-                  padding: EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.blue.withOpacity(0.1),
+                    color: Colors.blue.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -119,12 +129,12 @@ class NotificationService extends GetxService {
             actions: [
               TextButton(
                 onPressed: () => Get.back(result: false),
-                child: Text('Not Now'),
+                child: const Text('Not Now'),
               ),
               ElevatedButton(
                 onPressed: () => Get.back(result: true),
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-                child: Text(
+                child: const Text(
                   'Allow Exact Timing',
                   style: TextStyle(color: Colors.white),
                 ),
@@ -141,7 +151,7 @@ class NotificationService extends GetxService {
       'Your meal reminders will now work at exact times!',
       backgroundColor: Colors.green,
       colorText: Colors.white,
-      duration: Duration(seconds: 3),
+      duration: const Duration(seconds: 3),
     );
   }
 
@@ -173,11 +183,15 @@ class NotificationService extends GetxService {
       onDidReceiveNotificationResponse: _handleNotificationTap,
     );
 
-    print('Notifications initialized');
+    if (kDebugMode) {
+      print('Notifications initialized');
+    }
   }
 
   void _handleNotificationTap(NotificationResponse response) {
-    print('Notification tapped: ${response.payload}');
+    if (kDebugMode) {
+      print('Notification tapped: ${response.payload}');
+    }
     Get.toNamed('/nutrition');
   }
 
@@ -189,7 +203,9 @@ class NotificationService extends GetxService {
     bool enableLunch = true,
     bool enableDinner = true,
   }) async {
-    print('Scheduling meal reminders...');
+    if (kDebugMode) {
+      print('Scheduling meal reminders...');
+    }
     final hasExactPermission = await _requestExactAlarmPermission();
 
     // Cancel existing reminders
@@ -197,9 +213,9 @@ class NotificationService extends GetxService {
     await _notifications.cancel(2); // Lunch
     await _notifications.cancel(3); // Dinner
 
-    final breakfast = breakfastTime ?? TimeOfDay(hour: 8, minute: 0);
-    final lunch = lunchTime ?? TimeOfDay(hour: 13, minute: 0);
-    final dinner = dinnerTime ?? TimeOfDay(hour: 19, minute: 30);
+    final breakfast = breakfastTime ?? const TimeOfDay(hour: 8, minute: 0);
+    final lunch = lunchTime ?? const TimeOfDay(hour: 13, minute: 0);
+    final dinner = dinnerTime ?? const TimeOfDay(hour: 19, minute: 30);
 
     if (enableBreakfast) {
       await _scheduleDaily(
@@ -209,7 +225,9 @@ class NotificationService extends GetxService {
         time: breakfast,
         useExactTiming: hasExactPermission,
       );
-      print('Breakfast scheduled for ${breakfast.hour}:${breakfast.minute}');
+      if (kDebugMode) {
+        print('Breakfast scheduled for ${breakfast.hour}:${breakfast.minute}');
+      }
     }
 
     if (enableLunch) {
@@ -220,7 +238,9 @@ class NotificationService extends GetxService {
         time: lunch,
         useExactTiming: hasExactPermission,
       );
-      print('Lunch scheduled for ${lunch.hour}:${lunch.minute}');
+      if (kDebugMode) {
+        print('Lunch scheduled for ${lunch.hour}:${lunch.minute}');
+      }
     }
 
     if (enableDinner) {
@@ -231,7 +251,9 @@ class NotificationService extends GetxService {
         time: dinner,
         useExactTiming: hasExactPermission,
       );
-      print('Dinner scheduled for ${dinner.hour}:${dinner.minute}');
+      if (kDebugMode) {
+        print('Dinner scheduled for ${dinner.hour}:${dinner.minute}');
+      }
     }
   }
 
@@ -254,7 +276,7 @@ class NotificationService extends GetxService {
     );
 
     if (scheduledDate.isBefore(now)) {
-      scheduledDate = scheduledDate.add(Duration(days: 1));
+      scheduledDate = scheduledDate.add(const Duration(days: 1));
     }
 
     await _notifications.zonedSchedule(
@@ -274,7 +296,7 @@ class NotificationService extends GetxService {
           icon: '@mipmap/launcher_icon',
           styleInformation: BigTextStyleInformation(body),
         ),
-        iOS: DarwinNotificationDetails(
+        iOS: const DarwinNotificationDetails(
           presentAlert: true,
           presentBadge: true,
           presentSound: true,
@@ -289,7 +311,9 @@ class NotificationService extends GetxService {
   }
 
   Future<void> scheduleHydrationReminders({bool enabled = true}) async {
-    print('Scheduling hydration reminders...');
+    if (kDebugMode) {
+      print('Scheduling hydration reminders...');
+    }
 
     if (!enabled) {
       for (int i = 50; i < 58; i++) {
@@ -301,14 +325,14 @@ class NotificationService extends GetxService {
     final hasExactPermission = await _requestExactAlarmPermission();
 
     final waterTimes = [
-      TimeOfDay(hour: 8, minute: 0),
-      TimeOfDay(hour: 10, minute: 0),
-      TimeOfDay(hour: 12, minute: 0),
-      TimeOfDay(hour: 14, minute: 0),
-      TimeOfDay(hour: 16, minute: 0),
-      TimeOfDay(hour: 18, minute: 0),
-      TimeOfDay(hour: 20, minute: 0),
-      TimeOfDay(hour: 22, minute: 0),
+      const TimeOfDay(hour: 8, minute: 0),
+      const TimeOfDay(hour: 10, minute: 0),
+      const TimeOfDay(hour: 12, minute: 0),
+      const TimeOfDay(hour: 14, minute: 0),
+      const TimeOfDay(hour: 16, minute: 0),
+      const TimeOfDay(hour: 18, minute: 0),
+      const TimeOfDay(hour: 20, minute: 0),
+      const TimeOfDay(hour: 22, minute: 0),
     ];
 
     final waterMessages = [
@@ -333,11 +357,15 @@ class NotificationService extends GetxService {
       );
     }
 
-    print('Scheduled ${waterTimes.length} daily hydration reminders');
+    if (kDebugMode) {
+      print('Scheduled ${waterTimes.length} daily hydration reminders');
+    }
   }
 
   Future<void> scheduleProteinAlerts({bool enabled = true}) async {
-    print('Scheduling protein alerts...');
+    if (kDebugMode) {
+      print('Scheduling protein alerts...');
+    }
 
     await _notifications.cancel(60);
     await _notifications.cancel(61);
@@ -351,7 +379,7 @@ class NotificationService extends GetxService {
       title: '💪 Protein Check!',
       body:
           'How\'s your protein intake today? Make sure you\'re hitting your goals!',
-      time: TimeOfDay(hour: 15, minute: 0),
+      time: const TimeOfDay(hour: 15, minute: 0),
       useExactTiming: hasExactPermission,
       payload: 'protein',
     );
@@ -360,16 +388,20 @@ class NotificationService extends GetxService {
       id: 61,
       title: '💪 Evening Protein Review',
       body: 'Did you get enough protein today? Plan for tomorrow!',
-      time: TimeOfDay(hour: 20, minute: 30),
+      time: const TimeOfDay(hour: 20, minute: 30),
       useExactTiming: hasExactPermission,
       payload: 'protein',
     );
 
-    print('Scheduled 2 daily protein alerts');
+    if (kDebugMode) {
+      print('Scheduled 2 daily protein alerts');
+    }
   }
 
   Future<void> scheduleEveningReviews({bool enabled = true}) async {
-    print('Scheduling evening reviews...');
+    if (kDebugMode) {
+      print('Scheduling evening reviews...');
+    }
 
     await _notifications.cancel(70);
 
@@ -382,19 +414,23 @@ class NotificationService extends GetxService {
       title: 'Daily Nutrition Review',
       body:
           'How was your nutrition today? Check your progress and plan tomorrow!',
-      time: TimeOfDay(hour: 21, minute: 0),
+      time: const TimeOfDay(hour: 21, minute: 0),
       useExactTiming: hasExactPermission,
       payload: 'evening_review',
     );
 
-    print('Scheduled daily evening review');
+    if (kDebugMode) {
+      print('Scheduled daily evening review');
+    }
   }
 
   Future<void> checkPending() async {
     final pending = await _notifications.pendingNotificationRequests();
-    print('Pending notifications: ${pending.length}');
-    for (var notification in pending) {
-      print('  ID: ${notification.id}, Title: ${notification.title}');
+    if (kDebugMode) {
+      print('Pending notifications: ${pending.length}');
+      for (var notification in pending) {
+        print('  ID: ${notification.id}, Title: ${notification.title}');
+      }
     }
 
     Flushbar(
@@ -409,7 +445,7 @@ class NotificationService extends GetxService {
       margin: const EdgeInsets.all(16),
       boxShadows: [
         BoxShadow(
-          color: Colors.black.withOpacity(0.3),
+          color: Colors.black.withValues(alpha: 0.3),
           offset: const Offset(0, 2),
           blurRadius: 6,
         ),

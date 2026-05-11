@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 class AppColors {
-  // Dynamic colors
   static Color get primary => Get.theme.colorScheme.primary;
   static Color get onPrimary => Get.theme.colorScheme.onPrimary;
   static Color get primaryContainer => Get.theme.colorScheme.primaryContainer;
@@ -43,13 +42,11 @@ class AppColors {
   static Color get onInverseSurface => Get.theme.colorScheme.onInverseSurface;
   static Color get inversePrimary => Get.theme.colorScheme.inversePrimary;
 
-  // Legacy colors
   static Color get textPrimary => onSurface;
-  static Color get textSecondary => onSurface.withOpacity(0.7);
-  static Color get textTertiary => onSurface.withOpacity(0.5);
+  static Color get textSecondary => onSurface.withValues(alpha: 0.7);
+  static Color get textTertiary => onSurface.withValues(alpha: 0.5);
   static Color get textOnPrimary => onPrimary;
 
-  // Semantic colors
   static Color get success =>
       Get.isDarkMode ? Colors.green.shade400 : Colors.green.shade600;
   static Color get warning =>
@@ -57,7 +54,6 @@ class AppColors {
   static Color get info =>
       Get.isDarkMode ? Colors.blue.shade400 : Colors.blue.shade600;
 
-  // Nutrition-specific colors
   static Color get calories =>
       Get.isDarkMode ? Colors.red.shade400 : Colors.red.shade600;
   static Color get proteins =>
@@ -74,13 +70,15 @@ class AppColors {
   static Color get salt =>
       Get.isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600;
 
-  static Color get nutriA => const Color(0xFF008000); // Green
-  static Color get nutriB => const Color(0xFF85BB2F); // Light Green
-  static Color get nutriC => const Color(0xFFFFFF00); // Yellow
-  static Color get nutriD => const Color(0xFFFF8000); // Orange
-  static Color get nutriE => const Color(0xFFFF0000); // Red
+  static Color get nutriA => const Color(0xFF008000);
+  static Color get nutriB => const Color(0xFF85BB2F);
+  static Color get nutriC => const Color(0xFFFFFF00);
+  static Color get nutriD => const Color(0xFFFF8000);
+  static Color get nutriE => const Color(0xFFFF0000);
 
-  // Gradient
-  static List<Color> get primaryGradient => [primary, primary.withOpacity(0.8)];
+  static List<Color> get primaryGradient => [
+    primary,
+    primary.withValues(alpha: 0.8),
+  ];
   static List<Color> get backgroundGradient => [background, surfaceVariant];
 }

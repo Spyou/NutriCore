@@ -1,269 +1,238 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 
-import '../../../core/constants/app_colors.dart';
-import '../../../core/constants/app_text_styles.dart';
+import '../../../core/utils/components/custom_flushbar.dart';
 import '../../controllers/auth_controller.dart';
+import '../../widgets/auth/animated_auth_background.dart';
+import '../../widgets/auth/animated_auth_field.dart';
+import '../../widgets/auth/auth_enter.dart';
+import '../../widgets/auth/auth_footer.dart';
+import '../../widgets/auth/auth_google_button.dart';
+import '../../widgets/auth/auth_or_divider.dart';
+import '../../widgets/auth/auth_wordmark.dart';
+import '../../widgets/auth/morphing_primary_button.dart';
+import '../../widgets/auth/password_strength_indicator.dart';
 
-class SignUpPage extends StatelessWidget {
-  final _formKey = GlobalKey<FormState>();
+class SignUpPage extends StatefulWidget {
+  const SignUpPage({super.key});
+
+  @override
+  State<SignUpPage> createState() => _SignUpPageState();
+}
+
+class _SignUpPageState extends State<SignUpPage> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _confirmPasswordController = TextEditingController();
-  final AuthController authController = Get.find();
+  final _confirmController = TextEditingController();
 
-  SignUpPage({super.key});
+  final _nameFieldKey = GlobalKey<AnimatedAuthFieldState>();
+  final _emailFieldKey = GlobalKey<AnimatedAuthFieldState>();
+  final _passwordFieldKey = GlobalKey<AnimatedAuthFieldState>();
+  final _confirmFieldKey = GlobalKey<AnimatedAuthFieldState>();
+
+  final AuthController _authController = Get.find();
+
+  String _password = '';
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmController.dispose();
+    super.dispose();
+  }
+
+  String? _validateName(String? v) {
+    if (v == null || v.trim().isEmpty) return 'Please enter your name';
+    return null;
+  }
+
+  String? _validateEmail(String? v) {
+    if (v == null || v.trim().isEmpty) return 'Please enter your email';
+    if (!GetUtils.isEmail(v.trim())) return 'Enter a valid email';
+    return null;
+  }
+
+  String? _validatePassword(String? v) {
+    if (v == null || v.isEmpty) return 'Please enter a password';
+    if (v.length < 6) return 'Must be at least 6 characters';
+    return null;
+  }
+
+  String? _validateConfirm(String? v) {
+    if (v == null || v.isEmpty) return 'Please confirm your password';
+    if (v != _passwordController.text) return "Passwords don't match";
+    return null;
+  }
+
+  void _signUp() {
+    final name = _nameFieldKey.currentState?.validateAndShake() ?? false;
+    final email = _emailFieldKey.currentState?.validateAndShake() ?? false;
+    final pw = _passwordFieldKey.currentState?.validateAndShake() ?? false;
+    final confirm = _confirmFieldKey.currentState?.validateAndShake() ?? false;
+    if (!name || !email || !pw || !confirm) {
+      HapticFeedback.lightImpact();
+      return;
+    }
+    _authController.signUpWithEmailAndPassword(
+      _emailController.text.trim(),
+      _passwordController.text,
+      _nameController.text.trim(),
+    );
+  }
+
+  void _onGooglePressed() {
+    HapticFeedback.selectionClick();
+    CustomThemeFlushbar.show(
+      title: 'Coming soon',
+      message: 'Google sign-up will be available shortly.',
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Form(
-            key: _formKey,
+      body: AnimatedAuthBackground(
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(28, 20, 28, 24),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: AuthEnter(child: AuthWordmark()),
+                ),
+                const SizedBox(height: 48),
+                AuthEnter(
+                  delay: const Duration(milliseconds: 80),
+                  child: Text(
+                    'Create\naccount.',
+                    style: TextStyle(
+                      fontSize: 44,
+                      fontWeight: FontWeight.w800,
+                      height: 1.0,
+                      letterSpacing: -1.6,
+                      color: scheme.onSurface,
+                      fontFamily: 'Inter',
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                AuthEnter(
+                  delay: const Duration(milliseconds: 140),
+                  child: Text(
+                    'Takes less than a minute to get started.',
+                    style: TextStyle(
+                      fontSize: 15,
+                      height: 1.45,
+                      color: scheme.onSurface.withValues(alpha: 0.6),
+                      fontFamily: 'Inter',
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 36),
+                AuthEnter(
+                  delay: const Duration(milliseconds: 200),
+                  child: AnimatedAuthField(
+                    key: _nameFieldKey,
+                    controller: _nameController,
+                    hint: 'Full name',
+                    leadingIcon: Icons.person_outline_rounded,
+                    autofillHint: AutofillHints.name,
+                    validator: _validateName,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                AuthEnter(
+                  delay: const Duration(milliseconds: 240),
+                  child: AnimatedAuthField(
+                    key: _emailFieldKey,
+                    controller: _emailController,
+                    hint: 'Email address',
+                    leadingIcon: Icons.mail_outline_rounded,
+                    keyboardType: TextInputType.emailAddress,
+                    autofillHint: AutofillHints.email,
+                    validator: _validateEmail,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                AuthEnter(
+                  delay: const Duration(milliseconds: 280),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      AnimatedAuthField(
+                        key: _passwordFieldKey,
+                        controller: _passwordController,
+                        hint: 'Password',
+                        leadingIcon: Icons.lock_outline_rounded,
+                        obscure: true,
+                        showEyeToggle: true,
+                        autofillHint: AutofillHints.newPassword,
+                        validator: _validatePassword,
+                        onChanged: (v) => setState(() => _password = v),
+                      ),
+                      PasswordStrengthIndicator(password: _password),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+                AuthEnter(
+                  delay: const Duration(milliseconds: 320),
+                  child: AnimatedAuthField(
+                    key: _confirmFieldKey,
+                    controller: _confirmController,
+                    hint: 'Confirm password',
+                    leadingIcon: Icons.verified_outlined,
+                    obscure: true,
+                    showEyeToggle: true,
+                    validator: _validateConfirm,
+                  ),
+                ),
+                const SizedBox(height: 28),
+                AuthEnter(
+                  delay: const Duration(milliseconds: 360),
+                  child: Obx(
+                    () => MorphingPrimaryButton(
+                      label: 'Create account',
+                      isLoading: _authController.isLoading.value,
+                      onPressed: _signUp,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 28),
+                const AuthEnter(
+                  delay: Duration(milliseconds: 400),
+                  child: AuthOrDivider(),
+                ),
+                const SizedBox(height: 16),
+                AuthEnter(
+                  delay: const Duration(milliseconds: 440),
+                  child: AuthGoogleButton(
+                    label: 'Continue with Google',
+                    onPressed: _onGooglePressed,
+                  ),
+                ),
                 const SizedBox(height: 40),
-                _buildHeader(context),
-                const SizedBox(height: 40),
-                _buildNameField(),
-                const SizedBox(height: 20),
-                _buildEmailField(),
-                const SizedBox(height: 20),
-                _buildPasswordField(),
-                const SizedBox(height: 20),
-                _buildConfirmPasswordField(),
-                const SizedBox(height: 30),
-                _buildSignUpButton(),
-                const SizedBox(height: 20),
-                _buildDivider(),
-                const SizedBox(height: 20),
-                _buildLoginLink(context),
+                AuthEnter(
+                  delay: const Duration(milliseconds: 480),
+                  child: AuthFooter(
+                    prompt: 'Already have an account?',
+                    cta: 'Sign in',
+                    onCtaTap: () => Get.back(),
+                  ),
+                ),
               ],
             ),
           ),
         ),
       ),
     );
-  }
-
-  Widget _buildHeader(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        IconButton(
-          onPressed: () => Get.back(),
-          icon: Icon(Icons.arrow_back, color: AppColors.textPrimary),
-          padding: EdgeInsets.zero,
-          alignment: Alignment.centerLeft,
-        ),
-        const SizedBox(height: 20),
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: AppColors.primaryGradient,
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Icon(
-            Icons.person_add,
-            color: AppColors.textOnPrimary,
-            size: 32,
-          ),
-        ),
-        const SizedBox(height: 24),
-        Text(
-          'Create Account',
-          style: AppTextStyles.displayLarge(
-            context,
-          ).copyWith(color: AppColors.textPrimary),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Join us to start your nutrition journey',
-          style: AppTextStyles.bodyLarge(
-            context,
-          ).copyWith(color: AppColors.textSecondary),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildNameField() {
-    return TextFormField(
-      controller: _nameController,
-      decoration: InputDecoration(
-        labelText: 'Full Name',
-        prefixIcon: const Icon(Icons.person_outlined),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-      validator: (value) {
-        if (value?.isEmpty ?? true) {
-          return 'Please enter your full name';
-        }
-        return null;
-      },
-    );
-  }
-
-  Widget _buildEmailField() {
-    return TextFormField(
-      controller: _emailController,
-      keyboardType: TextInputType.emailAddress,
-      decoration: InputDecoration(
-        labelText: 'Email',
-        prefixIcon: const Icon(Icons.email_outlined),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-      validator: (value) {
-        if (value?.isEmpty ?? true) {
-          return 'Please enter your email';
-        }
-        if (!GetUtils.isEmail(value!)) {
-          return 'Please enter a valid email';
-        }
-        return null;
-      },
-    );
-  }
-
-  Widget _buildPasswordField() {
-    return TextFormField(
-      controller: _passwordController,
-      obscureText: true,
-      decoration: InputDecoration(
-        labelText: 'Password',
-        prefixIcon: const Icon(Icons.lock_outlined),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-      validator: (value) {
-        if (value?.isEmpty ?? true) {
-          return 'Please enter a password';
-        }
-        if (value!.length < 6) {
-          return 'Password must be at least 6 characters';
-        }
-        return null;
-      },
-    );
-  }
-
-  Widget _buildConfirmPasswordField() {
-    return TextFormField(
-      controller: _confirmPasswordController,
-      obscureText: true,
-      decoration: InputDecoration(
-        labelText: 'Confirm Password',
-        prefixIcon: const Icon(Icons.lock_outlined),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-      validator: (value) {
-        if (value?.isEmpty ?? true) {
-          return 'Please confirm your password';
-        }
-        if (value != _passwordController.text) {
-          return 'Passwords do not match';
-        }
-        return null;
-      },
-    );
-  }
-
-  Widget _buildSignUpButton() {
-    return Builder(
-      builder: (context) => Obx(
-        () => SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-            onPressed: authController.isLoading.value ? null : _signUp,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: authController.isLoading.value
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 2,
-                    ),
-                  )
-                : Text(
-                    'Create Account',
-                    style: AppTextStyles.bodyLarge(context).copyWith(
-                      color: AppColors.textOnPrimary,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDivider() {
-    return Builder(
-      builder: (context) => Row(
-        children: [
-          const Expanded(child: Divider()),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Text(
-              'OR',
-              style: AppTextStyles.bodyMedium(
-                context,
-              ).copyWith(color: AppColors.textTertiary),
-            ),
-          ),
-          const Expanded(child: Divider()),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLoginLink(BuildContext context) {
-    return Center(
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            'Already have an account? ',
-            style: AppTextStyles.bodyMedium(
-              context,
-            ).copyWith(color: AppColors.textSecondary),
-          ),
-          TextButton(
-            onPressed: () => Get.back(),
-            child: Text(
-              'Sign In',
-              style: AppTextStyles.bodyMedium(
-                context,
-              ).copyWith(color: AppColors.primary, fontWeight: FontWeight.w600),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _signUp() {
-    if (_formKey.currentState!.validate()) {
-      authController.signUpWithEmailAndPassword(
-        _emailController.text.trim(),
-        _passwordController.text,
-        _nameController.text.trim(),
-      );
-    }
   }
 }

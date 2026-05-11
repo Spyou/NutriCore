@@ -1,4 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../domain/entities/user_profile.dart';
+import '../../core/config/app_config.dart';
 
 class UserModel {
   final String uid;
@@ -8,7 +10,6 @@ class UserModel {
   final DateTime createdAt;
   final DateTime updatedAt;
 
-  // Nutrition Goals
   final double calorieGoal;
   final double proteinGoal;
   final double carbGoal;
@@ -16,12 +17,11 @@ class UserModel {
   final double waterGoal;
   final int stepsGoal;
 
-  // Personal Info
   final double? currentWeight;
   final double? targetWeight;
   final double? height;
   final int? age;
-  final String? gender;
+  final Gender gender;
   final String? activityLevel;
 
   UserModel({
@@ -31,17 +31,17 @@ class UserModel {
     this.photoURL,
     required this.createdAt,
     required this.updatedAt,
-    this.calorieGoal = 2000,
-    this.proteinGoal = 150,
-    this.carbGoal = 250,
-    this.fatGoal = 65,
-    this.waterGoal = 8,
-    this.stepsGoal = 10000,
+    this.calorieGoal = AppConfig.defaultCalorieGoal,
+    this.proteinGoal = AppConfig.defaultProteinGoal,
+    this.carbGoal = AppConfig.defaultCarbGoal,
+    this.fatGoal = AppConfig.defaultFatGoal,
+    this.waterGoal = AppConfig.defaultWaterGoal,
+    this.stepsGoal = AppConfig.defaultStepsGoal,
     this.currentWeight,
     this.targetWeight,
     this.height,
     this.age,
-    this.gender,
+    this.gender = Gender.male,
     this.activityLevel,
   });
 
@@ -63,7 +63,7 @@ class UserModel {
       'targetWeight': targetWeight,
       'height': height,
       'age': age,
-      'gender': gender,
+      'gender': gender.name,
       'activityLevel': activityLevel,
     };
   }
@@ -74,26 +74,33 @@ class UserModel {
       email: map['email'] ?? '',
       displayName: map['displayName'],
       photoURL: map['photoURL'],
-      createdAt: DateTime.parse(map['createdAt']),
-      updatedAt: DateTime.parse(map['updatedAt']),
-      calorieGoal: map['calorieGoal']?.toDouble() ?? 2000,
-      proteinGoal: map['proteinGoal']?.toDouble() ?? 150,
-      carbGoal: map['carbGoal']?.toDouble() ?? 250,
-      fatGoal: map['fatGoal']?.toDouble() ?? 65,
-      waterGoal: map['waterGoal']?.toDouble() ?? 8,
-      stepsGoal: map['stepsGoal'] ?? 10000,
+      createdAt: _parseDateTime(map['createdAt']),
+      updatedAt: _parseDateTime(map['updatedAt']),
+      calorieGoal:
+          map['calorieGoal']?.toDouble() ?? AppConfig.defaultCalorieGoal,
+      proteinGoal:
+          map['proteinGoal']?.toDouble() ?? AppConfig.defaultProteinGoal,
+      carbGoal: map['carbGoal']?.toDouble() ?? AppConfig.defaultCarbGoal,
+      fatGoal: map['fatGoal']?.toDouble() ?? AppConfig.defaultFatGoal,
+      waterGoal: map['waterGoal']?.toDouble() ?? AppConfig.defaultWaterGoal,
+      stepsGoal: _parseIntSafe(map['stepsGoal']) ?? AppConfig.defaultStepsGoal,
       currentWeight: map['currentWeight']?.toDouble(),
       targetWeight: map['targetWeight']?.toDouble(),
       height: map['height']?.toDouble(),
-      age: map['age'],
-      gender: map['gender'],
+      age: map['age'] is int
+          ? map['age']
+          : (map['age'] is double ? (map['age'] as double).toInt() : null),
+      gender: _parseGender(map['gender']),
       activityLevel: map['activityLevel'],
     );
   }
 
   factory UserModel.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
-    return UserModel.fromMap(data);
+    final data = doc.data();
+    if (data == null) {
+      throw StateError('Document data was null');
+    }
+    return UserModel.fromMap(data as Map<String, dynamic>);
   }
 
   UserModel copyWith({
@@ -109,7 +116,7 @@ class UserModel {
     double? targetWeight,
     double? height,
     int? age,
-    String? gender,
+    Gender? gender,
     String? activityLevel,
   }) {
     return UserModel(
@@ -133,4 +140,65 @@ class UserModel {
       activityLevel: activityLevel ?? this.activityLevel,
     );
   }
+
+  UserProfile toDomain() {
+    return UserProfile(
+      id: uid,
+      email: email,
+      displayName: displayName,
+      photoURL: photoURL,
+      currentWeight: currentWeight ?? AppConfig.defaultWeight,
+      targetWeight: targetWeight ?? AppConfig.defaultTargetWeight,
+      height: height ?? AppConfig.defaultHeight,
+      age: age ?? AppConfig.defaultAge,
+      gender: gender,
+      createdAt: createdAt,
+      updatedAt: updatedAt,
+    );
+  }
+
+  factory UserModel.fromDomain(UserProfile profile) {
+    return UserModel(
+      uid: profile.id,
+      email: profile.email,
+      displayName: profile.displayName,
+      photoURL: profile.photoURL,
+      currentWeight: profile.currentWeight,
+      targetWeight: profile.targetWeight,
+      height: profile.height,
+      age: profile.age,
+      gender: profile.gender,
+      createdAt: profile.createdAt,
+      updatedAt: profile.updatedAt,
+    );
+  }
+}
+
+DateTime _parseDateTime(dynamic value) {
+  if (value is DateTime) return value;
+  if (value is String) {
+    try {
+      return DateTime.parse(value);
+    } catch (_) {
+      return DateTime.now();
+    }
+  }
+  if (value is Timestamp) return value.toDate();
+  return DateTime.now();
+}
+
+int? _parseIntSafe(dynamic value) {
+  if (value is int) return value;
+  if (value is double) return value.toInt();
+  return null;
+}
+
+Gender _parseGender(dynamic value) {
+  if (value is String) {
+    return Gender.values.firstWhere(
+      (e) => e.name.toLowerCase() == value.toLowerCase(),
+      orElse: () => Gender.male,
+    );
+  }
+  return Gender.male;
 }

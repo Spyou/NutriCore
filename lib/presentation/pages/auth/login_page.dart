@@ -1,275 +1,300 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 
-import '../../../core/constants/app_colors.dart';
-import '../../../core/constants/app_text_styles.dart';
+import '../../../core/utils/components/custom_flushbar.dart';
 import '../../controllers/auth_controller.dart';
+import '../../widgets/auth/animated_auth_background.dart';
+import '../../widgets/auth/animated_auth_field.dart';
+import '../../widgets/auth/auth_enter.dart';
+import '../../widgets/auth/auth_footer.dart';
+import '../../widgets/auth/auth_google_button.dart';
+import '../../widgets/auth/auth_or_divider.dart';
+import '../../widgets/auth/auth_wordmark.dart';
+import '../../widgets/auth/morphing_primary_button.dart';
 import 'signup_page.dart';
 
-class LoginPage extends StatelessWidget {
-  final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-  final AuthController authController = Get.find();
-
-  LoginPage({super.key});
+class LoginPage extends StatefulWidget {
+  const LoginPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 60),
-                _buildHeader(context),
-                const SizedBox(height: 40),
-                _buildEmailField(),
-                const SizedBox(height: 20),
-                _buildPasswordField(),
-                const SizedBox(height: 12),
-                _buildForgotPassword(context),
-                const SizedBox(height: 30),
-                _buildLoginButton(), // ← Only this should use Obx
-                const SizedBox(height: 20),
-                _buildDivider(context),
-                const SizedBox(height: 20),
-                _buildSignUpLink(context),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
+  State<LoginPage> createState() => _LoginPageState();
+}
+
+class _LoginPageState extends State<LoginPage> {
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _emailFieldKey = GlobalKey<AnimatedAuthFieldState>();
+  final _passwordFieldKey = GlobalKey<AnimatedAuthFieldState>();
+  final AuthController _authController = Get.find();
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
   }
 
-  Widget _buildHeader(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: AppColors.primaryGradient,
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Icon(
-            Icons.local_fire_department,
-            color: AppColors.textOnPrimary,
-            size: 32,
-          ),
-        ),
-        const SizedBox(height: 24),
-        Text(
-          'Welcome Back!',
-          style: AppTextStyles.displayLarge(
-            context,
-          ).copyWith(color: AppColors.textPrimary),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Sign in to continue tracking your nutrition',
-          style: AppTextStyles.bodyLarge(
-            context,
-          ).copyWith(color: AppColors.textSecondary),
-        ),
-      ],
-    );
+  String? _validateEmail(String? v) {
+    if (v == null || v.trim().isEmpty) return 'Please enter your email';
+    if (!GetUtils.isEmail(v.trim())) return 'Enter a valid email';
+    return null;
   }
 
-  Widget _buildEmailField() {
-    return TextFormField(
-      controller: _emailController,
-      keyboardType: TextInputType.emailAddress,
-      decoration: InputDecoration(
-        labelText: 'Email',
-        prefixIcon: const Icon(Icons.email_outlined),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-      validator: (value) {
-        if (value?.isEmpty ?? true) {
-          return 'Please enter your email';
-        }
-        if (!GetUtils.isEmail(value!)) {
-          return 'Please enter a valid email';
-        }
-        return null;
-      },
-    );
-  }
-
-  Widget _buildPasswordField() {
-    return TextFormField(
-      controller: _passwordController,
-      obscureText: true,
-      decoration: InputDecoration(
-        labelText: 'Password',
-        prefixIcon: const Icon(Icons.lock_outlined),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-      validator: (value) {
-        if (value?.isEmpty ?? true) {
-          return 'Please enter your password';
-        }
-        if (value!.length < 6) {
-          return 'Password must be at least 6 characters';
-        }
-        return null;
-      },
-    );
-  }
-
-  Widget _buildForgotPassword(BuildContext context) {
-    return Align(
-      alignment: Alignment.centerRight,
-      child: TextButton(
-        onPressed: _showForgotPasswordDialog,
-        child: Text(
-          'Forgot Password?',
-          style: AppTextStyles.bodyMedium(
-            context,
-          ).copyWith(color: AppColors.primary),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLoginButton() {
-    return Builder(
-      builder: (context) => Obx(
-        () => SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-            onPressed: authController.isLoading.value ? null : _login,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: authController.isLoading.value
-                  ? Colors.grey
-                  : AppColors.primary,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: authController.isLoading.value
-                ? Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Text(
-                        'Signing In...',
-                        style: AppTextStyles.bodyLarge(context).copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  )
-                : Text(
-                    'Sign In',
-                    style: AppTextStyles.bodyLarge(context).copyWith(
-                      color: AppColors.textOnPrimary,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDivider(BuildContext context) {
-    return Row(
-      children: [
-        const Expanded(child: Divider()),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Text(
-            'OR',
-            style: AppTextStyles.bodyMedium(
-              context,
-            ).copyWith(color: AppColors.textTertiary),
-          ),
-        ),
-        const Expanded(child: Divider()),
-      ],
-    );
-  }
-
-  Widget _buildSignUpLink(BuildContext context) {
-    return Center(
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            'Don\'t have an account? ',
-            style: AppTextStyles.bodyMedium(context),
-          ),
-          TextButton(
-            onPressed: () => Get.to(() => SignUpPage()),
-            child: Text(
-              'Sign Up',
-              style: AppTextStyles.bodyMedium(
-                context,
-              ).copyWith(color: AppColors.primary, fontWeight: FontWeight.w600),
-            ),
-          ),
-        ],
-      ),
-    );
+  String? _validatePassword(String? v) {
+    if (v == null || v.isEmpty) return 'Please enter your password';
+    if (v.length < 6) return 'Must be at least 6 characters';
+    return null;
   }
 
   void _login() {
-    if (_formKey.currentState!.validate()) {
-      authController.signInWithEmailAndPassword(
-        _emailController.text.trim(),
-        _passwordController.text,
-      );
+    final emailOk = _emailFieldKey.currentState?.validateAndShake() ?? false;
+    final pwOk = _passwordFieldKey.currentState?.validateAndShake() ?? false;
+    if (!emailOk || !pwOk) {
+      HapticFeedback.lightImpact();
+      return;
     }
+    _authController.signInWithEmailAndPassword(
+      _emailController.text.trim(),
+      _passwordController.text,
+    );
+  }
+
+  void _onGooglePressed() {
+    HapticFeedback.selectionClick();
+    CustomThemeFlushbar.show(
+      title: 'Coming soon',
+      message: 'Google sign-in will be available shortly.',
+    );
   }
 
   void _showForgotPasswordDialog() {
     final emailController = TextEditingController();
+    final scheme = Theme.of(context).colorScheme;
 
     Get.dialog(
-      AlertDialog(
-        title: const Text('Reset Password'),
-        content: TextField(
-          controller: emailController,
-          keyboardType: TextInputType.emailAddress,
-          decoration: const InputDecoration(
-            labelText: 'Enter your email',
-            border: OutlineInputBorder(),
+      Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: scheme.surface,
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Reset password',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: scheme.onSurface,
+                  fontFamily: 'Inter',
+                  letterSpacing: -0.5,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                "Enter your email and we'll send you a reset link.",
+                style: TextStyle(
+                  fontSize: 14,
+                  color: scheme.onSurface.withValues(alpha: 0.7),
+                  fontFamily: 'Inter',
+                ),
+              ),
+              const SizedBox(height: 20),
+              AnimatedAuthField(
+                controller: emailController,
+                hint: 'Email address',
+                leadingIcon: Icons.mail_outline_rounded,
+                keyboardType: TextInputType.emailAddress,
+                autofillHint: AutofillHints.email,
+              ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Get.back(),
+                    child: Text(
+                      'Cancel',
+                      style: TextStyle(
+                        color: scheme.onSurface.withValues(alpha: 0.7),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: scheme.primary,
+                      foregroundColor: scheme.onPrimary,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onPressed: () {
+                      final email = emailController.text.trim();
+                      if (email.isEmpty) return;
+                      _authController.resetPassword(email);
+                      Get.back();
+                    },
+                    child: const Text('Send link'),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
-        actions: [
-          TextButton(onPressed: () => Get.back(), child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () {
-              if (emailController.text.trim().isNotEmpty) {
-                authController.resetPassword(emailController.text.trim());
-                Get.back();
-              }
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return Scaffold(
+      body: AnimatedAuthBackground(
+        child: SafeArea(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                child: ConstrainedBox(
+                  constraints:
+                      BoxConstraints(minHeight: constraints.maxHeight),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(28, 20, 28, 24),
+                    child: IntrinsicHeight(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          const Align(
+                            alignment: Alignment.centerLeft,
+                            child: AuthEnter(child: AuthWordmark()),
+                          ),
+                          const SizedBox(height: 64),
+                          AuthEnter(
+                            delay: const Duration(milliseconds: 80),
+                            child: Text(
+                              'Welcome\nback.',
+                              style: TextStyle(
+                                fontSize: 44,
+                                fontWeight: FontWeight.w800,
+                                height: 1.0,
+                                letterSpacing: -1.6,
+                                color: scheme.onSurface,
+                                fontFamily: 'Inter',
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          AuthEnter(
+                            delay: const Duration(milliseconds: 140),
+                            child: Text(
+                              'Sign in to continue tracking your nutrition.',
+                              style: TextStyle(
+                                fontSize: 15,
+                                height: 1.45,
+                                color: scheme.onSurface.withValues(alpha: 0.6),
+                                fontFamily: 'Inter',
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 40),
+                          AuthEnter(
+                            delay: const Duration(milliseconds: 200),
+                            child: AnimatedAuthField(
+                              key: _emailFieldKey,
+                              controller: _emailController,
+                              hint: 'Email address',
+                              leadingIcon: Icons.mail_outline_rounded,
+                              keyboardType: TextInputType.emailAddress,
+                              autofillHint: AutofillHints.email,
+                              validator: _validateEmail,
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          AuthEnter(
+                            delay: const Duration(milliseconds: 240),
+                            child: AnimatedAuthField(
+                              key: _passwordFieldKey,
+                              controller: _passwordController,
+                              hint: 'Password',
+                              leadingIcon: Icons.lock_outline_rounded,
+                              obscure: true,
+                              showEyeToggle: true,
+                              autofillHint: AutofillHints.password,
+                              validator: _validatePassword,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          AuthEnter(
+                            delay: const Duration(milliseconds: 280),
+                            child: Align(
+                              alignment: Alignment.centerRight,
+                              child: TextButton(
+                                onPressed: _showForgotPasswordDialog,
+                                style: TextButton.styleFrom(
+                                  minimumSize: const Size(0, 36),
+                                  padding:
+                                      const EdgeInsets.symmetric(horizontal: 4),
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                ),
+                                child: Text(
+                                  'Forgot password?',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: scheme.primary,
+                                    fontFamily: 'Inter',
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          AuthEnter(
+                            delay: const Duration(milliseconds: 320),
+                            child: Obx(
+                              () => MorphingPrimaryButton(
+                                label: 'Sign in',
+                                isLoading: _authController.isLoading.value,
+                                onPressed: _login,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 28),
+                          const AuthEnter(
+                            delay: Duration(milliseconds: 360),
+                            child: AuthOrDivider(),
+                          ),
+                          const SizedBox(height: 16),
+                          AuthEnter(
+                            delay: const Duration(milliseconds: 400),
+                            child: AuthGoogleButton(
+                              label: 'Continue with Google',
+                              onPressed: _onGooglePressed,
+                            ),
+                          ),
+                          const Spacer(),
+                          const SizedBox(height: 32),
+                          AuthEnter(
+                            delay: const Duration(milliseconds: 440),
+                            child: AuthFooter(
+                              prompt: "Don't have an account?",
+                              cta: 'Sign up',
+                              onCtaTap: () => Get.to(() => const SignUpPage()),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
             },
-            child: const Text('Send Reset Email'),
           ),
-        ],
+        ),
       ),
     );
   }

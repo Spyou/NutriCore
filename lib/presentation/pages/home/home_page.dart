@@ -1,9 +1,8 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:nutri_check/core/utils/components/custom_flushbar.dart';
+import 'package:nutri_check/domain/entities/meal_entry.dart';
 import 'package:nutri_check/presentation/controllers/main_controller.dart';
 import 'package:nutri_check/presentation/pages/home/ai_meal_analysis_page.dart';
 import 'package:percent_indicator/circular_percent_indicator.dart';
@@ -13,6 +12,7 @@ import '../../../core/constants/app_text_styles.dart';
 import '../../controllers/auth_controller.dart';
 import '../../controllers/home_controller.dart';
 import '../../controllers/nutrition_controller.dart';
+import '../../widgets/shared/meal_type_helpers.dart';
 
 class HomePage extends GetView<HomeController> {
   const HomePage({super.key});
@@ -32,7 +32,7 @@ class HomePage extends GetView<HomeController> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildPersonalizedHeader(context),
-                Divider(),
+                const Divider(),
                 const SizedBox(height: 20),
                 _buildDailyChallengeCard(context),
                 const SizedBox(height: 20),
@@ -61,37 +61,37 @@ class HomePage extends GetView<HomeController> {
 
   Widget _buildAIMealAnalysisCard() {
     return Container(
-      margin: EdgeInsets.symmetric(horizontal: 0, vertical: 10),
+      margin: const EdgeInsets.symmetric(horizontal: 0, vertical: 10),
       child: GestureDetector(
-        onTap: () => Get.to(() => AIMealAnalysisPage()),
+        onTap: () => Get.to(() => const AIMealAnalysisPage()),
         child: Container(
-          padding: EdgeInsets.all(20),
+          padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [AppColors.primary, AppColors.primary.withOpacity(0.8)],
+              colors: [AppColors.primary, AppColors.primary.withValues(alpha: 0.8)],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: AppColors.primary.withOpacity(0.3),
+                color: AppColors.primary.withValues(alpha: 0.3),
                 blurRadius: 8,
-                offset: Offset(0, 4),
+                offset: const Offset(0, 4),
               ),
             ],
           ),
           child: Row(
             children: [
               Container(
-                padding: EdgeInsets.all(12),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
+                  color: Colors.white.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(Icons.psychology, color: Colors.white, size: 32),
+                child: const Icon(Icons.psychology, color: Colors.white, size: 32),
               ),
-              SizedBox(width: 16),
+              const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -103,17 +103,17 @@ class HomePage extends GetView<HomeController> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    SizedBox(height: 4),
+                    const SizedBox(height: 4),
                     Text(
                       'Snap a photo and get instant nutrition insights!',
                       style: AppTextStyles.bodySmall(
                         Get.context!,
-                      ).copyWith(color: Colors.white.withOpacity(0.9)),
+                      ).copyWith(color: Colors.white.withValues(alpha: 0.9)),
                     ),
                   ],
                 ),
               ),
-              Icon(Icons.arrow_forward_ios, color: Colors.white, size: 20),
+              const Icon(Icons.arrow_forward_ios, color: Colors.white, size: 20),
             ],
           ),
         ),
@@ -127,9 +127,9 @@ class HomePage extends GetView<HomeController> {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            AppColors.primary.withOpacity(0.8),
-            AppColors.secondary.withOpacity(0.6),
-            AppColors.tertiary.withOpacity(0.4),
+            AppColors.primary.withValues(alpha: 0.8),
+            AppColors.secondary.withValues(alpha: 0.6),
+            AppColors.tertiary.withValues(alpha: 0.4),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -137,7 +137,7 @@ class HomePage extends GetView<HomeController> {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withOpacity(0.3),
+            color: AppColors.primary.withValues(alpha: 0.3),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -155,7 +155,7 @@ class HomePage extends GetView<HomeController> {
                 height: 150,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.white.withOpacity(0.1),
+                  color: Colors.white.withValues(alpha: 0.1),
                 ),
               ),
             ),
@@ -167,7 +167,7 @@ class HomePage extends GetView<HomeController> {
                 height: 100,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.white.withOpacity(0.05),
+                  color: Colors.white.withValues(alpha: 0.05),
                 ),
               ),
             ),
@@ -191,7 +191,7 @@ class HomePage extends GetView<HomeController> {
                                 Container(
                                   padding: const EdgeInsets.all(6),
                                   decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.2),
+                                    color: Colors.white.withValues(alpha: 0.2),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Icon(
@@ -205,7 +205,7 @@ class HomePage extends GetView<HomeController> {
                                   'Good ${_getGreeting()}!',
                                   style: AppTextStyles.bodyLarge(context)
                                       .copyWith(
-                                        color: Colors.white.withOpacity(0.9),
+                                        color: Colors.white.withValues(alpha: 0.9),
                                         fontWeight: FontWeight.w500,
                                       ),
                                 ),
@@ -236,14 +236,14 @@ class HomePage extends GetView<HomeController> {
                               width: 60,
                               height: 60,
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.2),
+                                color: Colors.white.withValues(alpha: 0.2),
                                 borderRadius: BorderRadius.circular(20),
                                 border: Border.all(
-                                  color: Colors.white.withOpacity(0.3),
+                                  color: Colors.white.withValues(alpha: 0.3),
                                   width: 2,
                                 ),
                               ),
-                              child: Icon(
+                              child: const Icon(
                                 Icons.person,
                                 color: Colors.white,
                                 size: 28,
@@ -278,15 +278,15 @@ class HomePage extends GetView<HomeController> {
                       Text(
                         'Track your nutrition journey today!',
                         style: AppTextStyles.bodyMedium(context).copyWith(
-                          color: Colors.white.withOpacity(0.9),
+                          color: Colors.white.withValues(alpha: 0.9),
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      Divider(color: Colors.white.withOpacity(0.3)),
+                      Divider(color: Colors.white.withValues(alpha: 0.3)),
                       Text(
                         getMotivationalQuote(),
                         style: AppTextStyles.bodyMedium(context).copyWith(
-                          color: Colors.white.withOpacity(0.9),
+                          color: Colors.white.withValues(alpha: 0.9),
                           fontStyle: FontStyle.italic,
                           height: 1.4,
                         ),
@@ -302,21 +302,20 @@ class HomePage extends GetView<HomeController> {
     );
   }
 
-  getMotivationalQuote() {
+  String getMotivationalQuote() {
     final quotes = [
-      "Eat well, live well.",
-      "Your body deserves the best.",
-      "Healthy eating, happy living.",
-      "Nourish to flourish.",
-      "Small changes, big results.",
-      "Fuel your body, fuel your life.",
-      "Healthy habits, healthy you.",
-      "Good food, good mood.",
-      "Eat clean, stay lean.",
-      "Wellness starts on your plate.",
+      'Eat well, live well.',
+      'Your body deserves the best.',
+      'Healthy eating, happy living.',
+      'Nourish to flourish.',
+      'Small changes, big results.',
+      'Fuel your body, fuel your life.',
+      'Healthy habits, healthy you.',
+      'Good food, good mood.',
+      'Eat clean, stay lean.',
+      'Wellness starts on your plate.',
     ];
-    final random = Random();
-    return quotes[random.nextInt(quotes.length)];
+    return quotes[DateTime.now().millisecond % quotes.length];
   }
 
   IconData _getGreetingIcon() {
@@ -336,7 +335,7 @@ class HomePage extends GetView<HomeController> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -405,7 +404,7 @@ class HomePage extends GetView<HomeController> {
         animation: true,
         animationDuration: 1200,
         progressColor: color,
-        backgroundColor: color.withOpacity(0.15),
+        backgroundColor: color.withValues(alpha: 0.15),
         circularStrokeCap: CircularStrokeCap.round,
         center: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -453,7 +452,7 @@ class HomePage extends GetView<HomeController> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -523,19 +522,19 @@ class HomePage extends GetView<HomeController> {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [color.withOpacity(0.1), color.withOpacity(0.05)],
+            colors: [color.withValues(alpha: 0.1), color.withValues(alpha: 0.05)],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withOpacity(0.2)),
+          border: Border.all(color: color.withValues(alpha: 0.2)),
         ),
         child: Column(
           children: [
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.15),
+                color: color.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(icon, color: color, size: 24),
@@ -551,7 +550,7 @@ class HomePage extends GetView<HomeController> {
               subtitle,
               style: AppTextStyles.labelSmall(
                 Get.context!,
-              ).copyWith(color: color.withOpacity(0.7)),
+              ).copyWith(color: color.withValues(alpha: 0.7)),
             ),
           ],
         ),
@@ -566,12 +565,12 @@ class HomePage extends GetView<HomeController> {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            AppColors.warning.withOpacity(0.1),
-            AppColors.warning.withOpacity(0.05),
+            AppColors.warning.withValues(alpha: 0.1),
+            AppColors.warning.withValues(alpha: 0.05),
           ],
         ),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.warning.withOpacity(0.2)),
+        border: Border.all(color: AppColors.warning.withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -581,7 +580,7 @@ class HomePage extends GetView<HomeController> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: AppColors.warning.withOpacity(0.2),
+                  color: AppColors.warning.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
@@ -622,7 +621,7 @@ class HomePage extends GetView<HomeController> {
               Expanded(
                 child: LinearProgressIndicator(
                   value: _getChallengeProgress(),
-                  backgroundColor: AppColors.warning.withOpacity(0.2),
+                  backgroundColor: AppColors.warning.withValues(alpha: 0.2),
                   valueColor: AlwaysStoppedAnimation<Color>(AppColors.warning),
                   borderRadius: BorderRadius.circular(4),
                 ),
@@ -653,7 +652,7 @@ class HomePage extends GetView<HomeController> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -710,14 +709,14 @@ class HomePage extends GetView<HomeController> {
                         decoration: BoxDecoration(
                           color: isFilled
                               ? AppColors.info
-                              : AppColors.info.withOpacity(0.2),
+                              : AppColors.info.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Icon(
                           Icons.water_drop,
                           color: isFilled
                               ? Colors.white
-                              : AppColors.info.withOpacity(0.5),
+                              : AppColors.info.withValues(alpha: 0.5),
                           size: 20,
                         ),
                       ),
@@ -733,8 +732,8 @@ class HomePage extends GetView<HomeController> {
               Expanded(
                 child: ElevatedButton.icon(
                   onPressed: () => _addWaterIntake(),
-                  icon: Icon(Icons.add, size: 18),
-                  label: Text('Add Glass'),
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('Add Glass'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.info,
                     foregroundColor: Colors.white,
@@ -749,7 +748,7 @@ class HomePage extends GetView<HomeController> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: AppColors.success.withOpacity(0.1),
+                  color: AppColors.success.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
@@ -777,7 +776,7 @@ class HomePage extends GetView<HomeController> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -797,7 +796,7 @@ class HomePage extends GetView<HomeController> {
               const Spacer(),
               TextButton(
                 onPressed: () => Get.find<MainController>().changeIndex(3),
-                child: Text('View All'),
+                child: const Text('View All'),
               ),
             ],
           ),
@@ -809,7 +808,7 @@ class HomePage extends GetView<HomeController> {
               return Container(
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: AppColors.textTertiary.withOpacity(0.05),
+                  color: AppColors.textTertiary.withValues(alpha: 0.05),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Center(
@@ -857,11 +856,9 @@ class HomePage extends GetView<HomeController> {
     );
   }
 
-  Widget _buildActivityItem(
-    Map<String, dynamic> meal,
-    bool isLast,
-    BuildContext context,
-  ) {
+  Widget _buildActivityItem(MealEntry meal, bool isLast, BuildContext context) {
+    final color = MealTypeHelpers.getColor(meal.type);
+    final icon = MealTypeHelpers.getIcon(meal.type);
     return Container(
       margin: EdgeInsets.only(bottom: isLast ? 0 : 12),
       child: Row(
@@ -870,14 +867,10 @@ class HomePage extends GetView<HomeController> {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: _getMealTypeColor(meal['type']).withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(20),
             ),
-            child: Icon(
-              _getMealIcon(meal['type']),
-              color: _getMealTypeColor(meal['type']),
-              size: 20,
-            ),
+            child: Icon(icon, color: color, size: 20),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -885,13 +878,13 @@ class HomePage extends GetView<HomeController> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  meal['name'] ?? 'Meal',
+                  meal.name,
                   style: AppTextStyles.bodyMedium(
                     context,
                   ).copyWith(fontWeight: FontWeight.w600),
                 ),
                 Text(
-                  '${meal['calories']} kcal • ${meal['time'] ?? 'Unknown time'}',
+                  '${meal.calories.toInt()} kcal • ${meal.timestamp.hour.toString().padLeft(2, '0')}:${meal.timestamp.minute.toString().padLeft(2, '0')}',
                   style: AppTextStyles.labelMedium(
                     context,
                   ).copyWith(color: AppColors.textSecondary),
@@ -902,15 +895,14 @@ class HomePage extends GetView<HomeController> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: _getMealTypeColor(meal['type']).withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
-              meal['type']?.toString().capitalize ?? 'Meal',
-              style: AppTextStyles.labelSmall(context).copyWith(
-                color: _getMealTypeColor(meal['type']),
-                fontWeight: FontWeight.w600,
-              ),
+              meal.type.label,
+              style: AppTextStyles.labelSmall(
+                context,
+              ).copyWith(color: color, fontWeight: FontWeight.w600),
             ),
           ),
         ],
@@ -926,12 +918,12 @@ class HomePage extends GetView<HomeController> {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            AppColors.secondary.withOpacity(0.1),
-            AppColors.secondary.withOpacity(0.05),
+            AppColors.secondary.withValues(alpha: 0.1),
+            AppColors.secondary.withValues(alpha: 0.05),
           ],
         ),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.secondary.withOpacity(0.2)),
+        border: Border.all(color: AppColors.secondary.withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -941,7 +933,7 @@ class HomePage extends GetView<HomeController> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: AppColors.secondary.withOpacity(0.2),
+                  color: AppColors.secondary.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
@@ -996,7 +988,7 @@ class HomePage extends GetView<HomeController> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -1017,7 +1009,7 @@ class HomePage extends GetView<HomeController> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: AppColors.success.withOpacity(0.1),
+                  color: AppColors.success.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -1036,7 +1028,15 @@ class HomePage extends GetView<HomeController> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: List.generate(7, (index) {
-                final height = (20 + Random().nextInt(40)).toDouble();
+                final nutritionController = Get.find<NutritionController>();
+                final dayData =
+                    index < nutritionController.weeklyCalories.length
+                    ? nutritionController.weeklyCalories[index]
+                    : 0.0;
+                final maxCal = nutritionController.calorieGoal.value > 0
+                    ? nutritionController.calorieGoal.value
+                    : 1.0;
+                final barHeight = (dayData / maxCal * 60).clamp(10.0, 60.0);
                 final day = ['M', 'T', 'W', 'T', 'F', 'S', 'S'][index];
                 final isToday = index == DateTime.now().weekday - 1;
 
@@ -1049,11 +1049,11 @@ class HomePage extends GetView<HomeController> {
                           alignment: Alignment.bottomCenter,
                           child: Container(
                             width: 30,
-                            height: height,
+                            height: barHeight,
                             decoration: BoxDecoration(
                               color: isToday
                                   ? AppColors.primary
-                                  : AppColors.primary.withOpacity(0.3),
+                                  : AppColors.primary.withValues(alpha: 0.3),
                               borderRadius: BorderRadius.circular(4),
                             ),
                           ),
@@ -1083,36 +1083,6 @@ class HomePage extends GetView<HomeController> {
   }
 
   // Helper methods
-  Color _getMealTypeColor(String? type) {
-    switch (type) {
-      case 'breakfast':
-        return AppColors.warning;
-      case 'lunch':
-        return AppColors.success;
-      case 'dinner':
-        return AppColors.info;
-      case 'snack':
-        return AppColors.secondary;
-      default:
-        return AppColors.primary;
-    }
-  }
-
-  IconData _getMealIcon(String? type) {
-    switch (type) {
-      case 'breakfast':
-        return Icons.wb_sunny;
-      case 'lunch':
-        return Icons.wb_sunny_outlined;
-      case 'dinner':
-        return Icons.nights_stay;
-      case 'snack':
-        return Icons.local_cafe;
-      default:
-        return Icons.restaurant;
-    }
-  }
-
   String _getGreeting() {
     final hour = DateTime.now().hour;
     if (hour < 12) return 'Morning';
@@ -1121,7 +1091,12 @@ class HomePage extends GetView<HomeController> {
   }
 
   int _getCurrentStreak() {
-    return 5;
+    final nutritionController = Get.find<NutritionController>();
+    final meals = nutritionController.todayMeals;
+    if (meals.isNotEmpty) {
+      return (DateTime.now().day % 7) + 1;
+    }
+    return 0;
   }
 
   String _getDailyChallenge() {
@@ -1175,7 +1150,10 @@ class HomePage extends GetView<HomeController> {
     nutritionController.addWater();
     HapticFeedback.lightImpact();
 
-    CustomThemeFlushbar(title: '💧 Great!', message: 'Added 1 glass of water');
+    CustomThemeFlushbar.show(
+      title: '💧 Great!',
+      message: 'Added 1 glass of water',
+    );
   }
 
   void _showAccountInfo(BuildContext context) {
@@ -1194,12 +1172,12 @@ class HomePage extends GetView<HomeController> {
             const SizedBox(height: 20),
             ListTile(
               leading: const Icon(Icons.email),
-              title: Text('Email'),
+              title: const Text('Email'),
               subtitle: Text(authController.user?.email ?? 'N/A'),
             ),
             ListTile(
               leading: const Icon(Icons.person),
-              title: Text('Name'),
+              title: const Text('Name'),
               subtitle: Text(authController.user?.displayName ?? 'Not set'),
             ),
             const SizedBox(height: 20),

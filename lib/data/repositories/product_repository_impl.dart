@@ -1,13 +1,36 @@
 import 'package:openfoodfacts/openfoodfacts.dart';
 
+import '../../core/errors/exceptions.dart';
+import '../../core/errors/failures.dart';
+import '../../core/utils/result.dart';
 import '../../domain/entities/product.dart' as domain;
 import '../../domain/repositories/product_repository.dart';
+import '../datasources/local_cache.dart';
 
 class ProductRepositoryImpl implements ProductRepository {
+  final LocalCache _localCache;
+
+  ProductRepositoryImpl({required LocalCache localCache})
+    : _localCache = localCache;
+
+  static const _cacheDuration = Duration(minutes: 30);
+
   @override
-  Future<domain.Product?> getProductByBarcode(String barcode) async {
+  Future<Result<domain.Product>> getProductByBarcode(String barcode) async {
+    if (barcode.length < 8 || barcode.length > 14) {
+      return const Result.failure(
+        ValidationFailure(message: 'Invalid barcode length'),
+      );
+    }
+
+    final cacheKey = 'product_$barcode';
     try {
-      final ProductQueryConfiguration configuration = ProductQueryConfiguration(
+      final cached = _localCache.get<domain.Product>(cacheKey);
+      if (cached != null) {
+        return Result.success(cached);
+      }
+
+      final configuration = ProductQueryConfiguration(
         barcode,
         language: OpenFoodFactsLanguage.ENGLISH,
         version: ProductQueryVersion.v3,
@@ -26,56 +49,65 @@ class ProductRepositoryImpl implements ProductRepository {
         ],
       );
 
-      final ProductResultV3 result = await OpenFoodAPIClient.getProductV3(
-        configuration,
-      );
+      final result = await OpenFoodAPIClient.getProductV3(configuration);
 
       if (result.status == ProductResultV3.statusSuccess &&
           result.product != null) {
-        return _convertToAppProduct(result.product!);
+        final product = _convertToAppProduct(result.product!);
+        _localCache.set(cacheKey, product, ttl: _cacheDuration);
+        return Result.success(product);
       }
-      return null;
+
+      return Result.failure(
+        NotFoundFailure(message: 'Product not found for barcode: $barcode'),
+      );
+    } on ServerException catch (e) {
+      return Result.failure(ServerFailure(message: e.message));
     } catch (e) {
-      print('Error fetching product: $e');
-      return null;
+      return Result.failure(ServerFailure(message: e.toString()));
     }
   }
 
   @override
-  Future<List<domain.Product>> searchProducts(String query) async {
+  Future<Result<List<domain.Product>>> searchProducts(
+    String query, {
+    int page = 1,
+    int pageSize = 20,
+  }) async {
     try {
-      final ProductSearchQueryConfiguration configuration =
-          ProductSearchQueryConfiguration(
-            parametersList: [
-              SearchTerms(terms: [query]),
-              PageSize(size: 20),
-            ],
-            version: ProductQueryVersion.v3,
-            language: OpenFoodFactsLanguage.ENGLISH,
-            fields: [
-              ProductField.BARCODE,
-              ProductField.NAME,
-              ProductField.BRANDS,
-              ProductField.NUTRIMENTS,
-              ProductField.NUTRISCORE,
-              ProductField.IMAGES,
-            ],
-          );
+      final configuration = ProductSearchQueryConfiguration(
+        parametersList: [
+          SearchTerms(terms: [query]),
+          PageSize(size: pageSize),
+        ],
+        version: ProductQueryVersion.v3,
+        language: OpenFoodFactsLanguage.ENGLISH,
+        fields: [
+          ProductField.BARCODE,
+          ProductField.NAME,
+          ProductField.BRANDS,
+          ProductField.NUTRIMENTS,
+          ProductField.NUTRISCORE,
+          ProductField.IMAGES,
+        ],
+      );
 
-      final SearchResult result = await OpenFoodAPIClient.searchProducts(
-        null, // No user required for search
+      final result = await OpenFoodAPIClient.searchProducts(
+        null,
         configuration,
       );
 
       if (result.products != null) {
-        return result.products!
+        final products = result.products!
             .map((product) => _convertToAppProduct(product))
             .toList();
+        return Result.success(products);
       }
-      return [];
+      return const Result.success([]);
+    } on ServerException catch (e) {
+      return Result.failure(ServerFailure(message: e.message));
     } catch (e) {
-      print('Error searching products: $e');
-      return [];
+      return Result.failure(ServerFailure(message: e.toString()));
     }
   }
 

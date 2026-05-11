@@ -127,7 +127,7 @@ class ScanPageState extends State<ScanPage>
           print('App resumed - checking camera state');
         }
         if (mainController.currentIndex.value == 2) {
-          Future.delayed(Duration(milliseconds: 500), () {
+          Future.delayed(const Duration(milliseconds: 500), () {
             _startCameraDelayed();
           });
         }
@@ -136,7 +136,7 @@ class ScanPageState extends State<ScanPage>
   }
 
   Future<void> _startCameraDelayed() async {
-    await Future.delayed(Duration(milliseconds: 200));
+    await Future.delayed(const Duration(milliseconds: 200));
     if (!mounted) return;
 
     if (_isOperationInProgress || _isCameraRunning) {
@@ -179,7 +179,7 @@ class ScanPageState extends State<ScanPage>
   }
 
   Future<void> _stopCameraDelayed() async {
-    await Future.delayed(Duration(milliseconds: 200));
+    await Future.delayed(const Duration(milliseconds: 200));
     if (!mounted) return;
 
     if (_isOperationInProgress || !_isCameraRunning) {
@@ -275,18 +275,18 @@ class ScanPageState extends State<ScanPage>
           borderLength: 50,
           borderWidth: 4,
           cutOutSize: 280,
-          overlayColor: Colors.black.withOpacity(0.7),
+          overlayColor: Colors.black.withValues(alpha: 0.7),
         ),
       ),
       child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            SizedBox(height: 200),
+            const SizedBox(height: 200),
             Container(
-              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.6),
+                color: Colors.black.withValues(alpha: 0.6),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
@@ -415,12 +415,12 @@ class ScanPageState extends State<ScanPage>
                       ),
                       if (scannedCodes.isNotEmpty)
                         Container(
-                          padding: EdgeInsets.symmetric(
+                          padding: const EdgeInsets.symmetric(
                             horizontal: 8,
                             vertical: 2,
                           ),
                           decoration: BoxDecoration(
-                            color: AppColors.primary.withOpacity(0.2),
+                            color: AppColors.primary.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
@@ -441,12 +441,12 @@ class ScanPageState extends State<ScanPage>
                     onPressed: _showScanHistory,
                     badge: recentProducts.length,
                   ),
-                  SizedBox(width: 8),
+                  const SizedBox(width: 8),
                   _buildGlassButton(
                     icon: Icons.clear_all,
                     onPressed: () => scanController.clearAllHistory(),
                   ),
-                  SizedBox(width: 8),
+                  const SizedBox(width: 8),
                   _buildGlassButton(
                     icon: isFlashOn ? Icons.flash_on : Icons.flash_off,
                     onPressed: _toggleFlash,
@@ -456,12 +456,15 @@ class ScanPageState extends State<ScanPage>
             ],
           ),
           Container(
-            padding: EdgeInsets.all(10),
+            padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [Colors.black.withOpacity(0.8), Colors.transparent],
+                colors: [
+                  Colors.black.withValues(alpha: 0.8),
+                  Colors.transparent,
+                ],
               ),
             ),
           ),
@@ -478,12 +481,12 @@ class ScanPageState extends State<ScanPage>
           gradient: LinearGradient(
             begin: Alignment.bottomCenter,
             end: Alignment.topCenter,
-            colors: [Colors.black.withOpacity(0.9), Colors.transparent],
+            colors: [Colors.black.withValues(alpha: 0.9), Colors.transparent],
           ),
         ),
         child: SafeArea(
           child: Padding(
-            padding: EdgeInsets.all(20),
+            padding: const EdgeInsets.all(20),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -521,16 +524,16 @@ class ScanPageState extends State<ScanPage>
 
   Widget _buildLastScannedCard() {
     return Container(
-      margin: EdgeInsets.only(bottom: 16),
-      padding: EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surface.withOpacity(0.95),
+        color: AppColors.surface.withValues(alpha: 0.95),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.3),
+            color: Colors.black.withValues(alpha: 0.3),
             blurRadius: 10,
-            offset: Offset(0, 4),
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -540,7 +543,7 @@ class ScanPageState extends State<ScanPage>
             width: 50,
             height: 50,
             decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.1),
+              color: AppColors.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: currentProduct!.imageFrontUrl != null
@@ -555,7 +558,7 @@ class ScanPageState extends State<ScanPage>
                   )
                 : Icon(Icons.fastfood, color: AppColors.primary),
           ),
-          SizedBox(width: 12),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -587,12 +590,16 @@ class ScanPageState extends State<ScanPage>
           GestureDetector(
             onTap: () => _showProductDetails(currentProduct!),
             child: Container(
-              padding: EdgeInsets.all(8),
+              padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: AppColors.primary,
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Icon(Icons.visibility, color: Colors.white, size: 20),
+              child: const Icon(
+                Icons.visibility,
+                color: Colors.white,
+                size: 20,
+              ),
             ),
           ),
         ],
@@ -616,14 +623,14 @@ class ScanPageState extends State<ScanPage>
             right: 8,
             top: 8,
             child: Container(
-              padding: EdgeInsets.all(4),
+              padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
                 color: AppColors.primary,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Text(
                 badge.toString(),
-                style: TextStyle(
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 10,
                   fontWeight: FontWeight.bold,
@@ -644,17 +651,17 @@ class ScanPageState extends State<ScanPage>
     return GestureDetector(
       onTap: onPressed,
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.15),
+          color: color.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withOpacity(0.3)),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(icon, color: color, size: 24),
-            SizedBox(height: 4),
+            const SizedBox(height: 4),
             Text(
               label,
               style: AppTextStyles.labelMedium(
@@ -669,10 +676,10 @@ class ScanPageState extends State<ScanPage>
 
   Widget _buildLoadingOverlay() {
     return Container(
-      color: Colors.black.withOpacity(0.8),
+      color: Colors.black.withValues(alpha: 0.8),
       child: Center(
         child: Container(
-          padding: EdgeInsets.all(32),
+          padding: const EdgeInsets.all(32),
           decoration: BoxDecoration(
             color: AppColors.surface,
             borderRadius: BorderRadius.circular(16),
@@ -681,7 +688,7 @@ class ScanPageState extends State<ScanPage>
             mainAxisSize: MainAxisSize.min,
             children: [
               CircularProgressIndicator(color: AppColors.primary),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
               Text(
                 'Looking up product...',
                 style: AppTextStyles.bodyLarge(
@@ -708,10 +715,14 @@ class ScanPageState extends State<ScanPage>
     final numericRegex = RegExp(r'^[0-9]+$');
     if (!numericRegex.hasMatch(code)) return false;
     if (_isKnownFoodBarcodePattern(code)) {
-      if (kDebugMode) print('Valid food barcode: $code');
+      if (kDebugMode) {
+        print('Valid food barcode: $code');
+      }
       return true;
     }
-    if (kDebugMode) print('Not a recognized food product barcode: $code');
+    if (kDebugMode) {
+      print('Not a recognized food product barcode: $code');
+    }
     return false;
   }
 
@@ -790,18 +801,19 @@ class ScanPageState extends State<ScanPage>
   }
 
   bool _hasValidChecksum(String code) {
-    if (code.length != 13 && code.length != 12 && code.length != 8)
+    if (code.length != 13 && code.length != 12 && code.length != 8) {
       return false;
+    }
 
     try {
-      List<int> digits = code.split('').map((e) => int.parse(e)).toList();
+      final List<int> digits = code.split('').map((e) => int.parse(e)).toList();
       int sum = 0;
 
       if (code.length == 13) {
         for (int i = 0; i < 12; i++) {
           sum += digits[i] * (i % 2 == 0 ? 1 : 3);
         }
-        int checkDigit = (10 - (sum % 10)) % 10;
+        final int checkDigit = (10 - (sum % 10)) % 10;
         return checkDigit == digits[12];
       }
 
@@ -809,7 +821,7 @@ class ScanPageState extends State<ScanPage>
         for (int i = 0; i < 11; i++) {
           sum += digits[i] * (i % 2 == 0 ? 3 : 1);
         }
-        int checkDigit = (10 - (sum % 10)) % 10;
+        final int checkDigit = (10 - (sum % 10)) % 10;
         return checkDigit == digits[11];
       }
 
@@ -817,13 +829,15 @@ class ScanPageState extends State<ScanPage>
         for (int i = 0; i < 7; i++) {
           sum += digits[i] * (i % 2 == 0 ? 3 : 1);
         }
-        int checkDigit = (10 - (sum % 10)) % 10;
+        final int checkDigit = (10 - (sum % 10)) % 10;
         return checkDigit == digits[7];
       }
 
       return true;
     } catch (e) {
-      if (kDebugMode) print('Checksum validation error: $e');
+      if (kDebugMode) {
+        print('Checksum validation error: $e');
+      }
       return false;
     }
   }
@@ -833,13 +847,13 @@ class ScanPageState extends State<ScanPage>
       SnackBar(
         content: Row(
           children: [
-            Icon(Icons.warning_amber, color: Colors.white, size: 20),
-            SizedBox(width: 8),
+            const Icon(Icons.warning_amber, color: Colors.white, size: 20),
+            const SizedBox(width: 8),
             Expanded(child: Text('Invalid food barcode: $code')),
           ],
         ),
         backgroundColor: Colors.orange.shade700,
-        duration: Duration(seconds: 2),
+        duration: const Duration(seconds: 2),
       ),
     );
     HapticFeedback.lightImpact();
@@ -851,7 +865,7 @@ class ScanPageState extends State<ScanPage>
     Get.dialog(
       AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Enter Barcode'),
+        title: const Text('Enter Barcode'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -874,7 +888,7 @@ class ScanPageState extends State<ScanPage>
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Get.back(), child: Text('Cancel')),
+          TextButton(onPressed: () => Get.back(), child: const Text('Cancel')),
           ElevatedButton(
             onPressed: () {
               final barcode = controller.text.trim();
@@ -906,7 +920,7 @@ class ScanPageState extends State<ScanPage>
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
-            child: Text('Search'),
+            child: const Text('Search'),
           ),
         ],
       ),
@@ -925,18 +939,18 @@ class ScanPageState extends State<ScanPage>
     }
 
     try {
-      CustomThemeFlushbar(
+      CustomThemeFlushbar.show(
         title: 'Saving...',
         message: 'Saving ${recentProducts.length} products to Firebase',
       );
       scanController.refreshRecentProducts();
 
-      CustomThemeFlushbar(
+      CustomThemeFlushbar.show(
         title: 'Success',
         message: '${recentProducts.length} products saved successfully',
       );
     } catch (e) {
-      CustomThemeFlushbar(
+      CustomThemeFlushbar.show(
         title: 'Save Failed',
         message: 'Failed to save products: ${e.toString()}',
       );
@@ -949,44 +963,48 @@ class ScanPageState extends State<ScanPage>
         height: MediaQuery.of(context).size.height * 0.7,
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         ),
         child: Column(
           children: [
             Container(
               width: 40,
               height: 4,
-              margin: EdgeInsets.symmetric(vertical: 12),
+              margin: const EdgeInsets.symmetric(vertical: 12),
               decoration: BoxDecoration(
                 color: AppColors.textTertiary,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
             Container(
-              padding: EdgeInsets.all(16),
+              padding: const EdgeInsets.all(16),
               child: Row(
                 children: [
                   Text(
                     'Scan History',
                     style: AppTextStyles.headingMedium(context),
                   ),
-                  Spacer(),
+                  const Spacer(),
                   IconButton(
                     onPressed: () => Get.back(),
-                    icon: Icon(Icons.close),
+                    icon: const Icon(Icons.close),
                   ),
                 ],
               ),
             ),
-            Divider(height: 1),
+            const Divider(height: 1),
             Expanded(
               child: recentProducts.isEmpty
                   ? Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.history, size: 64, color: Colors.grey),
-                          SizedBox(height: 16),
+                          const Icon(
+                            Icons.history,
+                            size: 64,
+                            color: Colors.grey,
+                          ),
+                          const SizedBox(height: 16),
                           Text(
                             'No products scanned yet',
                             style: TextStyle(color: Colors.grey[600]),
@@ -1006,12 +1024,15 @@ class ScanPageState extends State<ScanPage>
                                   height: 50,
                                   fit: BoxFit.cover,
                                   errorBuilder: (_, __, ___) =>
-                                      Icon(Icons.fastfood),
+                                      const Icon(Icons.fastfood),
                                 )
-                              : Icon(Icons.fastfood),
+                              : const Icon(Icons.fastfood),
                           title: Text(product.productName ?? 'Unknown Product'),
                           subtitle: Text(product.brands ?? ''),
-                          trailing: Icon(Icons.arrow_forward_ios, size: 16),
+                          trailing: const Icon(
+                            Icons.arrow_forward_ios,
+                            size: 16,
+                          ),
                           onTap: () => _showProductDetails(product),
                         );
                       },
@@ -1067,8 +1088,8 @@ class ScannerOverlayShape extends ShapeBorder {
 
   @override
   Path getOuterPath(Rect rect, {TextDirection? textDirection}) {
-    Path outerPath = Path()..addRect(rect);
-    Path innerPath = getInnerPath(rect, textDirection: textDirection);
+    final Path outerPath = Path()..addRect(rect);
+    final Path innerPath = getInnerPath(rect, textDirection: textDirection);
     return Path.combine(PathOperation.difference, outerPath, innerPath);
   }
 

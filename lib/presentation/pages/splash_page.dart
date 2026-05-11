@@ -9,7 +9,7 @@ class SplashPage extends StatefulWidget {
   const SplashPage({super.key});
 
   @override
-  _SplashPageState createState() => _SplashPageState();
+  State<SplashPage> createState() => _SplashPageState();
 }
 
 class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
@@ -45,8 +45,7 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
     // Wait for animations and minimum splash time
     await Future.delayed(const Duration(seconds: 3));
 
-    final authController = Get.find<AuthController>();
-    // AuthController will handle navigation automatically
+    Get.find<AuthController>();
   }
 
   @override
@@ -86,7 +85,7 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
                           borderRadius: BorderRadius.circular(30),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.2),
+                              color: Colors.black.withValues(alpha: 0.2),
                               blurRadius: 20,
                               offset: const Offset(0, 10),
                             ),
@@ -114,7 +113,7 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
                       Text(
                         'Track your nutrition, live healthier',
                         style: AppTextStyles.bodyLarge(context).copyWith(
-                          color: AppColors.textOnPrimary.withOpacity(0.8),
+                          color: AppColors.textOnPrimary.withValues(alpha: 0.8),
                         ),
                       ),
                       const SizedBox(height: 50),

@@ -19,7 +19,7 @@ class ProfilePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GetBuilder<ProfileController>(
-      init: ProfileController(),
+      init: Get.find<ProfileController>(),
       builder: (controller) => Scaffold(
         backgroundColor: AppColors.background,
         body: RefreshIndicator(
@@ -46,7 +46,7 @@ class ProfilePage extends StatelessWidget {
                             _buildHealthMetrics(controller),
                             _buildSettingsSection(controller),
                             _developerInfo(),
-                            SizedBox(height: 20), // Bottom padding
+                            const SizedBox(height: 20), // Bottom padding
                           ],
                         ),
                       ),
@@ -84,15 +84,15 @@ class ProfilePage extends StatelessWidget {
               );
 
           return AnimatedContainer(
-            duration: Duration(milliseconds: 150),
+            duration: const Duration(milliseconds: 150),
             curve: Curves.easeOutCubic,
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  AppColors.primary.withOpacity(
+                  AppColors.primary.withValues(alpha: 
                     0.95 + (0.05 * shrinkPercentage),
                   ),
-                  AppColors.tertiary.withOpacity(
+                  AppColors.tertiary.withValues(alpha: 
                     0.85 + (0.15 * shrinkPercentage),
                   ),
                 ],
@@ -108,7 +108,7 @@ class ProfilePage extends StatelessWidget {
                 ),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.1),
+                    color: AppColors.primary.withValues(alpha: 0.1),
                   ),
                   child: FlexibleSpaceBar(
                     centerTitle: false,
@@ -117,14 +117,14 @@ class ProfilePage extends StatelessWidget {
                       bottom: 0 + (8 * shrinkPercentage),
                     ),
                     title: AnimatedSwitcher(
-                      duration: Duration(milliseconds: 200),
+                      duration: const Duration(milliseconds: 200),
                       child: shrinkPercentage > 0.5
                           ? Obx(
                               () => Text(
                                 controller.userName.value.isNotEmpty
                                     ? controller.userName.value
                                     : 'Profile',
-                                key: ValueKey('collapsed_profile'),
+                                key: const ValueKey('collapsed_profile'),
                                 style: AppTextStyles.headingMedium(Get.context!)
                                     .copyWith(
                                       color: AppColors.textOnPrimary,
@@ -139,7 +139,7 @@ class ProfilePage extends StatelessWidget {
                     ),
                     background: SafeArea(
                       child: Padding(
-                        padding: EdgeInsets.only(left: 20, right: 60, top: 8),
+                        padding: const EdgeInsets.only(left: 20, right: 60, top: 8),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisAlignment: MainAxisAlignment.end,
@@ -179,7 +179,7 @@ class ProfilePage extends StatelessWidget {
                                           ),
                                         ),
                                       ),
-                                      SizedBox(height: 2),
+                                      const SizedBox(height: 2),
                                       // Member since text
                                       Transform.translate(
                                         offset: Offset(
@@ -193,13 +193,13 @@ class ProfilePage extends StatelessWidget {
                                             () => Row(
                                               children: [
                                                 Container(
-                                                  padding: EdgeInsets.symmetric(
+                                                  padding: const EdgeInsets.symmetric(
                                                     horizontal: 6,
                                                     vertical: 2,
                                                   ),
                                                   decoration: BoxDecoration(
                                                     color: Colors.white
-                                                        .withOpacity(0.2),
+                                                        .withValues(alpha: 0.2),
                                                     borderRadius:
                                                         BorderRadius.circular(
                                                           8,
@@ -218,7 +218,7 @@ class ProfilePage extends StatelessWidget {
                                                         ),
                                                   ),
                                                 ),
-                                                SizedBox(width: 8),
+                                                const SizedBox(width: 8),
                                                 Text(
                                                   'since ${_formatDate(controller.joinDate.value)}',
                                                   style:
@@ -227,7 +227,7 @@ class ProfilePage extends StatelessWidget {
                                                       ).copyWith(
                                                         color: AppColors
                                                             .textOnPrimary
-                                                            .withOpacity(0.9),
+                                                            .withValues(alpha: 0.9),
                                                         fontWeight:
                                                             FontWeight.w500,
                                                       ),
@@ -242,7 +242,7 @@ class ProfilePage extends StatelessWidget {
                                 ),
                               ],
                             ),
-                            SizedBox(height: 8),
+                            const SizedBox(height: 8),
                           ],
                         ),
                       ),
@@ -257,7 +257,7 @@ class ProfilePage extends StatelessWidget {
       actions: [
         // Edit profile button
         Padding(
-          padding: EdgeInsets.only(right: 16),
+          padding: const EdgeInsets.only(right: 16),
           child: Material(
             color: Colors.transparent,
             child: InkWell(
@@ -280,7 +280,7 @@ class ProfilePage extends StatelessWidget {
 
   Widget _buildProfileHeader(ProfileController controller) {
     return Container(
-      padding: EdgeInsets.all(20),
+      padding: const EdgeInsets.all(20),
       child: Column(
         children: [
           // Profile Image
@@ -289,7 +289,7 @@ class ProfilePage extends StatelessWidget {
               Obx(
                 () => CircleAvatar(
                   radius: 60,
-                  backgroundColor: AppColors.primary.withOpacity(0.1),
+                  backgroundColor: AppColors.primary.withValues(alpha: 0.1),
                   backgroundImage: controller.profileImageUrl.value.isNotEmpty
                       ? NetworkImage(controller.profileImageUrl.value)
                       : null,
@@ -304,7 +304,7 @@ class ProfilePage extends StatelessWidget {
                 child: GestureDetector(
                   onTap: controller.updateProfileImage,
                   child: Container(
-                    padding: EdgeInsets.all(8),
+                    padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       color: AppColors.primary,
                       borderRadius: BorderRadius.circular(20),
@@ -312,7 +312,7 @@ class ProfilePage extends StatelessWidget {
                     ),
                     child: Obx(
                       () => controller.isUploadingImage.value
-                          ? SizedBox(
+                          ? const SizedBox(
                               width: 16,
                               height: 16,
                               child: CircularProgressIndicator(
@@ -320,7 +320,7 @@ class ProfilePage extends StatelessWidget {
                                 strokeWidth: 2,
                               ),
                             )
-                          : Icon(
+                          : const Icon(
                               Icons.camera_alt,
                               color: Colors.white,
                               size: 16,
@@ -331,7 +331,7 @@ class ProfilePage extends StatelessWidget {
               ),
             ],
           ),
-          SizedBox(height: 16),
+          const SizedBox(height: 16),
 
           // Name and Email
           Obx(
@@ -342,7 +342,7 @@ class ProfilePage extends StatelessWidget {
               ).copyWith(fontWeight: FontWeight.bold),
             ),
           ),
-          SizedBox(height: 4),
+          const SizedBox(height: 4),
           Obx(
             () => Text(
               controller.userEmail.value,
@@ -351,13 +351,13 @@ class ProfilePage extends StatelessWidget {
               ).copyWith(color: AppColors.textSecondary),
             ),
           ),
-          SizedBox(height: 8),
+          const SizedBox(height: 8),
 
           // Bio
           Obx(
             () => controller.userBio.value.isNotEmpty
                 ? Container(
-                    padding: EdgeInsets.all(12),
+                    padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: AppColors.surface,
                       borderRadius: BorderRadius.circular(8),
@@ -368,7 +368,7 @@ class ProfilePage extends StatelessWidget {
                       textAlign: TextAlign.center,
                     ),
                   )
-                : SizedBox.shrink(),
+                : const SizedBox.shrink(),
           ),
         ],
       ),
@@ -377,7 +377,7 @@ class ProfilePage extends StatelessWidget {
 
   Widget _buildStatsCards(ProfileController controller) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Row(
         children: [
           Expanded(
@@ -390,7 +390,7 @@ class ProfilePage extends StatelessWidget {
               ),
             ),
           ),
-          SizedBox(width: 12),
+          const SizedBox(width: 12),
           Expanded(
             child: Obx(
               () => _buildStatCard(
@@ -402,7 +402,7 @@ class ProfilePage extends StatelessWidget {
               ),
             ),
           ),
-          SizedBox(width: 12),
+          const SizedBox(width: 12),
           Expanded(
             child: Obx(
               () => _buildStatCard(
@@ -432,16 +432,16 @@ class ProfilePage extends StatelessWidget {
         return Transform.scale(
           scale: 0.8 + (0.2 * animationValue),
           child: Container(
-            padding: EdgeInsets.all(16),
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: AppColors.surface,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: color.withOpacity(0.2), width: 1),
+              border: Border.all(color: color.withValues(alpha: 0.2), width: 1),
               boxShadow: [
                 BoxShadow(
-                  color: color.withOpacity(0.1),
+                  color: color.withValues(alpha: 0.1),
                   blurRadius: 10,
-                  offset: Offset(0, 4),
+                  offset: const Offset(0, 4),
                 ),
               ],
             ),
@@ -450,12 +450,12 @@ class ProfilePage extends StatelessWidget {
                 // Animated icon with color transition
                 TweenAnimationBuilder<double>(
                   tween: Tween(begin: 0.0, end: 1.0),
-                  duration: Duration(milliseconds: 1200),
+                  duration: const Duration(milliseconds: 1200),
                   builder: (context, iconValue, child) {
                     return Container(
-                      padding: EdgeInsets.all(8),
+                      padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: color.withOpacity(0.1 * iconValue),
+                        color: color.withValues(alpha: 0.1 * iconValue),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Icon(
@@ -466,7 +466,7 @@ class ProfilePage extends StatelessWidget {
                     );
                   },
                 ),
-                SizedBox(height: 12),
+                const SizedBox(height: 12),
 
                 // Animated counter
                 TweenAnimationBuilder<double>(
@@ -478,7 +478,7 @@ class ProfilePage extends StatelessWidget {
                         ) ??
                         0.0,
                   ),
-                  duration: Duration(milliseconds: 1500),
+                  duration: const Duration(milliseconds: 1500),
                   builder: (context, counterValue, child) {
                     String displayValue;
                     if (value.contains('k')) {
@@ -498,7 +498,7 @@ class ProfilePage extends StatelessWidget {
                     );
                   },
                 ),
-                SizedBox(height: 4),
+                const SizedBox(height: 4),
 
                 // Title
                 Text(
@@ -520,16 +520,16 @@ class ProfilePage extends StatelessWidget {
 
   Widget _buildHealthMetrics(ProfileController controller) {
     return Container(
-      margin: EdgeInsets.symmetric(horizontal: 12, vertical: 20),
-      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 20),
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 20),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
-            offset: Offset(0, 2),
+            offset: const Offset(0, 2),
           ),
         ],
       ),
@@ -540,7 +540,7 @@ class ProfilePage extends StatelessWidget {
             'Health Metrics',
             style: AppTextStyles.headingMedium(Get.context!),
           ),
-          SizedBox(height: 16),
+          const SizedBox(height: 16),
 
           // Weight Progress
           Obx(
@@ -566,16 +566,16 @@ class ProfilePage extends StatelessWidget {
             ),
           ),
 
-          SizedBox(height: 16),
+          const SizedBox(height: 16),
 
           // BMI Section
           Obx(
             () => Container(
-              padding: EdgeInsets.all(16),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: controller.bmiColor.withOpacity(0.1),
+                color: controller.bmiColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: controller.bmiColor.withOpacity(0.3)),
+                border: Border.all(color: controller.bmiColor.withValues(alpha: 0.3)),
               ),
               child: Row(
                 children: [
@@ -584,7 +584,7 @@ class ProfilePage extends StatelessWidget {
                     color: controller.bmiColor,
                     size: 24,
                   ),
-                  SizedBox(width: 12),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -635,16 +635,16 @@ class ProfilePage extends StatelessWidget {
 
   Widget _buildSettingsSection(ProfileController controller) {
     return Container(
-      margin: EdgeInsets.symmetric(horizontal: 10),
-      padding: EdgeInsets.symmetric(horizontal: 10),
+      margin: const EdgeInsets.symmetric(horizontal: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
-            offset: Offset(0, 2),
+            offset: const Offset(0, 2),
           ),
         ],
       ),
@@ -652,67 +652,67 @@ class ProfilePage extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('Settings', style: AppTextStyles.headingMedium(Get.context!)),
-          SizedBox(height: 16),
+          const SizedBox(height: 16),
 
           // Notifications
           ListTile(
             leading: Container(
-              padding: EdgeInsets.all(8),
+              padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: AppColors.warning.withOpacity(0.1),
+                color: AppColors.warning.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(Icons.notifications, color: AppColors.warning),
             ),
-            title: Text('Notification Settings'),
-            subtitle: Text('Customize meal reminders and alerts'),
-            trailing: Icon(Icons.arrow_forward_ios, size: 16),
-            onTap: () => Get.to(() => NotificationSettingsPage()),
+            title: const Text('Notification Settings'),
+            subtitle: const Text('Customize meal reminders and alerts'),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            onTap: () => Get.to(() => const NotificationSettingsPage()),
           ),
 
           // Weekly Reports
           Obx(
             () => SwitchListTile(
-              title: Text('Weekly Reports'),
-              subtitle: Text('Get weekly nutrition summaries'),
+              title: const Text('Weekly Reports'),
+              subtitle: const Text('Get weekly nutrition summaries'),
               value: controller.weeklyReportsEnabled.value,
               onChanged: (value) =>
                   controller.updateSettings(weeklyReports: value),
-              activeColor: AppColors.primary,
+              activeThumbColor: AppColors.primary,
             ),
           ),
 
-          SizedBox(height: 16),
+          const SizedBox(height: 16),
 
           _buildThemeSection(),
 
-          Divider(),
+          const Divider(),
 
           // Account Actions
           ListTile(
             leading: Icon(Icons.edit, color: AppColors.primary),
-            title: Text('Edit Profile'),
+            title: const Text('Edit Profile'),
             onTap: () => _showEditProfileDialog(controller),
           ),
 
           ListTile(
             leading: Icon(Icons.file_download, color: AppColors.primary),
-            title: Text('Export Profile'),
+            title: const Text('Export Profile'),
             onTap: () => controller.exportUserData(),
           ),
 
           ListTile(
             leading: Icon(Icons.logout, color: AppColors.warning),
-            title: Text('Sign Out'),
+            title: const Text('Sign Out'),
             onTap: controller.signOut,
           ),
 
           ListTile(
             leading: Icon(Icons.delete_forever, color: AppColors.error),
-            title: Text('Delete Account'),
+            title: const Text('Delete Account'),
             onTap: controller.deleteAccount,
           ),
-          Divider(),
+          const Divider(),
         ],
       ),
     );
@@ -730,7 +730,7 @@ class ProfilePage extends StatelessWidget {
             style: AppTextStyles.headingMedium(Get.context!),
           ),
         ),
-        DeveloperAndDonationSection(),
+        const DeveloperAndDonationSection(),
       ],
     );
   }
@@ -756,7 +756,7 @@ class ProfilePage extends StatelessWidget {
     Get.dialog(
       AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Edit Profile'),
+        title: const Text('Edit Profile'),
         content: SizedBox(
           width: double.maxFinite,
           child: SingleChildScrollView(
@@ -772,7 +772,7 @@ class ProfilePage extends StatelessWidget {
                     ),
                   ),
                 ),
-                SizedBox(height: 12),
+                const SizedBox(height: 12),
                 TextField(
                   controller: bioController,
                   decoration: InputDecoration(
@@ -783,7 +783,7 @@ class ProfilePage extends StatelessWidget {
                   ),
                   maxLines: 3,
                 ),
-                SizedBox(height: 12),
+                const SizedBox(height: 12),
                 Row(
                   children: [
                     Expanded(
@@ -798,7 +798,7 @@ class ProfilePage extends StatelessWidget {
                         keyboardType: TextInputType.number,
                       ),
                     ),
-                    SizedBox(width: 12),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: TextField(
                         controller: targetController,
@@ -813,7 +813,7 @@ class ProfilePage extends StatelessWidget {
                     ),
                   ],
                 ),
-                SizedBox(height: 12),
+                const SizedBox(height: 12),
                 Row(
                   children: [
                     Expanded(
@@ -828,7 +828,7 @@ class ProfilePage extends StatelessWidget {
                         keyboardType: TextInputType.number,
                       ),
                     ),
-                    SizedBox(width: 12),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: TextField(
                         controller: ageController,
@@ -848,7 +848,7 @@ class ProfilePage extends StatelessWidget {
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Get.back(), child: Text('Cancel')),
+          TextButton(onPressed: () => Get.back(), child: const Text('Cancel')),
           Obx(
             () => ElevatedButton(
               onPressed: controller.isSaving.value
@@ -924,7 +924,7 @@ class ProfilePage extends StatelessWidget {
                 ),
               ),
               child: controller.isSaving.value
-                  ? SizedBox(
+                  ? const SizedBox(
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(
@@ -932,7 +932,7 @@ class ProfilePage extends StatelessWidget {
                         strokeWidth: 2,
                       ),
                     )
-                  : Text('Save'),
+                  : const Text('Save'),
             ),
           ),
         ],
@@ -981,7 +981,7 @@ class ProfilePage extends StatelessWidget {
                     : Icons.light_mode,
                 color: AppColors.primary,
               ),
-              title: Text('Dark Mode'),
+              title: const Text('Dark Mode'),
               subtitle: Text(
                 themeService.isDarkMode.value
                     ? 'Dark theme enabled'
@@ -998,7 +998,7 @@ class ProfilePage extends StatelessWidget {
           Obx(
             () => ListTile(
               leading: Icon(Icons.auto_awesome, color: AppColors.secondary),
-              title: Text('Material 3'),
+              title: const Text('Material 3'),
               subtitle: Text(
                 themeService.useMaterial3.value
                     ? 'Material 3 enabled'
@@ -1015,7 +1015,7 @@ class ProfilePage extends StatelessWidget {
           Obx(
             () => ListTile(
               leading: Icon(Icons.auto_fix_high, color: AppColors.tertiary),
-              title: Text('Dynamic Colors'),
+              title: const Text('Dynamic Colors'),
               subtitle: Text(
                 themeService.useDynamicColor.value
                     ? 'Using system colors'
@@ -1031,9 +1031,9 @@ class ProfilePage extends StatelessWidget {
           // Theme Settings Button
           ListTile(
             leading: Icon(Icons.palette, color: AppColors.primary),
-            title: Text('Theme Settings'),
-            subtitle: Text('Customize colors and appearance'),
-            trailing: Icon(Icons.arrow_forward_ios, size: 16),
+            title: const Text('Theme Settings'),
+            subtitle: const Text('Customize colors and appearance'),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
             onTap: () => Get.to(() => const ThemeSettingsPage()),
           ),
         ],

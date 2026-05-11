@@ -8,20 +8,24 @@ import 'package:nutri_check/core/utils/components/custom_flushbar.dart';
 class ThemeService extends GetxService {
   final _box = GetStorage();
 
-  // Storage keys
   static const String _themeKey = 'theme_mode';
   static const String _material3Key = 'use_material3';
   static const String _dynamicColorKey = 'use_dynamic_color';
   static const String _seedColorKey = 'seed_color';
 
-  // Reactive variables
   var isDarkMode = false.obs;
   var useMaterial3 = true.obs;
   var useDynamicColor = true.obs;
-  var seedColor = (Colors.green as Color).obs;
+  Rx<Color> seedColor = Rx<Color>(Colors.green);
   var systemDynamicColors = Rx<ColorScheme?>(null);
 
-  // Theme mode
+  ThemeData? _cachedLightTheme;
+  ThemeData? _cachedDarkTheme;
+
+  ThemeData get lightTheme =>
+      _cachedLightTheme ??= _buildTheme(Brightness.light);
+  ThemeData get darkTheme => _cachedDarkTheme ??= _buildTheme(Brightness.dark);
+
   ThemeMode get themeMode =>
       isDarkMode.value ? ThemeMode.dark : ThemeMode.light;
 
@@ -33,12 +37,10 @@ class ThemeService extends GetxService {
     await _loadDynamicColors();
   }
 
-  // Initialize GetStorage
   Future<void> _initStorage() async {
     await GetStorage.init();
   }
 
-  // Load settings
   Future<void> _loadSettings() async {
     try {
       isDarkMode.value = _box.read(_themeKey) ?? false;
@@ -69,7 +71,6 @@ class ThemeService extends GetxService {
     }
   }
 
-  // Toggle dark & light mode
   void toggleThemeMode() {
     isDarkMode.value = !isDarkMode.value;
     _saveThemeMode();
@@ -82,10 +83,10 @@ class ThemeService extends GetxService {
     );
   }
 
-  // Toggle Material 3
   void toggleMaterial3() {
     useMaterial3.value = !useMaterial3.value;
     _saveMaterial3Setting();
+    _invalidateCache();
     _applyTheme();
     CustomThemeFlushbar.show(
       title: 'Material Design Changed',
@@ -93,10 +94,10 @@ class ThemeService extends GetxService {
     );
   }
 
-  // Toggle dynamic color
   void toggleDynamicColor() {
     useDynamicColor.value = !useDynamicColor.value;
     _saveDynamicColorSetting();
+    _invalidateCache();
     _applyTheme();
 
     CustomThemeFlushbar.show(
@@ -105,46 +106,58 @@ class ThemeService extends GetxService {
     );
   }
 
-  // Change seed color
   void changeSeedColor(Color color) {
     seedColor.value = color;
     _saveSeedColor();
+    _invalidateCache();
     _applyTheme();
 
     CustomThemeFlushbar.show(
-      title: 'Color updated Changed',
+      title: 'Color Updated',
       message: 'please restart the app to see full effect',
     );
   }
 
-  // Apply theme to app
   void _applyTheme() {
     Get.changeThemeMode(themeMode);
+  }
+
+  void _invalidateCache() {
+    _cachedLightTheme = null;
+    _cachedDarkTheme = null;
   }
 
   void _saveThemeMode() => _box.write(_themeKey, isDarkMode.value);
   void _saveMaterial3Setting() => _box.write(_material3Key, useMaterial3.value);
   void _saveDynamicColorSetting() =>
       _box.write(_dynamicColorKey, useDynamicColor.value);
-  void _saveSeedColor() => _box.write(_seedColorKey, seedColor.value.value);
+  void _saveSeedColor() =>
+      _box.write(_seedColorKey, seedColor.value.toARGB32());
 
-  ThemeData get lightTheme {
-    final colorScheme =
-        useDynamicColor.value && systemDynamicColors.value != null
-        ? systemDynamicColors.value!
-        : ColorScheme.fromSeed(
-            seedColor: seedColor.value,
-            brightness: Brightness.light,
-          );
+  ThemeData _buildTheme(Brightness brightness) {
+    final ColorScheme colorScheme;
+    if (useDynamicColor.value && systemDynamicColors.value != null) {
+      if (brightness == Brightness.light) {
+        colorScheme = systemDynamicColors.value!;
+      } else {
+        colorScheme = ColorScheme.fromSeed(
+          seedColor: Color(systemDynamicColors.value!.primary.toARGB32()),
+          brightness: brightness,
+        );
+      }
+    } else {
+      colorScheme = ColorScheme.fromSeed(
+        seedColor: seedColor.value,
+        brightness: brightness,
+      );
+    }
 
     return ThemeData(
       useMaterial3: useMaterial3.value,
       colorScheme: colorScheme,
-      brightness: Brightness.light,
-
+      brightness: brightness,
       textTheme: AppTextStyles.generateTextTheme(colorScheme),
       fontFamily: AppTextStyles.fontFamily,
-
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: colorScheme.primary,
@@ -155,13 +168,12 @@ class ThemeService extends GetxService {
             borderRadius: BorderRadius.circular(useMaterial3.value ? 20 : 8),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          textStyle: TextStyle(
+          textStyle: const TextStyle(
             fontFamily: AppTextStyles.fontFamily,
             fontWeight: FontWeight.w600,
           ),
         ),
       ),
-
       cardTheme: CardThemeData(
         elevation: useMaterial3.value ? 1 : 4,
         shape: RoundedRectangleBorder(
@@ -170,7 +182,6 @@ class ThemeService extends GetxService {
         color: colorScheme.surface,
         shadowColor: colorScheme.shadow,
       ),
-
       appBarTheme: AppBarTheme(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -182,10 +193,9 @@ class ThemeService extends GetxService {
         iconTheme: IconThemeData(color: colorScheme.onSurface),
         actionsIconTheme: IconThemeData(color: colorScheme.onSurface),
       ),
-
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: colorScheme.surfaceContainerHighest.withOpacity(0.5),
+        fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(useMaterial3.value ? 12 : 8),
           borderSide: BorderSide(color: colorScheme.outline),
@@ -203,106 +213,17 @@ class ThemeService extends GetxService {
           borderSide: BorderSide(color: colorScheme.error),
         ),
         contentPadding: const EdgeInsets.all(16),
-        hintStyle: TextStyle(color: colorScheme.onSurface.withOpacity(0.6)),
-        labelStyle: TextStyle(color: colorScheme.onSurface.withOpacity(0.8)),
+        hintStyle: TextStyle(
+          color: colorScheme.onSurface.withValues(alpha: 0.6),
+        ),
+        labelStyle: TextStyle(
+          color: colorScheme.onSurface.withValues(alpha: 0.8),
+        ),
       ),
-
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
         backgroundColor: colorScheme.surface,
         selectedItemColor: colorScheme.primary,
-        unselectedItemColor: colorScheme.onSurface.withOpacity(0.6),
-        type: BottomNavigationBarType.fixed,
-        elevation: useMaterial3.value ? 3 : 8,
-      ),
-    );
-  }
-
-  ThemeData get darkTheme {
-    final colorScheme =
-        useDynamicColor.value && systemDynamicColors.value != null
-        ? ColorScheme.fromSeed(
-            seedColor: Color(systemDynamicColors.value!.primary.value),
-            brightness: Brightness.dark,
-          )
-        : ColorScheme.fromSeed(
-            seedColor: seedColor.value,
-            brightness: Brightness.dark,
-          );
-
-    return ThemeData(
-      useMaterial3: useMaterial3.value,
-      colorScheme: colorScheme,
-      brightness: Brightness.dark,
-
-      textTheme: AppTextStyles.generateTextTheme(colorScheme),
-      fontFamily: AppTextStyles.fontFamily,
-
-      elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: colorScheme.primary,
-          foregroundColor: colorScheme.onPrimary,
-          elevation: useMaterial3.value ? 1 : 2,
-          shadowColor: colorScheme.shadow,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(useMaterial3.value ? 20 : 8),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          textStyle: TextStyle(
-            fontFamily: AppTextStyles.fontFamily,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ),
-
-      cardTheme: CardThemeData(
-        elevation: useMaterial3.value ? 1 : 4,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(useMaterial3.value ? 12 : 8),
-        ),
-        color: colorScheme.surface,
-        shadowColor: colorScheme.shadow,
-      ),
-
-      appBarTheme: AppBarTheme(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        scrolledUnderElevation: useMaterial3.value ? 3 : 4,
-        centerTitle: false,
-        titleTextStyle: AppTextStyles.generateTextTheme(
-          colorScheme,
-        ).headlineSmall,
-        iconTheme: IconThemeData(color: colorScheme.onSurface),
-        actionsIconTheme: IconThemeData(color: colorScheme.onSurface),
-      ),
-
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        fillColor: colorScheme.surfaceContainerHighest.withOpacity(0.5),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(useMaterial3.value ? 12 : 8),
-          borderSide: BorderSide(color: colorScheme.outline),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(useMaterial3.value ? 12 : 8),
-          borderSide: BorderSide(color: colorScheme.outline),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(useMaterial3.value ? 12 : 8),
-          borderSide: BorderSide(color: colorScheme.primary, width: 2),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(useMaterial3.value ? 12 : 8),
-          borderSide: BorderSide(color: colorScheme.error),
-        ),
-        contentPadding: const EdgeInsets.all(16),
-        hintStyle: TextStyle(color: colorScheme.onSurface.withOpacity(0.6)),
-        labelStyle: TextStyle(color: colorScheme.onSurface.withOpacity(0.8)),
-      ),
-
-      bottomNavigationBarTheme: BottomNavigationBarThemeData(
-        backgroundColor: colorScheme.surface,
-        selectedItemColor: colorScheme.primary,
-        unselectedItemColor: colorScheme.onSurface.withOpacity(0.6),
+        unselectedItemColor: colorScheme.onSurface.withValues(alpha: 0.6),
         type: BottomNavigationBarType.fixed,
         elevation: useMaterial3.value ? 3 : 8,
       ),
@@ -322,7 +243,6 @@ class ThemeService extends GetxService {
     Colors.cyan,
   ];
 
-  // Reset to default settings
   void resetToDefaults() {
     isDarkMode.value = false;
     useMaterial3.value = true;
@@ -333,6 +253,7 @@ class ThemeService extends GetxService {
     _saveMaterial3Setting();
     _saveDynamicColorSetting();
     _saveSeedColor();
+    _invalidateCache();
     _applyTheme();
 
     CustomThemeFlushbar.show(
@@ -364,7 +285,7 @@ class ThemeService extends GetxService {
     'isDarkMode': isDarkMode.value,
     'useMaterial3': useMaterial3.value,
     'useDynamicColor': useDynamicColor.value,
-    'seedColor': seedColor.value.value.toRadixString(16),
+    'seedColor': seedColor.value.toARGB32().toRadixString(16),
     'themeMode': themeMode.toString(),
   };
 }

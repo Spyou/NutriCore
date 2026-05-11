@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -8,11 +8,27 @@ import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:nutri_check/core/utils/components/custom_flushbar.dart';
+import 'package:nutri_check/domain/entities/user_profile.dart';
+import 'package:nutri_check/domain/repositories/user_repository.dart';
+import 'package:nutri_check/domain/repositories/nutrition_repository.dart';
+import 'package:nutri_check/domain/repositories/preferences_repository.dart';
 
-import '../controllers/auth_controller.dart';
-import '../controllers/nutrition_controller.dart';
+import 'auth_controller.dart';
+import 'nutrition_controller.dart';
 
 class ProfileController extends GetxController {
+  final UserRepository _userRepository;
+  final NutritionRepository _nutritionRepository;
+  final PreferencesRepository _preferencesRepository;
+
+  ProfileController({
+    required UserRepository userRepository,
+    required NutritionRepository nutritionRepository,
+    required PreferencesRepository preferencesRepository,
+  })  : _userRepository = userRepository,
+        _nutritionRepository = nutritionRepository,
+        _preferencesRepository = preferencesRepository;
+
   var isLoading = false.obs;
   var profileImageUrl = ''.obs;
   var userName = ''.obs;
@@ -60,6 +76,9 @@ class ProfileController extends GetxController {
   var averageCaloriesPerDay = 0.0.obs;
   var averageMealsPerDay = 0.0.obs;
 
+  final List<Worker> _workers = [];
+  UserProfile? _cachedProfile;
+
   @override
   void onInit() {
     super.onInit();
@@ -68,6 +87,9 @@ class ProfileController extends GetxController {
 
   @override
   void onClose() {
+    for (final worker in _workers) {
+      worker.dispose();
+    }
     _disposeControllers();
     super.onClose();
   }
@@ -89,18 +111,22 @@ class ProfileController extends GetxController {
     try {
       final nutritionController = Get.find<NutritionController>();
 
-      ever(nutritionController.todayMeals, (_) => _calculateStats());
-      ever(nutritionController.totalCalories, (_) => _calculateStats());
-      ever(nutritionController.viewMode, (_) => _calculateStats());
+      _workers.addAll([
+        ever(nutritionController.todayMeals, (_) => _calculateStats()),
+        ever(nutritionController.totalCalories, (_) => _calculateStats()),
+        ever(nutritionController.viewMode, (_) => _calculateStats()),
+      ]);
 
       _calculateStats();
     } catch (e) {
-      Future.delayed(Duration(seconds: 2), () {
+      Future.delayed(const Duration(seconds: 2), () {
         try {
           final nutritionController = Get.find<NutritionController>();
-          ever(nutritionController.todayMeals, (_) => _calculateStats());
-          ever(nutritionController.totalCalories, (_) => _calculateStats());
-          ever(nutritionController.viewMode, (_) => _calculateStats());
+          _workers.addAll([
+            ever(nutritionController.todayMeals, (_) => _calculateStats()),
+            ever(nutritionController.totalCalories, (_) => _calculateStats()),
+            ever(nutritionController.viewMode, (_) => _calculateStats()),
+          ]);
           _calculateStats();
         } catch (e) {
           if (kDebugMode) {
@@ -140,8 +166,6 @@ class ProfileController extends GetxController {
 
   Future<void> _calculateStreakDays() async {
     try {
-      // ignore: unused_local_variable
-      final nutritionController = Get.find<NutritionController>();
       final authController = Get.find<AuthController>();
 
       if (authController.user == null) {
@@ -149,36 +173,31 @@ class ProfileController extends GetxController {
         return;
       }
 
-      int streak = 0;
-      DateTime currentDate = DateTime.now();
+      final uid = authController.user!.uid;
+      final now = DateTime.now();
+      final result = await _nutritionRepository.getMonthlyIntake(uid, now);
 
-      for (int i = 0; i < 30; i++) {
-        final checkDate = currentDate.subtract(Duration(days: i));
-        final dateKey = _formatDateForFirebase(checkDate);
-        final docId = '${authController.user!.uid}_$dateKey';
+      final dateKeys = <String>{};
 
-        try {
-          final doc = await FirebaseFirestore.instance
-              .collection('nutrition_entries')
-              .doc(docId)
-              .get();
-
-          if (doc.exists && doc.data() != null) {
-            final data = doc.data()!;
-            final meals = (data['meals'] as List<dynamic>?) ?? [];
-
-            if (meals.isNotEmpty) {
-              streak++;
-            } else {
-              break;
+      result.fold(
+        onSuccess: (intakes) {
+          for (final intake in intakes) {
+            if (intake.meals.isNotEmpty) {
+              dateKeys.add(_formatDate(intake.date));
             }
-          } else {
-            break;
           }
-        } catch (e) {
-          if (kDebugMode) {
-            print('Error checking streak for $dateKey: $e');
-          }
+        },
+        onFailure: (_) {},
+      );
+
+      int streak = 0;
+      for (int i = 0; i < 30; i++) {
+        final checkDate = now.subtract(Duration(days: i));
+        final dateString = _formatDate(checkDate);
+
+        if (dateKeys.contains(dateString)) {
+          streak++;
+        } else if (i > 0) {
           break;
         }
       }
@@ -203,7 +222,8 @@ class ProfileController extends GetxController {
         case 'weekly':
           final weeklyStats = nutritionController.weeklyStats;
           final daysWithData = weeklyStats['daysWithData'] ?? 1;
-          averageCaloriesPerDay.value = weeklyStats['averageCalories'] ?? 0.0;
+          averageCaloriesPerDay.value =
+              weeklyStats['averageCalories'] ?? 0.0;
           averageMealsPerDay.value = daysWithData > 0
               ? (weeklyStats['totalMeals'] ?? 0) / daysWithData.toDouble()
               : 0.0;
@@ -213,7 +233,8 @@ class ProfileController extends GetxController {
         case 'monthly':
           final monthlyStats = nutritionController.monthlyStats;
           final daysWithData = monthlyStats['daysWithData'] ?? 1;
-          averageCaloriesPerDay.value = monthlyStats['averageCalories'] ?? 0.0;
+          averageCaloriesPerDay.value =
+              monthlyStats['averageCalories'] ?? 0.0;
           averageMealsPerDay.value = daysWithData > 0
               ? (monthlyStats['totalMeals'] ?? 0) / daysWithData.toDouble()
               : 0.0;
@@ -221,9 +242,10 @@ class ProfileController extends GetxController {
           break;
 
         default:
-          averageCaloriesPerDay.value = nutritionController.totalCalories.value;
-          averageMealsPerDay.value = nutritionController.todayMeals.length
-              .toDouble();
+          averageCaloriesPerDay.value =
+              nutritionController.totalCalories.value;
+          averageMealsPerDay.value =
+              nutritionController.todayMeals.length.toDouble();
           totalDaysTracked.value = 1;
       }
     } catch (e) {
@@ -292,7 +314,8 @@ class ProfileController extends GetxController {
       final user = authController.user!;
 
       await _extractUserAuthData(user);
-      await _loadFirestoreProfile(user.uid);
+      await _loadProfileFromRepo(user.uid);
+      await _loadPreferences(user.uid);
 
       _updateControllers();
 
@@ -326,118 +349,62 @@ class ProfileController extends GetxController {
     }
   }
 
-  Future<void> _loadFirestoreProfile(String uid) async {
+  Future<void> _loadProfileFromRepo(String uid) async {
     try {
-      final doc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .get();
+      final result = await _userRepository.getUserProfile(uid);
 
-      if (doc.exists && doc.data() != null) {
-        final data = doc.data()!;
-        await _safeExtractFirestoreData(data);
-      } else {
-        if (kDebugMode) {
-          print('No Firestore profile found, using defaults');
-        }
-        await _createDefaultProfile(uid);
-      }
+      await result.fold(
+        onSuccess: (profile) async {
+          _cachedProfile = profile;
+          _applyProfileToObservables(profile);
+        },
+        onFailure: (_) async {
+          if (kDebugMode) {
+            print('No profile found, creating default');
+          }
+          await _createDefaultProfile(uid);
+        },
+      );
     } catch (e) {
       if (kDebugMode) {
-        print('Firestore profile load error: $e');
+        print('Profile load error: $e');
       }
     }
   }
 
-  Future<void> _safeExtractFirestoreData(Map<String, dynamic> data) async {
-    try {
-      if (data['bio'] is String) userBio.value = data['bio'];
-      if (data['gender'] is String) gender.value = data['gender'];
-      if (data['unitSystem'] is String) unitSystem.value = data['unitSystem'];
-
-      if (data['currentWeight'] is num) {
-        final weight = (data['currentWeight'] as num).toDouble();
-        if (weight > 0 && weight < 1000) {
-          currentWeight.value = weight;
-          await storage.write('user_weight', weight);
-        }
-      }
-
-      if (data['targetWeight'] is num) {
-        final target = (data['targetWeight'] as num).toDouble();
-        if (target > 0 && target < 1000) {
-          targetWeight.value = target;
-        }
-      }
-
-      if (data['height'] is num) {
-        final h = (data['height'] as num).toDouble();
-        if (h > 0 && h < 300) {
-          height.value = h;
-        }
-      }
-
-      if (data['age'] is num) {
-        final ageValue = (data['age'] as num).toInt();
-        if (ageValue > 0 && ageValue < 150) {
-          age.value = ageValue;
-        }
-      }
-
-      notificationsEnabled.value = data['notificationsEnabled'] == true;
-      darkModeEnabled.value = data['darkModeEnabled'] == true;
-      weeklyReportsEnabled.value = data['weeklyReportsEnabled'] == true;
-      dataBackupEnabled.value = data['dataBackupEnabled'] == true;
-      reminderEnabled.value = data['reminderEnabled'] == true;
-
-      if (data['joinDate'] is String) {
-        try {
-          joinDate.value = DateTime.parse(data['joinDate']);
-        } catch (dateError) {
-          if (kDebugMode) {
-            print('Invalid date format: ${data['joinDate']}');
-          }
-        }
-      }
-
-      if (kDebugMode) {
-        print('Firestore data extracted safely');
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error extracting Firestore data: $e');
-      }
+  void _applyProfileToObservables(UserProfile profile) {
+    if (profile.bio != null) userBio.value = profile.bio!;
+    profileImageUrl.value =
+        profile.profileImageUrl ?? profile.photoURL ?? '';
+    currentWeight.value = profile.currentWeight;
+    targetWeight.value = profile.targetWeight;
+    height.value = profile.height;
+    age.value = profile.age;
+    gender.value = _genderToString(profile.gender);
+    if (profile.joinDate != null) {
+      joinDate.value = profile.joinDate!;
     }
+
+    storage.write('user_weight', profile.currentWeight);
   }
 
   Future<void> _createDefaultProfile(String uid) async {
     try {
-      final defaultProfile = {
-        'displayName': userName.value,
-        'email': userEmail.value,
-        'bio': '',
-        'currentWeight': 70.0,
-        'targetWeight': 65.0,
-        'height': 175.0,
-        'age': 25,
-        'gender': 'Male',
-        'unitSystem': 'Metric',
-        'notificationsEnabled': true,
-        'darkModeEnabled': false,
-        'weeklyReportsEnabled': true,
-        'dataBackupEnabled': true,
-        'reminderEnabled': true,
-        'joinDate': DateTime.now().toIso8601String(),
-        'createdAt': DateTime.now().toIso8601String(),
-      };
+      final profile = UserProfile(
+        id: uid,
+        email: userEmail.value,
+        displayName: userName.value,
+        bio: '',
+        joinDate: DateTime.now(),
+      );
 
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .set(defaultProfile);
+      final result = await _userRepository.createUserProfile(profile);
 
-      if (kDebugMode) {
-        print('Default profile created');
+      if (result.isSuccess) {
+        _cachedProfile = profile;
+        if (kDebugMode) {
+          print('Default profile created');
+        }
       }
     } catch (e) {
       if (kDebugMode) {
@@ -446,15 +413,48 @@ class ProfileController extends GetxController {
     }
   }
 
-  void _setupReactiveListeners() {
-    ever(currentWeight, (double weight) async {
-      await _saveWeightPersistently(weight);
-      await _updateWeightHistory(weight);
-    });
+  Future<void> _loadPreferences(String uid) async {
+    try {
+      final result = await _preferencesRepository.getPreferences(uid);
 
-    ever(notificationsEnabled, (bool enabled) => _saveSettingsLocally());
-    ever(darkModeEnabled, (bool enabled) => _saveSettingsLocally());
-    ever(weeklyReportsEnabled, (bool enabled) => _saveSettingsLocally());
+      if (result.isSuccess) {
+        final settings = result.value.settings;
+        if (settings['notificationsEnabled'] is bool) {
+          notificationsEnabled.value = settings['notificationsEnabled'];
+        }
+        if (settings['darkModeEnabled'] is bool) {
+          darkModeEnabled.value = settings['darkModeEnabled'];
+        }
+        if (settings['weeklyReportsEnabled'] is bool) {
+          weeklyReportsEnabled.value = settings['weeklyReportsEnabled'];
+        }
+        if (settings['dataBackupEnabled'] is bool) {
+          dataBackupEnabled.value = settings['dataBackupEnabled'];
+        }
+        if (settings['reminderEnabled'] is bool) {
+          reminderEnabled.value = settings['reminderEnabled'];
+        }
+        if (settings['unitSystem'] is String) {
+          unitSystem.value = settings['unitSystem'];
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error loading preferences: $e');
+      }
+    }
+  }
+
+  void _setupReactiveListeners() {
+    _workers.addAll([
+      ever(currentWeight, (double weight) async {
+        await _saveWeightPersistently(weight);
+        await _updateWeightHistory(weight);
+      }),
+      ever(notificationsEnabled, (_) => _saveSettingsLocally()),
+      ever(darkModeEnabled, (_) => _saveSettingsLocally()),
+      ever(weeklyReportsEnabled, (_) => _saveSettingsLocally()),
+    ]);
   }
 
   void _saveSettingsLocally() async {
@@ -481,7 +481,7 @@ class ProfileController extends GetxController {
         print('Weight saved locally: ${weight}kg');
       }
 
-      await _saveWeightToFirebase(weight);
+      await _saveWeightToRepo(weight);
     } catch (e) {
       if (kDebugMode) {
         print('Error saving weight persistently: $e');
@@ -489,35 +489,35 @@ class ProfileController extends GetxController {
     }
   }
 
-  Future<void> _saveWeightToFirebase(
-    double weight, [
-    int retryCount = 0,
-  ]) async {
+  Future<void> _saveWeightToRepo(double weight, [int retryCount = 0]) async {
     try {
       final authController = Get.find<AuthController>();
       if (authController.user == null) return;
 
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(authController.user!.uid)
-          .set({
-            'currentWeight': weight,
-            'lastWeightUpdate': DateTime.now().toIso8601String(),
-          }, SetOptions(merge: true));
+      final uid = authController.user!.uid;
+      final updatedProfile = _cachedProfile?.copyWith(currentWeight: weight) ??
+          UserProfile(id: uid, email: userEmail.value, currentWeight: weight);
 
-      if (kDebugMode) {
-        print('Weight synced to Firebase: ${weight}kg');
+      final result = await _userRepository.updateUserProfile(updatedProfile);
+
+      if (result.isSuccess) {
+        _cachedProfile = updatedProfile;
+        if (kDebugMode) {
+          print('Weight synced via repo: ${weight}kg');
+        }
+      } else {
+        throw Exception(result.failure.message);
       }
     } catch (e) {
       if (retryCount < 3) {
         if (kDebugMode) {
-          print('Retrying Firebase weight save... (${retryCount + 1}/3)');
+          print('Retrying weight save... (${retryCount + 1}/3)');
         }
-        await Future.delayed(Duration(seconds: 2));
-        await _saveWeightToFirebase(weight, retryCount + 1);
+        await Future.delayed(const Duration(seconds: 2));
+        await _saveWeightToRepo(weight, retryCount + 1);
       } else {
         if (kDebugMode) {
-          print('Failed to save weight to Firebase : $e');
+          print('Failed to save weight: $e');
         }
       }
     }
@@ -566,52 +566,41 @@ class ProfileController extends GetxController {
 
   Future<void> _loadNutritionStats(String uid) async {
     try {
-      final querySnapshot = await FirebaseFirestore.instance
-          .collection('nutrition_entries')
-          .where('userId', isEqualTo: uid)
-          .orderBy('date', descending: true)
-          .limit(30)
-          .get();
+      final result =
+          await _nutritionRepository.getMonthlyIntake(uid, DateTime.now());
 
-      int totalMeals = 0;
-      double totalCals = 0.0;
-      Set<String> loggedDates = {};
-      List<double> dailyCalories = [];
+      result.fold(
+        onSuccess: (intakes) {
+          int totalMeals = 0;
+          double totalCals = 0.0;
+          final Set<String> loggedDates = {};
+          final List<double> dailyCalories = [];
 
-      for (var doc in querySnapshot.docs) {
-        final data = doc.data();
-        final meals = data['meals'] as List<dynamic>? ?? [];
-
-        double dayCalories = 0.0;
-        for (var meal in meals) {
-          if (meal is Map<String, dynamic>) {
-            final calories = meal['calories'];
-            if (calories is num) {
-              dayCalories += calories.toDouble();
-            }
+          for (final intake in intakes) {
+            totalMeals += intake.meals.length;
+            totalCals += intake.totalCalories;
+            dailyCalories.add(intake.totalCalories);
+            loggedDates.add(_formatDate(intake.date));
           }
-        }
 
-        totalMeals += meals.length;
-        totalCals += dayCalories;
-        dailyCalories.add(dayCalories);
+          totalMealsLogged.value = totalMeals;
+          totalCaloriesConsumed.value = totalCals;
+          weeklyCalories.value = dailyCalories.take(7).toList();
+          totalDaysTracked.value = loggedDates.length;
+          streakDays.value = _calculateStreak(loggedDates);
 
-        if (data['date'] != null) {
-          loggedDates.add(data['date'].toString().substring(0, 10));
-        }
-      }
-
-      totalMealsLogged.value = totalMeals;
-      totalCaloriesConsumed.value = totalCals;
-      weeklyCalories.value = dailyCalories.take(7).toList();
-      totalDaysTracked.value = loggedDates.length;
-      streakDays.value = _calculateStreak(loggedDates);
-
-      if (kDebugMode) {
-        print(
-          'Nutrition stats loaded: $totalMeals meals, ${totalCals.toInt()} calories',
-        );
-      }
+          if (kDebugMode) {
+            print(
+              'Nutrition stats loaded: $totalMeals meals, ${totalCals.toInt()} calories',
+            );
+          }
+        },
+        onFailure: (failure) {
+          if (kDebugMode) {
+            print('Error loading nutrition stats: ${failure.message}');
+          }
+        },
+      );
     } catch (e) {
       if (kDebugMode) {
         print('Error loading nutrition stats: $e');
@@ -683,7 +672,7 @@ class ProfileController extends GetxController {
 
   void _calculateProfileCompleteness() {
     int completed = 0;
-    int total = 10;
+    final int total = 6;
 
     if (userName.value.isNotEmpty && userName.value != 'Anonymous User') {
       completed++;
@@ -691,12 +680,8 @@ class ProfileController extends GetxController {
     if (userEmail.value.isNotEmpty) completed++;
     if (userBio.value.isNotEmpty) completed++;
     if (profileImageUrl.value.isNotEmpty) completed++;
-    if (currentWeight.value != 70.0) completed++;
-    if (targetWeight.value != 65.0) completed++;
-    if (height.value != 175.0) completed++;
-    if (age.value != 25) completed++;
-    if (gender.value.isNotEmpty) completed++;
     if (totalMealsLogged.value > 0) completed++;
+    if (totalDaysTracked.value > 0) completed++;
 
     profileCompleteness.value = completed / total;
     if (kDebugMode) {
@@ -739,14 +724,25 @@ class ProfileController extends GetxController {
 
         await user.updatePhotoURL(downloadUrl);
 
-        await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
-          'profileImageUrl': downloadUrl,
-          'lastImageUpdate': DateTime.now().toIso8601String(),
-        }, SetOptions(merge: true));
+        final updatedProfile = _cachedProfile?.copyWith(
+              profileImageUrl: downloadUrl,
+              photoURL: downloadUrl,
+            ) ??
+            UserProfile(
+              id: user.uid,
+              email: user.email ?? '',
+              profileImageUrl: downloadUrl,
+              photoURL: downloadUrl,
+            );
+
+        final result = await _userRepository.updateUserProfile(updatedProfile);
+        if (result.isSuccess) {
+          _cachedProfile = updatedProfile;
+        }
 
         profileImageUrl.value = downloadUrl;
         _calculateProfileCompleteness();
-        CustomThemeFlushbar(
+        CustomThemeFlushbar.show(
           title: 'Success',
           message: 'Profile image updated successfully',
         );
@@ -796,21 +792,33 @@ class ProfileController extends GetxController {
 
       await _updateAuthProfile(user, name);
 
-      final updates = _prepareFirestoreUpdates(
-        name,
-        bio,
-        currentWeight,
-        targetWeight,
-        userHeight,
-        userAge,
-        userGender,
-      );
+      final updatedProfile = _cachedProfile?.copyWith(
+            displayName: name?.trim(),
+            bio: bio?.trim(),
+            currentWeight: currentWeight,
+            targetWeight: targetWeight,
+            height: userHeight,
+            age: userAge,
+            gender: userGender != null ? _parseGender(userGender) : null,
+          ) ??
+          UserProfile(
+            id: user.uid,
+            email: user.email ?? '',
+            displayName: name?.trim(),
+            bio: bio?.trim(),
+            currentWeight: currentWeight ?? this.currentWeight.value,
+            targetWeight: targetWeight ?? this.targetWeight.value,
+            height: userHeight ?? height.value,
+            age: userAge ?? age.value,
+            gender: userGender != null
+                ? _parseGender(userGender)
+                : _parseGender(gender.value),
+          );
 
-      if (updates.isNotEmpty) {
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .set(updates, SetOptions(merge: true));
+      final result = await _userRepository.updateUserProfile(updatedProfile);
+
+      if (result.isSuccess) {
+        _cachedProfile = updatedProfile;
       }
 
       await _updateLocalValues(
@@ -826,7 +834,7 @@ class ProfileController extends GetxController {
       _updateControllers();
       _calculateProfileCompleteness();
 
-      CustomThemeFlushbar(
+      CustomThemeFlushbar.show(
         title: 'Profile Updated',
         message: 'Your profile has been updated successfully',
       );
@@ -855,7 +863,8 @@ class ProfileController extends GetxController {
     if (bio != null && bio.length > 500) {
       return 'Bio must be less than 500 characters';
     }
-    if (currentWeight != null && (currentWeight <= 0 || currentWeight > 1000)) {
+    if (currentWeight != null &&
+        (currentWeight <= 0 || currentWeight > 1000)) {
       return 'Weight must be between 1 and 1000 kg';
     }
     if (targetWeight != null && (targetWeight <= 0 || targetWeight > 1000)) {
@@ -883,36 +892,6 @@ class ProfileController extends GetxController {
         print('Auth update error (continuing): $e');
       }
     }
-  }
-
-  Map<String, dynamic> _prepareFirestoreUpdates(
-    String? name,
-    String? bio,
-    double? currentWeight,
-    double? targetWeight,
-    double? userHeight,
-    int? userAge,
-    String? userGender,
-  ) {
-    final updates = <String, dynamic>{};
-
-    if (name != null && name.trim().isNotEmpty) {
-      updates['displayName'] = name.trim();
-    }
-    if (bio != null) updates['bio'] = bio.trim();
-    if (currentWeight != null && currentWeight > 0) {
-      updates['currentWeight'] = currentWeight;
-    }
-    if (targetWeight != null && targetWeight > 0) {
-      updates['targetWeight'] = targetWeight;
-    }
-    if (userHeight != null && userHeight > 0) updates['height'] = userHeight;
-    if (userAge != null && userAge > 0) updates['age'] = userAge;
-    if (userGender != null && userGender.isNotEmpty) {
-      updates['gender'] = userGender;
-    }
-    updates['updatedAt'] = DateTime.now().toIso8601String();
-    return updates;
   }
 
   Future<void> _updateLocalValues(
@@ -971,14 +950,14 @@ class ProfileController extends GetxController {
             'Nutrition sync failed (weight saved locally): $nutritionError',
           );
         }
-        CustomThemeFlushbar(
+        CustomThemeFlushbar.show(
           title: 'Partial Sync',
           message: 'Weight saved locally, nutrition sync will retry later',
         );
       }
 
       if (kDebugMode) {
-        print('Weight sync complete: $oldWeight → $newWeight kg');
+        print('Weight sync complete: $oldWeight \u2192 $newWeight kg');
       }
     } catch (e) {
       if (kDebugMode) {
@@ -1012,51 +991,39 @@ class ProfileController extends GetxController {
         throw Exception('User not authenticated');
       }
 
-      final user = authController.user!;
-      final updates = <String, dynamic>{};
+      final uid = authController.user!.uid;
 
+      if (notifications != null) notificationsEnabled.value = notifications;
+      if (darkMode != null) darkModeEnabled.value = darkMode;
+      if (weeklyReports != null) weeklyReportsEnabled.value = weeklyReports;
+      if (dataBackup != null) dataBackupEnabled.value = dataBackup;
+      if (reminder != null) reminderEnabled.value = reminder;
+      if (unitSystem != null) this.unitSystem.value = unitSystem;
+
+      UserPreferences prefs = const UserPreferences();
+      final prefsResult = await _preferencesRepository.getPreferences(uid);
+      if (prefsResult.isSuccess) {
+        prefs = prefsResult.value;
+      }
+
+      final updatedSettings = Map<String, dynamic>.from(prefs.settings);
       if (notifications != null) {
-        updates['notificationsEnabled'] = notifications;
-        notificationsEnabled.value = notifications;
+        updatedSettings['notificationsEnabled'] = notifications;
       }
-
-      if (darkMode != null) {
-        updates['darkModeEnabled'] = darkMode;
-        darkModeEnabled.value = darkMode;
-      }
-
+      if (darkMode != null) updatedSettings['darkModeEnabled'] = darkMode;
       if (weeklyReports != null) {
-        updates['weeklyReportsEnabled'] = weeklyReports;
-        weeklyReportsEnabled.value = weeklyReports;
+        updatedSettings['weeklyReportsEnabled'] = weeklyReports;
       }
+      if (dataBackup != null) updatedSettings['dataBackupEnabled'] = dataBackup;
+      if (reminder != null) updatedSettings['reminderEnabled'] = reminder;
+      if (unitSystem != null) updatedSettings['unitSystem'] = unitSystem;
 
-      if (dataBackup != null) {
-        updates['dataBackupEnabled'] = dataBackup;
-        dataBackupEnabled.value = dataBackup;
-      }
-
-      if (reminder != null) {
-        updates['reminderEnabled'] = reminder;
-        reminderEnabled.value = reminder;
-      }
-
-      if (unitSystem != null) {
-        updates['unitSystem'] = unitSystem;
-        this.unitSystem.value = unitSystem;
-      }
-
-      if (updates.isNotEmpty) {
-        updates['settingsUpdatedAt'] = DateTime.now().toIso8601String();
-
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .set(updates, SetOptions(merge: true));
-      }
+      final updatedPrefs = prefs.copyWith(settings: updatedSettings);
+      await _preferencesRepository.savePreferences(uid, updatedPrefs);
 
       _saveSettingsLocally();
 
-      CustomThemeFlushbar(
+      CustomThemeFlushbar.show(
         title: 'Settings Updated',
         message: 'Your preferences have been saved',
       );
@@ -1069,7 +1036,7 @@ class ProfileController extends GetxController {
     try {
       isExporting.value = true;
 
-      CustomThemeFlushbar(
+      CustomThemeFlushbar.show(
         title: 'Exporting...',
         message: 'Preparing your data for export',
       );
@@ -1086,7 +1053,7 @@ class ProfileController extends GetxController {
         exportData,
       );
 
-      CustomThemeFlushbar(
+      CustomThemeFlushbar.show(
         title: 'Export Complete',
         message: 'Your data has been exported successfully',
       );
@@ -1145,6 +1112,18 @@ class ProfileController extends GetxController {
 
       final user = authController.user!;
 
+      final password = await _showPasswordDialog();
+      if (password == null) {
+        isLoading.value = false;
+        return;
+      }
+
+      final credential = EmailAuthProvider.credential(
+        email: user.email!,
+        password: password,
+      );
+      await user.reauthenticateWithCredential(credential);
+
       await _deleteUserData(user.uid);
 
       await storage.erase();
@@ -1153,7 +1132,7 @@ class ProfileController extends GetxController {
 
       Get.offAllNamed('/login');
 
-      CustomThemeFlushbar(
+      CustomThemeFlushbar.show(
         title: 'Account Deleted',
         message: 'Your account and all data have been deleted successfully',
       );
@@ -1170,8 +1149,8 @@ class ProfileController extends GetxController {
   Future<bool> _showDeleteConfirmation() async {
     final confirmed = await Get.dialog<bool>(
       AlertDialog(
-        title: Text('Delete Account'),
-        content: Column(
+        title: const Text('Delete Account'),
+        content: const Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1181,10 +1160,10 @@ class ProfileController extends GetxController {
               'This will permanently delete:',
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
-            Text('• All your profile data'),
-            Text('• All meal logs and nutrition data'),
-            Text('• All scanned products'),
-            Text('• All statistics and history'),
+            Text('\u2022 All your profile data'),
+            Text('\u2022 All meal logs and nutrition data'),
+            Text('\u2022 All scanned products'),
+            Text('\u2022 All statistics and history'),
             SizedBox(height: 8),
             Text(
               'This action cannot be undone.',
@@ -1195,12 +1174,12 @@ class ProfileController extends GetxController {
         actions: [
           TextButton(
             onPressed: () => Get.back(result: false),
-            child: Text('Cancel'),
+            child: const Text('Cancel'),
           ),
           ElevatedButton(
             onPressed: () => Get.back(result: true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: Text('Delete Account'),
+            child: const Text('Delete Account'),
           ),
         ],
       ),
@@ -1209,40 +1188,47 @@ class ProfileController extends GetxController {
     return confirmed == true;
   }
 
+  Future<String?> _showPasswordDialog() async {
+    final passwordController = TextEditingController();
+    final result = await Get.dialog<String>(
+      AlertDialog(
+        title: const Text('Re-authenticate'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Please enter your password to confirm account deletion.',
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: passwordController,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: 'Password',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(result: null),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Get.back(result: passwordController.text),
+            child: const Text('Confirm'),
+          ),
+        ],
+      ),
+    );
+    passwordController.dispose();
+    return result;
+  }
+
   Future<void> _deleteUserData(String uid) async {
-    final batch = FirebaseFirestore.instance.batch();
-
-    final userDoc = FirebaseFirestore.instance.collection('users').doc(uid);
-    batch.delete(userDoc);
-
-    final nutritionQuery = await FirebaseFirestore.instance
-        .collection('nutrition_entries')
-        .where('userId', isEqualTo: uid)
-        .get();
-
-    for (var doc in nutritionQuery.docs) {
-      batch.delete(doc.reference);
-    }
-
-    final productsQuery = await FirebaseFirestore.instance
-        .collection('scanned_products')
-        .where('userId', isEqualTo: uid)
-        .get();
-
-    for (var doc in productsQuery.docs) {
-      batch.delete(doc.reference);
-    }
-
-    final preferencesDoc = FirebaseFirestore.instance
-        .collection('user_preferences')
-        .doc(uid);
-    batch.delete(preferencesDoc);
-
-    await batch.commit();
-
-    if (kDebugMode) {
-      print('All user data deleted from Firestore');
-    }
+    await _userRepository.deleteUserProfile(uid);
+    await _nutritionRepository.clearAllMeals(uid);
   }
 
   Future<void> signOut() async {
@@ -1290,7 +1276,7 @@ class ProfileController extends GetxController {
   }
 
   void _showErrorSnackbar(String message) {
-    CustomThemeFlushbar(title: '❌ Error', message: message);
+    CustomThemeFlushbar.show(title: '\u274C Error', message: message);
   }
 
   void _disposeControllers() {
@@ -1302,8 +1288,30 @@ class ProfileController extends GetxController {
     ageController.dispose();
   }
 
-  String _formatDateForFirebase(DateTime date) {
+  String _formatDate(DateTime date) {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  }
+
+  Gender _parseGender(String value) {
+    switch (value.toLowerCase()) {
+      case 'male':
+        return Gender.male;
+      case 'female':
+        return Gender.female;
+      default:
+        return Gender.other;
+    }
+  }
+
+  String _genderToString(Gender value) {
+    switch (value) {
+      case Gender.male:
+        return 'Male';
+      case Gender.female:
+        return 'Female';
+      case Gender.other:
+        return 'Other';
+    }
   }
 
   double get bmi {

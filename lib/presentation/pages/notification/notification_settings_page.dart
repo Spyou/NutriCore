@@ -45,15 +45,15 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
 
     breakfastTime = _getTimeFromStorage(
       'working_breakfast_time',
-      TimeOfDay(hour: 8, minute: 0),
+      const TimeOfDay(hour: 8, minute: 0),
     );
     lunchTime = _getTimeFromStorage(
       'working_lunch_time',
-      TimeOfDay(hour: 13, minute: 0),
+      const TimeOfDay(hour: 13, minute: 0),
     );
     dinnerTime = _getTimeFromStorage(
       'working_dinner_time',
-      TimeOfDay(hour: 19, minute: 30),
+      const TimeOfDay(hour: 19, minute: 30),
     );
   }
 
@@ -206,7 +206,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: enabled
-              ? AppColors.primary.withOpacity(0.3)
+              ? AppColors.primary.withValues(alpha: 0.3)
               : AppColors.textTertiary,
         ),
       ),
@@ -217,7 +217,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.1),
+                  color: AppColors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(icon, color: AppColors.primary, size: 20),
@@ -245,7 +245,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
               Switch(
                 value: enabled,
                 onChanged: onEnabledChanged,
-                activeColor: AppColors.primary,
+                activeThumbColor: AppColors.primary,
               ),
             ],
           ),
@@ -256,9 +256,9 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
               child: Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.1),
+                  color: AppColors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -300,7 +300,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: enabled
-                ? AppColors.success.withOpacity(0.3)
+                ? AppColors.success.withValues(alpha: 0.3)
                 : AppColors.textTertiary,
           ),
         ),
@@ -309,7 +309,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: AppColors.success.withOpacity(0.1),
+                color: AppColors.success.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(icon, color: AppColors.success, size: 20),
@@ -345,7 +345,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
             Switch(
               value: enabled,
               onChanged: onEnabledChanged,
-              activeColor: AppColors.success,
+              activeThumbColor: AppColors.success,
             ),
           ],
         ),
@@ -383,7 +383,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
         title: Row(
           children: [
             Icon(Icons.water_drop, color: AppColors.success),
-            SizedBox(width: 8),
+            const SizedBox(width: 8),
             Text(
               'Hydration Settings',
               style: AppTextStyles.bodyLarge(
@@ -396,12 +396,12 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('8 daily reminders every 2 hours'),
-            SizedBox(height: 8),
-            Text('Times: 8AM, 10AM, 12PM, 2PM, 4PM, 6PM, 8PM, 10PM'),
-            SizedBox(height: 16),
+            const Text('8 daily reminders every 2 hours'),
+            const SizedBox(height: 8),
+            const Text('Times: 8AM, 10AM, 12PM, 2PM, 4PM, 6PM, 8PM, 10PM'),
+            const SizedBox(height: 16),
             SwitchListTile(
-              title: Text('Enable Hydration Reminders'),
+              title: const Text('Enable Hydration Reminders'),
               value: hydrationEnabled,
               onChanged: (enabled) async {
                 setState(() => hydrationEnabled = enabled);
@@ -414,7 +414,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Close'),
+            child: const Text('Close'),
           ),
         ],
       ),
@@ -428,7 +428,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
         title: Row(
           children: [
             Icon(Icons.fitness_center, color: AppColors.success),
-            SizedBox(width: 8),
+            const SizedBox(width: 8),
             Text(
               'Protein Alert Settings',
               style: AppTextStyles.bodyLarge(
@@ -441,12 +441,12 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('2 daily protein checks'),
-            SizedBox(height: 8),
-            Text('Times: 3:00 PM (afternoon check), 8:30 PM (evening review)'),
-            SizedBox(height: 16),
+            const Text('2 daily protein checks'),
+            const SizedBox(height: 8),
+            const Text('Times: 3:00 PM (afternoon check), 8:30 PM (evening review)'),
+            const SizedBox(height: 16),
             SwitchListTile(
-              title: Text('Enable Protein Alerts'),
+              title: const Text('Enable Protein Alerts'),
               value: proteinAlertsEnabled,
               onChanged: (enabled) async {
                 setState(() => proteinAlertsEnabled = enabled);
@@ -459,7 +459,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Close'),
+            child: const Text('Close'),
           ),
         ],
       ),
@@ -473,7 +473,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
         title: Row(
           children: [
             Icon(Icons.assessment, color: AppColors.success),
-            SizedBox(width: 8),
+            const SizedBox(width: 8),
             Text(
               'Evening Review Settings',
               style: AppTextStyles.bodyLarge(
@@ -486,16 +486,16 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Daily nutrition summary'),
-            SizedBox(height: 8),
-            Text('Time: 9:00 PM every day'),
-            SizedBox(height: 8),
-            Text(
+            const Text('Daily nutrition summary'),
+            const SizedBox(height: 8),
+            const Text('Time: 9:00 PM every day'),
+            const SizedBox(height: 8),
+            const Text(
               'Review your daily nutrition progress and plan tomorrow\'s meals.',
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             SwitchListTile(
-              title: Text('Enable Evening Review'),
+              title: const Text('Enable Evening Review'),
               value: eveningReviewEnabled,
               onChanged: (enabled) async {
                 setState(() => eveningReviewEnabled = enabled);
@@ -508,7 +508,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Close'),
+            child: const Text('Close'),
           ),
         ],
       ),

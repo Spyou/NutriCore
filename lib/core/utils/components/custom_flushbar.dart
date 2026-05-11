@@ -3,14 +3,17 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 class CustomThemeFlushbar {
-  String title;
-  String message;
-  CustomThemeFlushbar({required this.title, required this.message});
-  static void show({required String title, required String message}) {
+  static void show({
+    required String title,
+    required String message,
+    Duration duration = const Duration(seconds: 2),
+  }) {
+    final context = Get.context;
+    if (context == null) return;
     Flushbar(
       title: title,
       message: message,
-      duration: const Duration(seconds: 2),
+      duration: duration,
       backgroundColor: Colors.black87,
       messageColor: Colors.white,
       padding: const EdgeInsets.all(16),
@@ -18,11 +21,11 @@ class CustomThemeFlushbar {
       margin: const EdgeInsets.all(16),
       boxShadows: [
         BoxShadow(
-          color: Colors.black.withOpacity(0.3),
+          color: Colors.black.withValues(alpha: 0.3),
           offset: const Offset(0, 2),
           blurRadius: 6,
         ),
       ],
-    ).show(Get.context!);
+    ).show(context);
   }
 }

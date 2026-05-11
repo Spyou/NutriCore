@@ -65,10 +65,10 @@ class ThemeSettingsPage extends GetView<ThemeService> {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.outline.withOpacity(0.2)),
+        border: Border.all(color: AppColors.outline.withValues(alpha: 0.2)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -153,7 +153,7 @@ class ThemeSettingsPage extends GetView<ThemeService> {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.1),
+                      color: AppColors.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
@@ -284,8 +284,8 @@ class ThemeSettingsPage extends GetView<ThemeService> {
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   color: controller.useMaterial3.value
-                      ? AppColors.secondary.withOpacity(0.1)
-                      : AppColors.outline.withOpacity(0.1),
+                      ? AppColors.secondary.withValues(alpha: 0.1)
+                      : AppColors.outline.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
@@ -310,9 +310,9 @@ class ThemeSettingsPage extends GetView<ThemeService> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surfaceVariant.withOpacity(0.5),
+        color: AppColors.surfaceVariant.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.outline.withOpacity(0.2)),
+        border: Border.all(color: AppColors.outline.withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -371,7 +371,7 @@ class ThemeSettingsPage extends GetView<ThemeService> {
             style: AppTextStyles.bodySmall(context).copyWith(
               color: enabled
                   ? AppColors.onSurface
-                  : AppColors.onSurface.withOpacity(0.6),
+                  : AppColors.onSurface.withValues(alpha: 0.6),
             ),
           ),
         ],
@@ -413,14 +413,14 @@ class ThemeSettingsPage extends GetView<ThemeService> {
                   gradient: controller.useDynamicColor.value
                       ? LinearGradient(
                           colors: [
-                            AppColors.tertiary.withOpacity(0.3),
-                            AppColors.primary.withOpacity(0.3),
+                            AppColors.tertiary.withValues(alpha: 0.3),
+                            AppColors.primary.withValues(alpha: 0.3),
                           ],
                         )
                       : null,
                   color: controller.useDynamicColor.value
                       ? null
-                      : AppColors.outline.withOpacity(0.1),
+                      : AppColors.outline.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
@@ -515,7 +515,7 @@ class ThemeSettingsPage extends GetView<ThemeService> {
           ),
           boxShadow: [
             BoxShadow(
-              color: color.withOpacity(0.3),
+              color: color.withValues(alpha: 0.3),
               blurRadius: isSelected ? 12 : 6,
               offset: const Offset(0, 2),
               spreadRadius: isSelected ? 2 : 0,
@@ -538,9 +538,9 @@ class ThemeSettingsPage extends GetView<ThemeService> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surfaceVariant.withOpacity(0.5),
+        color: AppColors.surfaceVariant.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.outline.withOpacity(0.2)),
+        border: Border.all(color: AppColors.outline.withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -563,7 +563,7 @@ class ThemeSettingsPage extends GetView<ThemeService> {
               width: double.infinity,
               height: 50,
               decoration: BoxDecoration(
-                gradient: LinearGradient(
+                gradient: const LinearGradient(
                   colors: [
                     Colors.red,
                     Colors.orange,
@@ -575,13 +575,13 @@ class ThemeSettingsPage extends GetView<ThemeService> {
                   ],
                 ),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.outline.withOpacity(0.3)),
+                border: Border.all(color: AppColors.outline.withValues(alpha: 0.3)),
               ),
               child: Center(
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.colorize, color: Colors.white, size: 24),
+                    const Icon(Icons.colorize, color: Colors.white, size: 24),
                     const SizedBox(width: 8),
                     Text(
                       'Pick Custom Color',
@@ -650,7 +650,7 @@ class ThemeSettingsPage extends GetView<ThemeService> {
           border: Border.all(
             color: controller.seedColor.value == color
                 ? color
-                : AppColors.outline.withOpacity(0.2),
+                : AppColors.outline.withValues(alpha: 0.2),
             width: controller.seedColor.value == color ? 2 : 1,
           ),
         ),
@@ -659,7 +659,7 @@ class ThemeSettingsPage extends GetView<ThemeService> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
+                color: color.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(icon, color: color, size: 24),
@@ -727,7 +727,7 @@ class ThemeSettingsPage extends GetView<ThemeService> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surfaceVariant.withOpacity(0.3),
+        color: AppColors.surfaceVariant.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -812,10 +812,10 @@ class ThemeSettingsPage extends GetView<ThemeService> {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.outline.withOpacity(0.1)),
+        border: Border.all(color: AppColors.outline.withValues(alpha: 0.1)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 6,
             offset: const Offset(0, 2),
           ),
@@ -829,7 +829,7 @@ class ThemeSettingsPage extends GetView<ThemeService> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: iconColor.withOpacity(0.1),
+                  color: iconColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(icon, color: iconColor, size: 20),
@@ -854,9 +854,9 @@ class ThemeSettingsPage extends GetView<ThemeService> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.primaryContainer.withOpacity(0.3),
+        color: AppColors.primaryContainer.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.primary.withOpacity(0.2)),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,

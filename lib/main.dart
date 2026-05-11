@@ -3,7 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:nutri_check/presentation/services/firebase_notification_service.dart';
@@ -18,7 +18,6 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   try {
-    await dotenv.load(fileName: "assets/.env");
     await GetStorage.init();
 
     // Initialize Firebase
@@ -100,7 +99,9 @@ class MyApp extends StatelessWidget {
               return MediaQuery(
                 data: MediaQuery.of(context).copyWith(
                   textScaler: TextScaler.linear(
-                    MediaQuery.of(context).textScaleFactor.clamp(0.8, 1.4),
+                    MediaQuery.of(
+                      context,
+                    ).textScaler.scale(1.0).clamp(0.8, 1.4),
                   ),
                 ),
                 child: child!,
@@ -165,21 +166,22 @@ class ErrorApp extends StatelessWidget {
                   style: Theme.of(context).textTheme.bodyMedium,
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 24),
-                Card(
-                  color: Colors.red.shade50,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Text(
-                      'Error Details:\n$error',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        fontFamily: 'monospace',
-                        color: Colors.red.shade800,
+                if (kDebugMode)
+                  Card(
+                    color: Colors.red.shade50,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Text(
+                        'Error Details:\n$error',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          fontFamily: 'monospace',
+                          color: Colors.red.shade800,
+                        ),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 32),
+                if (kDebugMode) const SizedBox(height: 32),
+                if (!kDebugMode) const SizedBox(height: 32),
                 ElevatedButton.icon(
                   onPressed: () {
                     SystemNavigator.pop();

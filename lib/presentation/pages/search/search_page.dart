@@ -1,6 +1,7 @@
 import 'dart:ui';
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -16,7 +17,7 @@ class SearchPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GetBuilder<app_search.SearchController>(
-      init: app_search.SearchController(),
+      init: Get.find<app_search.SearchController>(),
       builder: (controller) => Scaffold(
         backgroundColor: AppColors.background,
         body: CustomScrollView(
@@ -63,16 +64,16 @@ class SearchPage extends StatelessWidget {
               );
 
           return AnimatedContainer(
-            duration: Duration(milliseconds: 150),
+            duration: const Duration(milliseconds: 150),
             curve: Curves.easeOutCubic,
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  AppColors.primary.withOpacity(
-                    0.95 + (0.05 * shrinkPercentage),
+                  AppColors.primary.withValues(
+                    alpha: 0.95 + (0.05 * shrinkPercentage),
                   ),
-                  AppColors.secondary.withOpacity(
-                    0.85 + (0.15 * shrinkPercentage),
+                  AppColors.secondary.withValues(
+                    alpha: 0.85 + (0.15 * shrinkPercentage),
                   ),
                 ],
                 begin: Alignment.topLeft,
@@ -87,7 +88,7 @@ class SearchPage extends StatelessWidget {
                 ),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.1),
+                    color: AppColors.primary.withValues(alpha: 0.1),
                   ),
                   child: FlexibleSpaceBar(
                     centerTitle: false,
@@ -96,11 +97,11 @@ class SearchPage extends StatelessWidget {
                       bottom: 0 + (8 * shrinkPercentage),
                     ),
                     title: AnimatedSwitcher(
-                      duration: Duration(milliseconds: 200),
+                      duration: const Duration(milliseconds: 200),
                       child: shrinkPercentage > 0.5
                           ? Text(
                               'Search',
-                              key: ValueKey('collapsed_search'),
+                              key: const ValueKey('collapsed_search'),
                               style: AppTextStyles.headingMedium(Get.context!)
                                   .copyWith(
                                     color: AppColors.textOnPrimary,
@@ -111,7 +112,11 @@ class SearchPage extends StatelessWidget {
                     ),
                     background: SafeArea(
                       child: Padding(
-                        padding: EdgeInsets.only(left: 20, right: 60, top: 8),
+                        padding: const EdgeInsets.only(
+                          left: 20,
+                          right: 60,
+                          top: 8,
+                        ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisAlignment: MainAxisAlignment.end,
@@ -126,7 +131,7 @@ class SearchPage extends StatelessWidget {
                                 ),
                                 child: TweenAnimationBuilder<double>(
                                   tween: Tween(begin: 0.0, end: 1.0),
-                                  duration: Duration(milliseconds: 800),
+                                  duration: const Duration(milliseconds: 800),
                                   curve: Curves.elasticOut,
                                   builder: (context, value, child) {
                                     return Transform.translate(
@@ -148,7 +153,7 @@ class SearchPage extends StatelessWidget {
                                 ),
                               ),
                             ),
-                            SizedBox(height: 4),
+                            const SizedBox(height: 4),
                             Transform.translate(
                               offset: Offset(0, 15 * shrinkPercentage),
                               child: Opacity(
@@ -158,7 +163,7 @@ class SearchPage extends StatelessWidget {
                                 ),
                                 child: Obx(
                                   () => AnimatedSwitcher(
-                                    duration: Duration(milliseconds: 400),
+                                    duration: const Duration(milliseconds: 400),
                                     switchInCurve: Curves.easeInOut,
                                     switchOutCurve: Curves.easeInOut,
                                     child: TweenAnimationBuilder<double>(
@@ -166,7 +171,9 @@ class SearchPage extends StatelessWidget {
                                         controller.searchResults.length,
                                       ),
                                       tween: Tween(begin: 0.0, end: 1.0),
-                                      duration: Duration(milliseconds: 500),
+                                      duration: const Duration(
+                                        milliseconds: 500,
+                                      ),
                                       curve: Curves.bounceOut,
                                       builder: (context, value, child) {
                                         return Transform.scale(
@@ -177,13 +184,14 @@ class SearchPage extends StatelessWidget {
                                                   .searchResults
                                                   .isNotEmpty) ...[
                                                 Container(
-                                                  padding: EdgeInsets.symmetric(
-                                                    horizontal: 8,
-                                                    vertical: 4,
-                                                  ),
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 8,
+                                                        vertical: 4,
+                                                      ),
                                                   decoration: BoxDecoration(
                                                     color: Colors.white
-                                                        .withOpacity(0.2),
+                                                        .withValues(alpha: 0.2),
                                                     borderRadius:
                                                         BorderRadius.circular(
                                                           12,
@@ -202,7 +210,7 @@ class SearchPage extends StatelessWidget {
                                                         ),
                                                   ),
                                                 ),
-                                                SizedBox(width: 8),
+                                                const SizedBox(width: 8),
                                               ],
                                               Text(
                                                 controller.searchResults.isEmpty
@@ -214,7 +222,9 @@ class SearchPage extends StatelessWidget {
                                                     ).copyWith(
                                                       color: AppColors
                                                           .textOnPrimary
-                                                          .withOpacity(0.9),
+                                                          .withValues(
+                                                            alpha: 0.9,
+                                                          ),
                                                       fontWeight:
                                                           FontWeight.w500,
                                                     ),
@@ -228,7 +238,7 @@ class SearchPage extends StatelessWidget {
                                 ),
                               ),
                             ),
-                            SizedBox(height: 8),
+                            const SizedBox(height: 8),
                           ],
                         ),
                       ),
@@ -244,10 +254,10 @@ class SearchPage extends StatelessWidget {
         // Clear recent searches button
         Obx(
           () => AnimatedSwitcher(
-            duration: Duration(milliseconds: 300),
+            duration: const Duration(milliseconds: 300),
             child: controller.recentSearches.isNotEmpty
                 ? Padding(
-                    padding: EdgeInsets.only(right: 16),
+                    padding: const EdgeInsets.only(right: 16),
                     child: Material(
                       color: Colors.transparent,
                       child: InkWell(
@@ -265,7 +275,7 @@ class SearchPage extends StatelessWidget {
                       ),
                     ),
                   )
-                : SizedBox.shrink(),
+                : const SizedBox.shrink(),
           ),
         ),
       ],
@@ -279,16 +289,18 @@ class SearchPage extends StatelessWidget {
         title: Row(
           children: [
             Icon(Icons.history, color: AppColors.primary),
-            SizedBox(width: 12),
+            const SizedBox(width: 12),
             Text(
               'Clear Search History',
               style: AppTextStyles.headingMedium(Get.context!),
             ),
           ],
         ),
-        content: Text('This will remove all your recent searches. Continue?'),
+        content: const Text(
+          'This will remove all your recent searches. Continue?',
+        ),
         actions: [
-          TextButton(onPressed: () => Get.back(), child: Text('Cancel')),
+          TextButton(onPressed: () => Get.back(), child: const Text('Cancel')),
           ElevatedButton(
             onPressed: () {
               controller.clearRecentSearches();
@@ -300,7 +312,7 @@ class SearchPage extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
-            child: Text('Clear All'),
+            child: const Text('Clear All'),
           ),
         ],
       ),
@@ -309,15 +321,15 @@ class SearchPage extends StatelessWidget {
 
   Widget _buildSearchBar(app_search.SearchController controller) {
     return Container(
-      margin: EdgeInsets.all(20),
+      margin: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 10,
-            offset: Offset(0, 2),
+            offset: const Offset(0, 2),
           ),
         ],
       ),
@@ -336,7 +348,7 @@ class SearchPage extends StatelessWidget {
                     onPressed: controller.clearSearch,
                     icon: Icon(Icons.clear, color: AppColors.textSecondary),
                   )
-                : SizedBox.shrink(),
+                : const SizedBox.shrink(),
           ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
@@ -344,7 +356,10 @@ class SearchPage extends StatelessWidget {
           ),
           filled: true,
           fillColor: AppColors.surface,
-          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 16,
+          ),
         ),
       ),
     );
@@ -398,7 +413,7 @@ class SearchPage extends StatelessWidget {
 
     return Container(
       height: 40,
-      margin: EdgeInsets.symmetric(horizontal: 20),
+      margin: const EdgeInsets.symmetric(horizontal: 20),
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         itemCount: visualCategories.length,
@@ -406,12 +421,15 @@ class SearchPage extends StatelessWidget {
           final category = visualCategories[index];
           return Obx(
             () => Container(
-              margin: EdgeInsets.only(right: 12),
+              margin: const EdgeInsets.only(right: 12),
               child: GestureDetector(
                 onTap: () =>
                     controller.filterByCategory(category['key'] as String),
                 child: Container(
-                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: controller.selectedCategory.value == category['key']
                         ? (category['color'] as Color)
@@ -436,7 +454,7 @@ class SearchPage extends StatelessWidget {
                             ? Colors.white
                             : category['color'] as Color,
                       ),
-                      SizedBox(width: 6),
+                      const SizedBox(width: 6),
                       Text(
                         category['label'] as String,
                         style: TextStyle(
@@ -486,7 +504,7 @@ class SearchPage extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             CircularProgressIndicator(color: AppColors.primary),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             Text(
               'Searching products...',
               style: AppTextStyles.bodyLarge(Get.context!),
@@ -504,7 +522,7 @@ class SearchPage extends StatelessWidget {
         Obx(
           () => controller.recentSearches.isNotEmpty
               ? _buildRecentSearches(controller)
-              : SizedBox.shrink(),
+              : const SizedBox.shrink(),
         ),
 
         // Suggested products
@@ -515,8 +533,8 @@ class SearchPage extends StatelessWidget {
 
   Widget _buildRecentSearches(app_search.SearchController controller) {
     return Container(
-      margin: EdgeInsets.all(20),
-      padding: EdgeInsets.all(16),
+      margin: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
@@ -540,7 +558,7 @@ class SearchPage extends StatelessWidget {
               ),
             ],
           ),
-          SizedBox(height: 12),
+          const SizedBox(height: 12),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -551,12 +569,15 @@ class SearchPage extends StatelessWidget {
                   controller.searchProducts(search);
                 },
                 child: Container(
-                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.1),
+                    color: AppColors.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: AppColors.primary.withOpacity(0.3),
+                      color: AppColors.primary.withValues(alpha: 0.3),
                     ),
                   ),
                   child: Text(
@@ -579,7 +600,7 @@ class SearchPage extends StatelessWidget {
     return Obx(
       () => controller.suggestedProducts.isNotEmpty
           ? Container(
-              margin: EdgeInsets.all(20),
+              margin: const EdgeInsets.all(20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -587,7 +608,7 @@ class SearchPage extends StatelessWidget {
                     'Suggested Products',
                     style: AppTextStyles.headingMedium(Get.context!),
                   ),
-                  SizedBox(height: 12),
+                  const SizedBox(height: 12),
                   SizedBox(
                     height: 200,
                     child: ListView.builder(
@@ -602,7 +623,7 @@ class SearchPage extends StatelessWidget {
                 ],
               ),
             )
-          : SizedBox.shrink(),
+          : const SizedBox.shrink(),
     );
   }
 
@@ -612,15 +633,15 @@ class SearchPage extends StatelessWidget {
   ) {
     return Container(
       width: 160,
-      margin: EdgeInsets.only(right: 12),
+      margin: const EdgeInsets.only(right: 12),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 8,
-            offset: Offset(0, 2),
+            offset: const Offset(0, 2),
           ),
         ],
       ),
@@ -629,14 +650,14 @@ class SearchPage extends StatelessWidget {
         children: [
           Container(
             height: 100,
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
             ),
             clipBehavior: Clip.antiAlias,
             child: controller.buildCategoryIcon(product),
           ),
           Padding(
-            padding: EdgeInsets.all(12),
+            padding: const EdgeInsets.all(12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -648,12 +669,15 @@ class SearchPage extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-                SizedBox(height: 4),
+                const SizedBox(height: 4),
                 // Show category instead of just calories
                 Container(
-                  padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.1),
+                    color: AppColors.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -665,14 +689,14 @@ class SearchPage extends StatelessWidget {
                     ),
                   ),
                 ),
-                SizedBox(height: 4),
+                const SizedBox(height: 4),
                 Text(
                   '${controller.getCalories(product)} kcal/100g',
                   style: AppTextStyles.labelMedium(
                     Get.context!,
                   ).copyWith(color: AppColors.textSecondary),
                 ),
-                SizedBox(height: 8),
+                const SizedBox(height: 8),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
@@ -682,9 +706,9 @@ class SearchPage extends StatelessWidget {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      padding: EdgeInsets.symmetric(vertical: 8),
+                      padding: const EdgeInsets.symmetric(vertical: 8),
                     ),
-                    child: Text(
+                    child: const Text(
                       'Add',
                       style: TextStyle(color: Colors.white, fontSize: 12),
                     ),
@@ -703,16 +727,16 @@ class SearchPage extends StatelessWidget {
     app_search.SearchController controller,
   ) {
     return Container(
-      margin: EdgeInsets.only(bottom: 12),
-      padding: EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 8,
-            offset: Offset(0, 2),
+            offset: const Offset(0, 2),
           ),
         ],
       ),
@@ -723,7 +747,7 @@ class SearchPage extends StatelessWidget {
             height: 60,
             child: controller.buildCategoryIcon(product),
           ),
-          SizedBox(width: 16),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -736,12 +760,15 @@ class SearchPage extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-                SizedBox(height: 4),
+                const SizedBox(height: 4),
                 // Show category tag
                 Container(
-                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
-                    color: AppColors.secondary.withOpacity(0.15),
+                    color: AppColors.secondary.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
@@ -754,7 +781,7 @@ class SearchPage extends StatelessWidget {
                   ),
                 ),
                 if (product.brands?.isNotEmpty == true) ...[
-                  SizedBox(height: 4),
+                  const SizedBox(height: 4),
                   Text(
                     product.brands!,
                     style: AppTextStyles.bodySmall(
@@ -762,14 +789,14 @@ class SearchPage extends StatelessWidget {
                     ).copyWith(color: AppColors.textSecondary),
                   ),
                 ],
-                SizedBox(height: 8),
+                const SizedBox(height: 8),
                 Row(
                   children: [
                     _buildNutrientChip(
                       '${controller.getCalories(product)} kcal',
                       AppColors.calories,
                     ),
-                    SizedBox(width: 8),
+                    const SizedBox(width: 8),
                     _buildNutrientChip(
                       '${controller.getNutrientValue(product, Nutrient.proteins).toStringAsFixed(1)}g P',
                       AppColors.proteins,
@@ -796,14 +823,14 @@ class SearchPage extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.search_off, size: 64, color: AppColors.textTertiary),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             Text(
               'No products found',
               style: AppTextStyles.headingMedium(
                 Get.context!,
               ).copyWith(color: AppColors.textSecondary),
             ),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             Text(
               'Try searching with different keywords',
               style: AppTextStyles.bodyMedium(
@@ -818,7 +845,7 @@ class SearchPage extends StatelessWidget {
 
   Widget _buildSearchResults(app_search.SearchController controller) {
     return Container(
-      margin: EdgeInsets.all(20),
+      margin: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -826,11 +853,11 @@ class SearchPage extends StatelessWidget {
             'Search Results',
             style: AppTextStyles.headingMedium(Get.context!),
           ),
-          SizedBox(height: 12),
+          const SizedBox(height: 12),
           ListView.builder(
             shrinkWrap: true,
             padding: EdgeInsets.zero,
-            physics: NeverScrollableScrollPhysics(),
+            physics: const NeverScrollableScrollPhysics(),
             itemCount: controller.searchResults.length,
             itemBuilder: (context, index) {
               final product = controller.searchResults[index];
@@ -863,8 +890,9 @@ class SearchPage extends StatelessWidget {
         ),
       ),
       errorWidget: (context, url, error) {
-        print(' Image load error for URL: $url');
-        print('Error: $error');
+        if (kDebugMode) {
+          print('Image load error: $error');
+        }
         return Container(
           color: AppColors.surfaceVariant,
           child: Center(
@@ -876,7 +904,7 @@ class SearchPage extends StatelessWidget {
                   color: AppColors.textTertiary,
                   size: 20,
                 ),
-                SizedBox(height: 4),
+                const SizedBox(height: 4),
                 Text(
                   'No Image',
                   style: TextStyle(color: AppColors.textTertiary, fontSize: 10),
@@ -891,11 +919,11 @@ class SearchPage extends StatelessWidget {
 
   Widget _buildNutrientChip(String text, Color color) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Text(
         text,

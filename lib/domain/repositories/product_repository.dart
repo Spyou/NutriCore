@@ -1,6 +1,11 @@
 import '../entities/product.dart';
+import '../../core/utils/result.dart';
 
 abstract class ProductRepository {
-  Future<Product?> getProductByBarcode(String barcode);
-  Future<List<Product>> searchProducts(String query);
+  Future<Result<Product>> getProductByBarcode(String barcode);
+  Future<Result<List<Product>>> searchProducts(
+    String query, {
+    int page = 1,
+    int pageSize = 20,
+  });
 }

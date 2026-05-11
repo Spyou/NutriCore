@@ -20,7 +20,7 @@ class UserService {
 
   Future<UserModel?> getUserData(String uid) async {
     try {
-      DocumentSnapshot doc = await _firestore
+      final DocumentSnapshot doc = await _firestore
           .collection(usersCollection)
           .doc(uid)
           .get();
@@ -39,7 +39,7 @@ class UserService {
       await _firestore
           .collection(usersCollection)
           .doc(user.uid)
-          .update(user.toMap());
+          .set(user.toMap(), SetOptions(merge: true));
     } catch (e) {
       throw Exception('Error updating user data: $e');
     }

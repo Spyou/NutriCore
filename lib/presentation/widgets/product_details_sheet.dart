@@ -1,4 +1,5 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:openfoodfacts/openfoodfacts.dart';
@@ -71,14 +72,14 @@ class ProductDetailsSheet extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            AppColors.calories.withOpacity(0.1),
-            AppColors.calories.withOpacity(0.05),
+            AppColors.calories.withValues(alpha: 0.1),
+            AppColors.calories.withValues(alpha: 0.05),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.calories.withOpacity(0.3)),
+        border: Border.all(color: AppColors.calories.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
@@ -145,7 +146,9 @@ class ProductDetailsSheet extends StatelessWidget {
           decoration: BoxDecoration(
             color: AppColors.surface,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.textTertiary.withOpacity(0.2)),
+            border: Border.all(
+              color: AppColors.textTertiary.withValues(alpha: 0.2),
+            ),
           ),
           child: Column(
             children: [
@@ -317,7 +320,7 @@ class ProductDetailsSheet extends StatelessWidget {
           width: 50,
           height: 50,
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
+            color: color.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(25),
             border: Border.all(color: color, width: 2),
           ),
@@ -414,7 +417,7 @@ class ProductDetailsSheet extends StatelessWidget {
     Get.dialog(
       AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Add to Nutrition Log'),
+        title: const Text('Add to Nutrition Log'),
         content: SizedBox(
           width: double.maxFinite,
           child: SingleChildScrollView(
@@ -425,34 +428,37 @@ class ProductDetailsSheet extends StatelessWidget {
                 // Product info
                 Text(
                   product.productName ?? 'Unknown Product',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
                 ),
                 if (product.brands?.isNotEmpty == true) ...[
-                  SizedBox(height: 4),
+                  const SizedBox(height: 4),
                   Text(
                     product.brands!,
                     style: TextStyle(color: Colors.grey[600]),
                   ),
                 ],
-                SizedBox(height: 16),
+                const SizedBox(height: 16),
 
                 // Nutrition info per 100g
                 Container(
-                  padding: EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: AppColors.calories.withOpacity(0.1),
+                    color: AppColors.calories.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: AppColors.calories.withOpacity(0.3),
+                      color: AppColors.calories.withValues(alpha: 0.3),
                     ),
                   ),
                   child: Column(
                     children: [
-                      Text(
+                      const Text(
                         'Nutrition per 100g:',
                         style: TextStyle(fontWeight: FontWeight.w600),
                       ),
-                      SizedBox(height: 8),
+                      const SizedBox(height: 8),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceAround,
                         children: [
@@ -468,7 +474,7 @@ class ProductDetailsSheet extends StatelessWidget {
                           ),
                         ],
                       ),
-                      SizedBox(height: 8),
+                      const SizedBox(height: 8),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceAround,
                         children: [
@@ -487,7 +493,7 @@ class ProductDetailsSheet extends StatelessWidget {
                     ],
                   ),
                 ),
-                SizedBox(height: 16),
+                const SizedBox(height: 16),
 
                 // Quantity input
                 TextField(
@@ -503,11 +509,11 @@ class ProductDetailsSheet extends StatelessWidget {
                   ),
                   keyboardType: TextInputType.number,
                 ),
-                SizedBox(height: 12),
+                const SizedBox(height: 12),
 
                 // Meal type selection
                 DropdownButtonFormField<String>(
-                  value: selectedMealType,
+                  initialValue: selectedMealType,
                   decoration: InputDecoration(
                     labelText: 'Meal Type',
                     border: OutlineInputBorder(
@@ -528,7 +534,7 @@ class ProductDetailsSheet extends StatelessWidget {
                       .toList(),
                   onChanged: (value) => selectedMealType = value ?? 'meal',
                 ),
-                SizedBox(height: 12),
+                const SizedBox(height: 12),
 
                 // Notes
                 TextField(
@@ -548,7 +554,7 @@ class ProductDetailsSheet extends StatelessWidget {
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Get.back(), child: Text('Cancel')),
+          TextButton(onPressed: () => Get.back(), child: const Text('Cancel')),
           ElevatedButton(
             onPressed: () {
               final quantity = double.tryParse(quantityController.text) ?? 100;
@@ -575,7 +581,7 @@ class ProductDetailsSheet extends StatelessWidget {
                 borderRadius: BorderRadius.circular(8),
               ),
             ),
-            child: Text('Add to Log'),
+            child: const Text('Add to Log'),
           ),
         ],
       ),
@@ -584,17 +590,17 @@ class ProductDetailsSheet extends StatelessWidget {
 
   Widget _buildNutrientChip(String text, IconData icon, Color color) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, color: color, size: 14),
-          SizedBox(width: 4),
+          const SizedBox(width: 4),
           Text(
             text,
             style: TextStyle(
@@ -663,21 +669,19 @@ class ProductDetailsSheet extends StatelessWidget {
         snackPosition: SnackPosition.BOTTOM,
         backgroundColor: Colors.green,
         colorText: Colors.white,
-        duration: Duration(seconds: 4),
-      );
-
-      print(
-        '✅ Product added to nutrition log: ${meal['name']} - ${meal['calories']} kcal',
+        duration: const Duration(seconds: 4),
       );
     } catch (e) {
-      print('❌ Error adding to nutrition log: $e');
+      if (kDebugMode) {
+        print('Error adding to nutrition log: $e');
+      }
       Get.snackbar(
         '❌ Error',
         'Failed to add product to nutrition log: ${e.toString()}',
         snackPosition: SnackPosition.BOTTOM,
         backgroundColor: Colors.red,
         colorText: Colors.white,
-        duration: Duration(seconds: 4),
+        duration: const Duration(seconds: 4),
       );
     }
   }
@@ -855,7 +859,9 @@ class ProductDetailsSheet extends StatelessWidget {
           ),
         ),
         errorWidget: (context, url, error) {
-          print('❌ Product image load error: $error');
+          if (kDebugMode) {
+            print('Product image load error: $error');
+          }
           return Container(
             height: 200,
             color: AppColors.surfaceVariant,
@@ -1023,9 +1029,9 @@ class ProductDetailsSheet extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Column(
         children: [
@@ -1091,7 +1097,7 @@ class ProductDetailsSheet extends StatelessWidget {
     String viewMode,
     NutritionController controller,
   ) {
-    (context) => controller.toggleFavorite(meal);
+    controller.toggleFavorite(meal);
   }
 
   void _shareProduct() {

@@ -11,11 +11,11 @@ import 'package:nutri_check/presentation/pages/search/search_page.dart';
 
 class MainPage extends GetView<MainController> {
   final List<Widget> _pages = [
-    HomePage(),
-    SearchPage(),
-    ScanPage(),
-    NutritionPage(),
-    ProfilePage(),
+    const HomePage(),
+    const SearchPage(),
+    const ScanPage(),
+    const NutritionPage(),
+    const ProfilePage(),
   ];
 
   MainPage({super.key});
@@ -37,7 +37,7 @@ class MainPage extends GetView<MainController> {
             controller.changeIndex(index);
           },
           backgroundColor: Theme.of(context).colorScheme.surface,
-          indicatorColor: AppColors.primary.withOpacity(0.12),
+          indicatorColor: AppColors.primary.withValues(alpha: 0.12),
           elevation: 8,
           height: 80,
 

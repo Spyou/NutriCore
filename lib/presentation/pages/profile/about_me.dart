@@ -1,5 +1,6 @@
 import 'package:another_flushbar/flushbar.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:nutri_check/core/constants/app_colors.dart';
@@ -7,13 +8,13 @@ import 'package:nutri_check/core/constants/app_text_styles.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class DeveloperAndDonationSection extends StatelessWidget {
-  final String developerName = "Krishna Vishwakarma";
-  final String developerEmail = "krishnavishwakarma2525@gmail.com";
-  final String upiId = "krishnavishwakarma9136@okhdfcbank";
-  final String buyMeACoffeeUrl = "https://buymeacoffee.com/krishna069";
-  final String githubUrl = "https://github.com/spyou";
+  final String developerName = 'Krishna Vishwakarma';
+  final String developerEmail = 'krishnavishwakarma2525@gmail.com';
+  final String upiId = 'krishnavishwakarma9136@okhdfcbank';
+  final String buyMeACoffeeUrl = 'https://buymeacoffee.com/krishna069';
+  final String githubUrl = 'https://github.com/spyou';
   final String linkedinUrl =
-      "https://linkedin.com/in/krishna-vishwakarma-8974b332a";
+      'https://linkedin.com/in/krishna-vishwakarma-8974b332a';
 
   const DeveloperAndDonationSection({super.key});
 
@@ -23,7 +24,7 @@ class DeveloperAndDonationSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildDeveloperSection(context),
-        SizedBox(height: 24),
+        const SizedBox(height: 24),
         // _buildDonationSection(context),
         // SizedBox(height: 24),
       ],
@@ -32,21 +33,21 @@ class DeveloperAndDonationSection extends StatelessWidget {
 
   Widget _buildDeveloperSection(BuildContext context) {
     return Container(
-      margin: EdgeInsets.symmetric(horizontal: 20),
-      padding: EdgeInsets.all(20),
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [AppColors.primary.withOpacity(0.1), AppColors.surface],
+          colors: [AppColors.primary.withValues(alpha: 0.1), AppColors.surface],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.primary.withOpacity(0.2)),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
-            offset: Offset(0, 4),
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -62,10 +63,10 @@ class DeveloperAndDonationSection extends StatelessWidget {
                   gradient: LinearGradient(
                     colors: [
                       AppColors.primary,
-                      AppColors.primary.withOpacity(0.8),
+                      AppColors.primary.withValues(alpha: 0.8),
                     ],
                   ),
-                  image: DecorationImage(
+                  image: const DecorationImage(
                     image: CachedNetworkImageProvider(
                       'https://avatars.githubusercontent.com/u/88382789?v=4',
                     ),
@@ -73,7 +74,7 @@ class DeveloperAndDonationSection extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              SizedBox(width: 16),
+              const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -96,18 +97,18 @@ class DeveloperAndDonationSection extends StatelessWidget {
               ),
             ],
           ),
-          SizedBox(height: 16),
+          const SizedBox(height: 16),
 
           // Developer Info
           _buildInfoRow(Icons.person_outline, 'Name', developerName),
-          SizedBox(height: 12),
+          const SizedBox(height: 12),
           _buildInfoRow(
             Icons.email_outlined,
             'Email',
             developerEmail,
             isClickable: true,
           ),
-          SizedBox(height: 16),
+          const SizedBox(height: 16),
           // Social Links
           Row(
             children: [
@@ -119,11 +120,11 @@ class DeveloperAndDonationSection extends StatelessWidget {
                   launchUrl(Uri.parse(githubUrl));
                 },
               ),
-              SizedBox(width: 12),
+              const SizedBox(width: 12),
               _buildSocialButton(
                 icon: Icons.work_outline,
                 label: 'LinkedIn',
-                color: Color(0xFF0077B5),
+                color: const Color(0xFF0077B5),
                 onTap: () {
                   launchUrl(Uri.parse(linkedinUrl));
                 },
@@ -138,21 +139,21 @@ class DeveloperAndDonationSection extends StatelessWidget {
   // ignore: unused_element
   Widget _buildDonationSection(BuildContext context) {
     return Container(
-      margin: EdgeInsets.symmetric(horizontal: 20),
-      padding: EdgeInsets.all(20),
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [AppColors.success.withOpacity(0.1), AppColors.surface],
+          colors: [AppColors.success.withValues(alpha: 0.1), AppColors.surface],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.success.withOpacity(0.3)),
+        border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
         boxShadow: [
           BoxShadow(
-            color: AppColors.success.withOpacity(0.1),
+            color: AppColors.success.withValues(alpha: 0.1),
             blurRadius: 15,
-            offset: Offset(0, 5),
+            offset: const Offset(0, 5),
           ),
         ],
       ),
@@ -162,19 +163,23 @@ class DeveloperAndDonationSection extends StatelessWidget {
           Row(
             children: [
               Container(
-                padding: EdgeInsets.all(12),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
                       AppColors.success,
-                      AppColors.success.withOpacity(0.8),
+                      AppColors.success.withValues(alpha: 0.8),
                     ],
                   ),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(Icons.favorite, color: Colors.white, size: 24),
+                child: const Icon(
+                  Icons.favorite,
+                  color: Colors.white,
+                  size: 24,
+                ),
               ),
-              SizedBox(width: 16),
+              const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -197,7 +202,7 @@ class DeveloperAndDonationSection extends StatelessWidget {
               ),
             ],
           ),
-          SizedBox(height: 16),
+          const SizedBox(height: 16),
 
           Text(
             'If you love using NutriCheck and want to support its development, you can buy me a coffee! ☕ Your support helps me dedicate more time to adding new features and keeping the app free for everyone.',
@@ -205,15 +210,15 @@ class DeveloperAndDonationSection extends StatelessWidget {
               context,
             ).copyWith(color: AppColors.textPrimary, height: 1.4),
           ),
-          SizedBox(height: 16),
+          const SizedBox(height: 16),
 
           // UPI Info Card
           Container(
-            padding: EdgeInsets.all(16),
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppColors.info.withOpacity(0.1),
+              color: AppColors.info.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.info.withOpacity(0.3)),
+              border: Border.all(color: AppColors.info.withValues(alpha: 0.3)),
             ),
             child: Column(
               children: [
@@ -224,7 +229,7 @@ class DeveloperAndDonationSection extends StatelessWidget {
                       color: AppColors.info,
                       size: 20,
                     ),
-                    SizedBox(width: 8),
+                    const SizedBox(width: 8),
                     Text(
                       'UPI ID',
                       style: AppTextStyles.bodyLarge(context).copyWith(
@@ -234,7 +239,7 @@ class DeveloperAndDonationSection extends StatelessWidget {
                     ),
                   ],
                 ),
-                SizedBox(height: 8),
+                const SizedBox(height: 8),
                 Row(
                   children: [
                     Expanded(
@@ -256,7 +261,7 @@ class DeveloperAndDonationSection extends StatelessWidget {
               ],
             ),
           ),
-          SizedBox(height: 16),
+          const SizedBox(height: 16),
 
           // Donation Buttons
           Row(
@@ -270,7 +275,7 @@ class DeveloperAndDonationSection extends StatelessWidget {
                   onTap: () => _launchUPI(context),
                 ),
               ),
-              SizedBox(width: 12),
+              const SizedBox(width: 12),
               Expanded(
                 child: _buildDonationButton(
                   context,
@@ -284,7 +289,7 @@ class DeveloperAndDonationSection extends StatelessWidget {
               ),
             ],
           ),
-          SizedBox(height: 12),
+          const SizedBox(height: 12),
 
           // Quick Amount Buttons
           Text(
@@ -294,31 +299,31 @@ class DeveloperAndDonationSection extends StatelessWidget {
               color: AppColors.textSecondary,
             ),
           ),
-          SizedBox(height: 8),
+          const SizedBox(height: 8),
           Row(
             children: [
               _buildQuickAmountButton(context, '₹10', '10'),
-              SizedBox(width: 8),
+              const SizedBox(width: 8),
               _buildQuickAmountButton(context, '₹25', '25'),
-              SizedBox(width: 8),
+              const SizedBox(width: 8),
               _buildQuickAmountButton(context, '₹100', '100'),
-              SizedBox(width: 8),
+              const SizedBox(width: 8),
               _buildQuickAmountButton(context, '₹500', '500'),
             ],
           ),
-          SizedBox(height: 12),
+          const SizedBox(height: 12),
 
           // Appreciation Note
           Container(
-            padding: EdgeInsets.all(12),
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: AppColors.warning.withOpacity(0.1),
+              color: AppColors.warning.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Row(
               children: [
                 Icon(Icons.star, color: AppColors.warning, size: 16),
-                SizedBox(width: 8),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     'Every contribution helps improve NutriCheck for everyone!',
@@ -345,7 +350,7 @@ class DeveloperAndDonationSection extends StatelessWidget {
     return Row(
       children: [
         Icon(icon, color: AppColors.textSecondary, size: 20),
-        SizedBox(width: 12),
+        const SizedBox(width: 12),
         Text(
           '$label: ',
           style: TextStyle(
@@ -380,17 +385,17 @@ class DeveloperAndDonationSection extends StatelessWidget {
       child: GestureDetector(
         onTap: onTap,
         child: Container(
-          padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
+            color: color.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: color.withOpacity(0.3)),
+            border: Border.all(color: color.withValues(alpha: 0.3)),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(icon, color: color, size: 18),
-              SizedBox(width: 6),
+              const SizedBox(width: 6),
               Text(
                 label,
                 style: TextStyle(
@@ -416,15 +421,17 @@ class DeveloperAndDonationSection extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: EdgeInsets.symmetric(vertical: 16),
+        padding: const EdgeInsets.symmetric(vertical: 16),
         decoration: BoxDecoration(
-          gradient: LinearGradient(colors: [color, color.withOpacity(0.8)]),
+          gradient: LinearGradient(
+            colors: [color, color.withValues(alpha: 0.8)],
+          ),
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: color.withOpacity(0.3),
+              color: color.withValues(alpha: 0.3),
               blurRadius: 8,
-              offset: Offset(0, 4),
+              offset: const Offset(0, 4),
             ),
           ],
         ),
@@ -432,10 +439,10 @@ class DeveloperAndDonationSection extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(icon, color: Colors.white, size: 20),
-            SizedBox(width: 8),
+            const SizedBox(width: 8),
             Text(
               label,
-              style: TextStyle(
+              style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
                 fontSize: 14,
@@ -456,11 +463,11 @@ class DeveloperAndDonationSection extends StatelessWidget {
       child: GestureDetector(
         onTap: () => _launchUPIWithAmount(context, amount),
         child: Container(
-          padding: EdgeInsets.symmetric(vertical: 8),
+          padding: const EdgeInsets.symmetric(vertical: 8),
           decoration: BoxDecoration(
-            color: AppColors.success.withOpacity(0.1),
+            color: AppColors.success.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AppColors.success.withOpacity(0.3)),
+            border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
           ),
           child: Text(
             label,
@@ -520,7 +527,9 @@ class DeveloperAndDonationSection extends StatelessWidget {
   ) async {
     try {
       final uri = Uri.parse(url);
-      print('🔍 Attempting to launch: $url');
+      if (kDebugMode) {
+        print('Attempting to launch: $url');
+      }
 
       // Method 1: Try canLaunchUrl first
       final canLaunch = await canLaunchUrl(uri);
@@ -535,9 +544,9 @@ class DeveloperAndDonationSection extends StatelessWidget {
           Flushbar(
             title: 'Opening Payment App',
             message: 'Redirecting to your payment app...',
-            duration: Duration(seconds: 2),
+            duration: const Duration(seconds: 2),
             backgroundColor: AppColors.info,
-            icon: Icon(Icons.payment, color: Colors.white),
+            icon: const Icon(Icons.payment, color: Colors.white),
           ).show(context);
         } else {
           await _tryAlternativePaymentMethods(context, paymentType);
@@ -546,7 +555,9 @@ class DeveloperAndDonationSection extends StatelessWidget {
         await _tryAlternativePaymentMethods(context, paymentType);
       }
     } catch (e) {
-      print('Payment launch error: $e');
+      if (kDebugMode) {
+        print('Payment launch error: $e');
+      }
       await _tryAlternativePaymentMethods(context, paymentType);
     }
   }
@@ -570,14 +581,16 @@ class DeveloperAndDonationSection extends StatelessWidget {
           Flushbar(
             title: 'Opening Payment App',
             message: 'Redirecting to your payment app...',
-            duration: Duration(seconds: 2),
+            duration: const Duration(seconds: 2),
             backgroundColor: AppColors.info,
-            icon: Icon(Icons.payment, color: Colors.white),
+            icon: const Icon(Icons.payment, color: Colors.white),
           ).show(context);
           return;
         }
       } catch (e) {
-        print('Failed alternative: $url - $e');
+        if (kDebugMode) {
+          print('Failed alternative: $url - $e');
+        }
       }
     }
 
@@ -591,8 +604,8 @@ class DeveloperAndDonationSection extends StatelessWidget {
         title: Row(
           children: [
             Icon(Icons.payment, color: AppColors.warning),
-            SizedBox(width: 8),
-            Flexible(
+            const SizedBox(width: 8),
+            const Flexible(
               child: Text(
                 'Payment App Not Found',
                 style: TextStyle(fontSize: 18),
@@ -604,16 +617,16 @@ class DeveloperAndDonationSection extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            const Text(
               'To make UPI payments, please install one of these apps:',
               style: TextStyle(fontSize: 16),
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             _buildAppSuggestion('Google Pay', Icons.account_balance_wallet),
             _buildAppSuggestion('PhonePe', Icons.phone_android),
             _buildAppSuggestion('Paytm', Icons.payment),
             _buildAppSuggestion('Any UPI App', Icons.apps),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             Text(
               'Or copy the UPI ID below and use it in any payment app:',
               style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
@@ -623,7 +636,7 @@ class DeveloperAndDonationSection extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: Text('Cancel'),
+            child: const Text('Cancel'),
           ),
           ElevatedButton(
             onPressed: () {
@@ -631,7 +644,10 @@ class DeveloperAndDonationSection extends StatelessWidget {
               _copyToClipboard(context, upiId);
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.success),
-            child: Text('Copy UPI ID', style: TextStyle(color: Colors.white)),
+            child: const Text(
+              'Copy UPI ID',
+              style: TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
@@ -640,12 +656,12 @@ class DeveloperAndDonationSection extends StatelessWidget {
 
   Widget _buildAppSuggestion(String name, IconData icon) {
     return Padding(
-      padding: EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
           Icon(icon, color: Colors.grey[600], size: 20),
-          SizedBox(width: 12),
-          Text(name, style: TextStyle(fontSize: 14)),
+          const SizedBox(width: 12),
+          Text(name, style: const TextStyle(fontSize: 14)),
         ],
       ),
     );
@@ -659,7 +675,9 @@ class DeveloperAndDonationSection extends StatelessWidget {
   }) async {
     try {
       final uri = Uri.parse(url);
-      print('🔍 Attempting to launch URL: $url');
+      if (kDebugMode) {
+        print('Attempting to launch URL: $url');
+      }
 
       final canLaunch = await canLaunchUrl(uri);
 
@@ -673,9 +691,9 @@ class DeveloperAndDonationSection extends StatelessWidget {
           Flushbar(
             title: '❌ Error',
             message: 'Failed to open link',
-            duration: Duration(seconds: 3),
+            duration: const Duration(seconds: 3),
             backgroundColor: Colors.red,
-            icon: Icon(Icons.error, color: Colors.white),
+            icon: const Icon(Icons.error, color: Colors.white),
           ).show(context);
         }
       } else {
@@ -683,21 +701,23 @@ class DeveloperAndDonationSection extends StatelessWidget {
           Flushbar(
             title: '❌ Error',
             message: errorMessage ?? 'No app available to open this link',
-            duration: Duration(seconds: 3),
+            duration: const Duration(seconds: 3),
             backgroundColor: Colors.red,
-            icon: Icon(Icons.error, color: Colors.white),
+            icon: const Icon(Icons.error, color: Colors.white),
           ).show(context);
         }
       }
     } catch (e) {
-      print('❌ URL launch error: $e');
+      if (kDebugMode) {
+        print('URL launch error: $e');
+      }
       if (context != null) {
         Flushbar(
           title: '❌ Error',
           message: errorMessage ?? 'Could not open link: ${e.toString()}',
-          duration: Duration(seconds: 3),
+          duration: const Duration(seconds: 3),
           backgroundColor: Colors.red,
-          icon: Icon(Icons.error, color: Colors.white),
+          icon: const Icon(Icons.error, color: Colors.white),
         ).show(context);
       }
     }
@@ -708,20 +728,20 @@ class DeveloperAndDonationSection extends StatelessWidget {
     Flushbar(
       title: '📋 Copied!',
       message: 'UPI ID copied to clipboard',
-      duration: Duration(seconds: 2),
+      duration: const Duration(seconds: 2),
       backgroundColor: AppColors.success,
-      icon: Icon(Icons.copy, color: Colors.white),
+      icon: const Icon(Icons.copy, color: Colors.white),
     ).show(context);
   }
 
   void _showThankYouMessage(BuildContext context, String amount) {
-    Future.delayed(Duration(seconds: 1), () {
+    Future.delayed(const Duration(seconds: 1), () {
       Flushbar(
         title: 'Thank You!',
         message: 'Your ₹$amount contribution means the world to me!',
-        duration: Duration(seconds: 4),
+        duration: const Duration(seconds: 4),
         backgroundColor: AppColors.warning,
-        icon: Icon(Icons.favorite, color: Colors.white),
+        icon: const Icon(Icons.favorite, color: Colors.white),
       ).show(context);
     });
   }

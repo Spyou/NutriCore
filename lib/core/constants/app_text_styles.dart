@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 class AppTextStyles {
   static const String fontFamily = 'Inter';
 
-  //dynamic text styles
   static TextStyle displayLarge(BuildContext context) => TextStyle(
     fontSize: 32,
     fontWeight: FontWeight.bold,
@@ -20,7 +19,6 @@ class AppTextStyles {
     letterSpacing: -0.25,
   );
 
-  // Heading Styles
   static TextStyle headingLarge(BuildContext context) => TextStyle(
     fontSize: 24,
     fontWeight: FontWeight.bold,
@@ -42,7 +40,6 @@ class AppTextStyles {
     fontFamily: fontFamily,
   );
 
-  // Body Styles
   static TextStyle bodyLarge(BuildContext context) => TextStyle(
     fontSize: 16,
     fontWeight: FontWeight.w400,
@@ -62,12 +59,11 @@ class AppTextStyles {
   static TextStyle bodySmall(BuildContext context) => TextStyle(
     fontSize: 12,
     fontWeight: FontWeight.w400,
-    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
     fontFamily: fontFamily,
     height: 1.3,
   );
 
-  // Label Styles
   static TextStyle labelLarge(BuildContext context) => TextStyle(
     fontSize: 14,
     fontWeight: FontWeight.w500,
@@ -78,14 +74,14 @@ class AppTextStyles {
   static TextStyle labelMedium(BuildContext context) => TextStyle(
     fontSize: 12,
     fontWeight: FontWeight.w500,
-    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
     fontFamily: fontFamily,
   );
 
   static TextStyle labelSmall(BuildContext context) => TextStyle(
     fontSize: 10,
     fontWeight: FontWeight.w500,
-    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
     fontFamily: fontFamily,
     letterSpacing: 0.5,
   );
@@ -223,7 +219,7 @@ class AppTextStyles {
   );
 
   static TextStyle caption(BuildContext context) => bodySmall(context).copyWith(
-    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
     fontStyle: FontStyle.italic,
   );
 }

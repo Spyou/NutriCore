@@ -1,4 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../domain/entities/meal_entry.dart';
+import '../../domain/entities/daily_intake.dart';
 
 class NutritionEntryModel {
   final String id;
@@ -41,28 +43,61 @@ class NutritionEntryModel {
     return NutritionEntryModel(
       id: map['id'] ?? '',
       userId: map['userId'] ?? '',
-      date: DateTime.parse(map['date']),
+      date: _parseDateTime(map['date']),
       meals: List<MealEntryModel>.from(
         map['meals']?.map((meal) => MealEntryModel.fromMap(meal)) ?? [],
       ),
       waterIntake: map['waterIntake']?.toDouble() ?? 0,
-      stepsCount: map['stepsCount'] ?? 0,
+      stepsCount: map['stepsCount'] is int
+          ? map['stepsCount'] as int
+          : (map['stepsCount'] is double
+                ? (map['stepsCount'] as double).toInt()
+                : 0),
       weight: map['weight']?.toDouble(),
-      createdAt: DateTime.parse(map['createdAt']),
-      updatedAt: DateTime.parse(map['updatedAt']),
+      createdAt: _parseDateTime(map['createdAt']),
+      updatedAt: _parseDateTime(map['updatedAt']),
     );
   }
 
   factory NutritionEntryModel.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
-    return NutritionEntryModel.fromMap(data);
+    final data = doc.data();
+    if (data == null) {
+      throw StateError('Document data was null');
+    }
+    return NutritionEntryModel.fromMap(data as Map<String, dynamic>);
+  }
+
+  DailyIntake toDomain() {
+    return DailyIntake(
+      id: id,
+      userId: userId,
+      date: date,
+      meals: meals.map((m) => m.toDomain()).toList(),
+      waterIntake: waterIntake,
+      stepsCount: stepsCount,
+      weight: weight ?? 0,
+    );
+  }
+
+  factory NutritionEntryModel.fromDomain(DailyIntake intake) {
+    return NutritionEntryModel(
+      id: intake.id,
+      userId: intake.userId,
+      date: intake.date,
+      meals: intake.meals.map((m) => MealEntryModel.fromDomain(m)).toList(),
+      waterIntake: intake.waterIntake,
+      stepsCount: intake.stepsCount,
+      weight: intake.weight,
+      createdAt: intake.date,
+      updatedAt: DateTime.now(),
+    );
   }
 }
 
 class MealEntryModel {
   final String id;
   final String name;
-  final String type;
+  final MealType type;
   final String time;
   final double calories;
   final double proteins;
@@ -96,7 +131,7 @@ class MealEntryModel {
     return {
       'id': id,
       'name': name,
-      'type': type,
+      'type': type.name,
       'time': time,
       'calories': calories,
       'proteins': proteins,
@@ -115,7 +150,7 @@ class MealEntryModel {
     return MealEntryModel(
       id: map['id'] ?? '',
       name: map['name'] ?? '',
-      type: map['type'] ?? 'meal',
+      type: MealTypeX.fromString(map['type'] ?? 'snack'),
       time: map['time'] ?? '',
       calories: map['calories']?.toDouble() ?? 0,
       proteins: map['proteins']?.toDouble() ?? 0,
@@ -129,4 +164,55 @@ class MealEntryModel {
       favorite: map['favorite'] ?? false,
     );
   }
+
+  MealEntry toDomain() {
+    return MealEntry(
+      id: id,
+      name: name,
+      type: type,
+      calories: calories,
+      proteins: proteins,
+      carbs: carbs,
+      fat: fat,
+      fiber: fiber,
+      sugar: sugar,
+      sodium: sodium,
+      notes: notes,
+      imageUrl: imageUrl,
+      isFavorite: favorite,
+      timestamp: _parseDateTime(time),
+    );
+  }
+
+  factory MealEntryModel.fromDomain(MealEntry meal) {
+    return MealEntryModel(
+      id: meal.id,
+      name: meal.name,
+      type: meal.type,
+      time: meal.timestamp.toIso8601String(),
+      calories: meal.calories,
+      proteins: meal.proteins,
+      carbs: meal.carbs,
+      fat: meal.fat,
+      fiber: meal.fiber,
+      sugar: meal.sugar,
+      sodium: meal.sodium,
+      notes: meal.notes,
+      imageUrl: meal.imageUrl,
+      favorite: meal.isFavorite,
+    );
+  }
+}
+
+DateTime _parseDateTime(dynamic value) {
+  if (value is DateTime) return value;
+  if (value is String) {
+    try {
+      return DateTime.parse(value);
+    } catch (_) {
+      return DateTime.now();
+    }
+  }
+  if (value is Timestamp) return value.toDate();
+  return DateTime.now();
 }

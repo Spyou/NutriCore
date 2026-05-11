@@ -1,12 +1,13 @@
 import '../entities/product.dart';
 import '../repositories/product_repository.dart';
+import '../../core/utils/result.dart';
 
 class GetProductByBarcode {
   final ProductRepository repository;
 
   GetProductByBarcode(this.repository);
 
-  Future<Product?> execute(String barcode) async {
+  Future<Result<Product>> execute(String barcode) async {
     return await repository.getProductByBarcode(barcode);
   }
 }

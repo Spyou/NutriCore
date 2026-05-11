@@ -1,13 +1,19 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:nutri_check/core/config/off_config.dart';
 import 'package:nutri_check/core/utils/components/custom_flushbar.dart';
+import 'package:nutri_check/domain/repositories/preferences_repository.dart';
 import 'package:nutri_check/presentation/controllers/auth_controller.dart';
 import 'package:nutri_check/presentation/controllers/nutrition_controller.dart';
 import 'package:openfoodfacts/openfoodfacts.dart';
 
 class SearchController extends GetxController {
+  final PreferencesRepository _preferencesRepository;
+
+  SearchController({required PreferencesRepository preferencesRepository})
+    : _preferencesRepository = preferencesRepository;
+
   var isLoading = false.obs;
   var searchQuery = ''.obs;
   var searchResults = <Product>[].obs;
@@ -17,7 +23,6 @@ class SearchController extends GetxController {
 
   final TextEditingController textController = TextEditingController();
 
-  // Categories for filtering
   final List<String> categories = [
     'all',
     'beverages',
@@ -34,7 +39,7 @@ class SearchController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    _setupOpenFoodFacts();
+    OpenFoodFactsConfig.initialize();
     _loadRecentSearches();
     _loadSuggestedProducts();
   }
@@ -45,19 +50,6 @@ class SearchController extends GetxController {
     super.onClose();
   }
 
-  void _setupOpenFoodFacts() {
-    OpenFoodAPIConfiguration.userAgent = UserAgent(
-      name: 'NutriCheck',
-      version: '1.0.0',
-      system: 'Flutter App',
-    );
-    OpenFoodAPIConfiguration.globalLanguages = <OpenFoodFactsLanguage>[
-      OpenFoodFactsLanguage.ENGLISH,
-    ];
-    OpenFoodAPIConfiguration.globalCountry = OpenFoodFactsCountry.INDIA;
-  }
-
-  // Search products using OpenFoodFacts API
   Future<void> searchProducts(String query) async {
     if (query.trim().isEmpty) {
       searchResults.clear();
@@ -68,7 +60,6 @@ class SearchController extends GetxController {
       isLoading.value = true;
       searchQuery.value = query;
 
-      // Add to recent searches
       if (!recentSearches.contains(query)) {
         recentSearches.insert(0, query);
         if (recentSearches.length > 10) {
@@ -108,7 +99,7 @@ class SearchController extends GetxController {
         print('Search error: $e');
       }
 
-      CustomThemeFlushbar(
+      CustomThemeFlushbar.show(
         title: 'Search Error',
         message: 'Failed to search products: ${e.toString()}',
       );
@@ -117,7 +108,6 @@ class SearchController extends GetxController {
     }
   }
 
-  // Filter results
   void filterByCategory(String category) {
     selectedCategory.value = category;
     if (searchQuery.value.isNotEmpty) {
@@ -125,29 +115,23 @@ class SearchController extends GetxController {
     }
   }
 
-  // Clear search
   void clearSearch() {
     textController.clear();
     searchQuery.value = '';
     searchResults.clear();
   }
 
-  // Load recent searches from Firebase
   Future<void> _loadRecentSearches() async {
     try {
       final authController = Get.find<AuthController>();
       if (authController.user == null) return;
 
-      final doc = await FirebaseFirestore.instance
-          .collection('user_preferences')
-          .doc(authController.user!.uid)
-          .get();
-
-      if (doc.exists) {
-        final data = doc.data();
-        if (data?['recentSearches'] != null) {
-          recentSearches.assignAll(List<String>.from(data!['recentSearches']));
-        }
+      final result = await _preferencesRepository.getPreferences(
+        authController.user!.uid,
+      );
+      if (result.isSuccess) {
+        final searches = result.value.recentSearches;
+        recentSearches.assignAll(searches);
       }
     } catch (e) {
       if (kDebugMode) {
@@ -156,19 +140,15 @@ class SearchController extends GetxController {
     }
   }
 
-  // Save recent search to Firebase
   Future<void> _saveRecentSearch(String query) async {
     try {
       final authController = Get.find<AuthController>();
       if (authController.user == null) return;
 
-      await FirebaseFirestore.instance
-          .collection('user_preferences')
-          .doc(authController.user!.uid)
-          .set({
-            'recentSearches': recentSearches.toList(),
-            'updatedAt': DateTime.now().toIso8601String(),
-          }, SetOptions(merge: true));
+      await _preferencesRepository.addRecentSearch(
+        authController.user!.uid,
+        query,
+      );
     } catch (e) {
       if (kDebugMode) {
         print('Error saving recent search: $e');
@@ -176,14 +156,13 @@ class SearchController extends GetxController {
     }
   }
 
-  // suggested products
   Future<void> _loadSuggestedProducts() async {
     try {
       final SearchResult result = await OpenFoodAPIClient.searchProducts(
         null,
         ProductSearchQueryConfiguration(
           parametersList: [
-            SearchTerms(terms: ['healthy', 'snacks']),
+            const SearchTerms(terms: ['healthy', 'snacks']),
           ],
           fields: [
             ProductField.BARCODE,
@@ -207,7 +186,6 @@ class SearchController extends GetxController {
     }
   }
 
-  // Add product to nutrition log
   Future<void> addProductToNutrition(Product product) async {
     try {
       final nutritionController = Get.find<NutritionController>();
@@ -219,28 +197,28 @@ class SearchController extends GetxController {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          title: Text('Add to Nutrition Log'),
+          title: const Text('Add to Nutrition Log'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
                 product.productName ?? 'Unknown Product',
-                style: TextStyle(fontWeight: FontWeight.bold),
+                style: const TextStyle(fontWeight: FontWeight.bold),
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
               TextField(
                 controller: quantityController,
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   labelText: 'Quantity (grams)',
                   border: OutlineInputBorder(),
                   suffixText: 'g',
                 ),
                 keyboardType: TextInputType.number,
               ),
-              SizedBox(height: 12),
+              const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: selectedMealType,
-                decoration: InputDecoration(
+                initialValue: selectedMealType,
+                decoration: const InputDecoration(
                   labelText: 'Meal Type',
                   border: OutlineInputBorder(),
                 ),
@@ -257,7 +235,7 @@ class SearchController extends GetxController {
             ],
           ),
           actions: [
-            TextButton(onPressed: () => Get.back(), child: Text('Cancel')),
+            TextButton(onPressed: () => Get.back(), child: const Text('Cancel')),
             ElevatedButton(
               onPressed: () {
                 final quantity =
@@ -266,7 +244,7 @@ class SearchController extends GetxController {
                   result: {'quantity': quantity, 'mealType': selectedMealType},
                 );
               },
-              child: Text('Add'),
+              child: const Text('Add'),
             ),
           ],
         ),
@@ -303,20 +281,19 @@ class SearchController extends GetxController {
 
         await nutritionController.addMeal(meal);
 
-        CustomThemeFlushbar(
+        CustomThemeFlushbar.show(
           title: 'Success',
           message: '${product.productName} added to nutrition log',
         );
       }
     } catch (e) {
-      CustomThemeFlushbar(
+      CustomThemeFlushbar.show(
         title: 'Error',
         message: 'Failed to add product to nutrition log',
       );
     }
   }
 
-  // Helper methods for nutrition values
   int getCalories(Product product) {
     try {
       return product.nutriments
@@ -337,17 +314,15 @@ class SearchController extends GetxController {
     }
   }
 
-  // Clear recent searches
   Future<void> clearRecentSearches() async {
     recentSearches.clear();
 
     try {
       final authController = Get.find<AuthController>();
       if (authController.user != null) {
-        await FirebaseFirestore.instance
-            .collection('user_preferences')
-            .doc(authController.user!.uid)
-            .update({'recentSearches': []});
+        await _preferencesRepository.clearRecentSearches(
+          authController.user!.uid,
+        );
       }
     } catch (e) {
       if (kDebugMode) {
@@ -355,7 +330,10 @@ class SearchController extends GetxController {
       }
     }
 
-    CustomThemeFlushbar(title: 'Cleared', message: 'Recent searches cleared');
+    CustomThemeFlushbar.show(
+      title: 'Cleared',
+      message: 'Recent searches cleared',
+    );
   }
 
   Widget buildCategoryIcon(Product product) {
@@ -386,7 +364,6 @@ class SearchController extends GetxController {
     final brands = (product.brands ?? '').toLowerCase();
     final fullText = '$productName $categories $brands';
 
-    // Chocolate & Sweets
     if (_containsAny(fullText, [
       'chocolate',
       'candy',
@@ -410,7 +387,6 @@ class SearchController extends GetxController {
       };
     }
 
-    // Dairy Products
     if (_containsAny(fullText, [
       'milk',
       'cheese',
@@ -433,7 +409,6 @@ class SearchController extends GetxController {
       };
     }
 
-    // Beverages
     if (_containsAny(fullText, [
       'drink',
       'juice',
@@ -457,7 +432,6 @@ class SearchController extends GetxController {
       };
     }
 
-    // Bakery & Bread
     if (_containsAny(fullText, [
       'bread',
       'bun',
@@ -477,7 +451,6 @@ class SearchController extends GetxController {
       };
     }
 
-    // Fruits
     if (_containsAny(fullText, [
       'fruit',
       'apple',
@@ -499,7 +472,6 @@ class SearchController extends GetxController {
       };
     }
 
-    // Vegetables
     if (_containsAny(fullText, [
       'vegetable',
       'carrot',
@@ -520,7 +492,6 @@ class SearchController extends GetxController {
       };
     }
 
-    // Meat & Protein
     if (_containsAny(fullText, [
       'meat',
       'chicken',
@@ -541,7 +512,6 @@ class SearchController extends GetxController {
       };
     }
 
-    // Grains & Cereals
     if (_containsAny(fullText, [
       'cereal',
       'rice',
@@ -562,7 +532,6 @@ class SearchController extends GetxController {
       };
     }
 
-    // Nuts & Seeds
     if (_containsAny(fullText, [
       'nut',
       'almond',
@@ -581,7 +550,6 @@ class SearchController extends GetxController {
       };
     }
 
-    // Snacks & Fast Food
     if (_containsAny(fullText, [
       'snack',
       'chip',
@@ -602,7 +570,6 @@ class SearchController extends GetxController {
       };
     }
 
-    // Condiments & Sauces
     if (_containsAny(fullText, [
       'sauce',
       'ketchup',
@@ -623,7 +590,6 @@ class SearchController extends GetxController {
       };
     }
 
-    // General Food
     return {
       'icon': Icons.restaurant_menu,
       'gradient': [Colors.grey[400]!, Colors.grey[600]!],
@@ -636,7 +602,6 @@ class SearchController extends GetxController {
     return keywords.any((keyword) => text.contains(keyword));
   }
 
-  // category name
   String getCategoryName(Product product) {
     final categoryInfo = _getCategoryFromProduct(product);
     return categoryInfo['category'] as String;

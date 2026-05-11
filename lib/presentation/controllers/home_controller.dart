@@ -6,8 +6,8 @@ import 'auth_controller.dart';
 import 'nutrition_controller.dart';
 
 class HomeController extends GetxController {
-  final NutritionController nutritionController = Get.find();
-  final AuthController authController = Get.find();
+  late final NutritionController nutritionController;
+  late final AuthController authController;
 
   var isLoading = false.obs;
   var recentProducts = <Product>[].obs;
@@ -16,6 +16,8 @@ class HomeController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    nutritionController = Get.find();
+    authController = Get.find();
     loadHomeData();
   }
 
@@ -40,10 +42,10 @@ class HomeController extends GetxController {
 
   void _calculateTodayIntake() {
     final meals = nutritionController.todayMeals;
-    double totalCalories = nutritionController.totalCalories.value;
-    double totalProteins = nutritionController.totalProteins.value;
-    double totalCarbs = nutritionController.totalCarbs.value;
-    double totalFats = nutritionController.totalFats.value;
+    final double totalCalories = nutritionController.totalCalories.value;
+    final double totalProteins = nutritionController.totalProteins.value;
+    final double totalCarbs = nutritionController.totalCarbs.value;
+    final double totalFats = nutritionController.totalFats.value;
 
     todayIntake.value = TodayIntakeModel(
       totalCalories: totalCalories,

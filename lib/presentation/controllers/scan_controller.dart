@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
+import 'package:nutri_check/core/config/off_config.dart';
 import 'package:nutri_check/presentation/widgets/product_details_sheet.dart';
 import 'package:openfoodfacts/openfoodfacts.dart';
 import 'package:vibration/vibration.dart';
@@ -19,50 +20,37 @@ class ScanController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    _setupOpenFoodFacts();
+    OpenFoodFactsConfig.initialize();
     _loadDataSafely();
-  }
-
-  void _setupOpenFoodFacts() {
-    OpenFoodAPIConfiguration.userAgent = UserAgent(
-      name: 'NutriCheck',
-      version: '1.0.0',
-      system: 'Flutter App',
-    );
-    OpenFoodAPIConfiguration.globalLanguages = <OpenFoodFactsLanguage>[
-      OpenFoodFactsLanguage.ENGLISH,
-    ];
-    OpenFoodAPIConfiguration.globalCountry = OpenFoodFactsCountry.INDIA;
   }
 
   void _loadDataSafely() {
     try {
       _cleanupOldData();
-      dynamic savedCodesRaw = box.read('scanned_codes_v3');
+      final dynamic savedCodesRaw = box.read('scanned_codes_v3');
       if (savedCodesRaw != null) {
         try {
-          List<String> savedCodes = List<String>.from(savedCodesRaw);
+          final List<String> savedCodes = List<String>.from(savedCodesRaw);
           scannedCodes.assignAll(savedCodes);
         } catch (e) {
           scannedCodes.clear();
         }
       }
 
-      dynamic savedProductsRaw = box.read('recent_products_v3');
+      final dynamic savedProductsRaw = box.read('recent_products_v3');
       if (savedProductsRaw != null) {
         try {
-          List<Product> products = [];
+          final List<Product> products = [];
 
           if (savedProductsRaw is List) {
             for (var item in savedProductsRaw) {
               try {
-                Map<String, dynamic> productMap = Map<String, dynamic>.from(
-                  item,
-                );
+                final Map<String, dynamic> productMap =
+                    Map<String, dynamic>.from(item);
                 Nutriments? nutriments;
                 if (productMap['nutrition'] != null &&
                     productMap['nutrition'] is Map) {
-                  Map<String, dynamic> nutritionData =
+                  final Map<String, dynamic> nutritionData =
                       Map<String, dynamic>.from(productMap['nutrition']);
                   if (nutritionData.isNotEmpty &&
                       nutritionData.values.any((v) => v != null && v != 0)) {
@@ -91,7 +79,7 @@ class ScanController extends GetxController {
                 }
 
                 // Create Product object with reconstructed nutrition
-                Product product = Product(
+                final Product product = Product(
                   barcode: productMap['barcode']?.toString(),
                   productName: productMap['productName']?.toString(),
                   brands: productMap['brands']?.toString(),
@@ -109,20 +97,28 @@ class ScanController extends GetxController {
 
                 products.add(product);
               } catch (e) {
-                print('Error parsing individual product: $e');
+                if (kDebugMode) {
+                  print('Error parsing individual product: $e');
+                }
               }
             }
           }
 
           recentProducts.assignAll(products);
-          print('Loaded ${products.length} products with nutrition data');
+          if (kDebugMode) {
+            print('Loaded ${products.length} products with nutrition data');
+          }
         } catch (e) {
-          print('Error parsing products: $e');
+          if (kDebugMode) {
+            print('Error parsing products: $e');
+          }
           recentProducts.clear();
         }
       }
     } catch (e) {
-      print('Error loading data: $e');
+      if (kDebugMode) {
+        print('Error loading data: $e');
+      }
       scannedCodes.clear();
       recentProducts.clear();
     }
@@ -135,14 +131,18 @@ class ScanController extends GetxController {
       box.remove('scanned_codes_v2');
       box.remove('recent_products_v2');
     } catch (e) {
-      print('Error cleaning up: $e');
+      if (kDebugMode) {
+        print('Error cleaning up: $e');
+      }
     }
   }
 
   void _saveDataSafely() {
     try {
       box.write('scanned_codes_v3', scannedCodes.toList());
-      List<Map<String, dynamic>> productMaps = recentProducts.map((product) {
+      final List<Map<String, dynamic>> productMaps = recentProducts.map((
+        product,
+      ) {
         Map<String, dynamic> nutritionMap = {};
         if (product.nutriments != null) {
           nutritionMap = {
@@ -188,11 +188,13 @@ class ScanController extends GetxController {
       if (kDebugMode) {
         print('Already scanned: $barcode');
       }
+      final ctx = Get.context;
+      if (ctx == null) return;
       Flushbar(
         title: 'Already Scanned $barcode',
         message: 'This product is already in your history.',
-        duration: Duration(seconds: 2),
-      ).show(Get.context!);
+        duration: const Duration(seconds: 2),
+      ).show(ctx);
       return;
     }
 
@@ -204,7 +206,7 @@ class ScanController extends GetxController {
 
       //haptic feedback
       HapticFeedback.lightImpact();
-      if (await Vibration.hasVibrator() ?? false) {
+      if (await Vibration.hasVibrator()) {
         Vibration.vibrate(duration: 100);
       }
       scannedCodes.add(barcode);
@@ -247,10 +249,10 @@ class ScanController extends GetxController {
         // alert dialog
         Get.dialog(
           AlertDialog(
-            title: Text('Product Not Found'),
+            title: const Text('Product Not Found'),
             content: Text('No product found for barcode $barcode.'),
             actions: [
-              TextButton(onPressed: () => Get.back(), child: Text('OK')),
+              TextButton(onPressed: () => Get.back(), child: const Text('OK')),
             ],
           ),
         );
@@ -263,10 +265,10 @@ class ScanController extends GetxController {
   void clearAllHistory() {
     Get.dialog(
       AlertDialog(
-        title: Text('Clear History'),
-        content: Text('Delete all scan history?'),
+        title: const Text('Clear History'),
+        content: const Text('Delete all scan history?'),
         actions: [
-          TextButton(onPressed: () => Get.back(), child: Text('Cancel')),
+          TextButton(onPressed: () => Get.back(), child: const Text('Cancel')),
           ElevatedButton(
             onPressed: () {
               Get.back();
@@ -278,7 +280,7 @@ class ScanController extends GetxController {
               _cleanupOldData();
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: Text('Clear All'),
+            child: const Text('Clear All'),
           ),
         ],
       ),
@@ -287,7 +289,9 @@ class ScanController extends GetxController {
 
   void refreshRecentProducts() {
     _loadDataSafely();
-    print('History refreshed');
+    if (kDebugMode) {
+      print('History refreshed');
+    }
   }
 
   int _getCalories(Product product) {

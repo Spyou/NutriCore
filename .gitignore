@@ -44,3 +44,9 @@ app.*.map.json
 *.env
 config.json
 secrets.json
+
+# Local tooling / brainstorm artifacts
+.superpowers/
+.opencode/
+docs/superpowers/
+docs/audit/

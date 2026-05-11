@@ -7,6 +7,7 @@ import 'package:nutri_check/core/utils/components/custom_flushbar.dart';
 import 'package:nutri_check/presentation/pages/auth/login_page.dart';
 
 import '../../data/models/user_model.dart';
+import '../../domain/entities/user_profile.dart' show Gender;
 import '../pages/main_page.dart';
 import '../services/user_service.dart';
 
@@ -14,7 +15,9 @@ class AuthController extends GetxController {
   static AuthController get instance => Get.find();
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final UserService _userService = UserService();
+  final UserService _userService = Get.find<UserService>();
+
+  Worker? _authStateWorker;
 
   final Rx<User?> _user = Rx<User?>(null);
   final Rx<UserModel?> _userModel = Rx<UserModel?>(null);
@@ -30,10 +33,16 @@ class AuthController extends GetxController {
     super.onInit();
 
     _user.bindStream(_auth.authStateChanges());
-    ever(_user, _setInitialScreen);
+    _authStateWorker = ever(_user, _setInitialScreen);
   }
 
-  _setInitialScreen(User? user) async {
+  @override
+  void onClose() {
+    _authStateWorker?.dispose();
+    super.onClose();
+  }
+
+  Future<void> _setInitialScreen(User? user) async {
     if (user == null) {
       if (kDebugMode) {
         print('User not logged in');
@@ -77,7 +86,7 @@ class AuthController extends GetxController {
       isLoading.value = true;
       error.value = '';
 
-      UserCredential userCredential = await _auth
+      final UserCredential userCredential = await _auth
           .createUserWithEmailAndPassword(email: email, password: password);
 
       if (userCredential.user != null) {
@@ -87,17 +96,17 @@ class AuthController extends GetxController {
           displayName: displayName,
         );
 
-        CustomThemeFlushbar(
+        CustomThemeFlushbar.show(
           title: 'Success',
           message: 'Account created successfully!',
         );
       }
     } on FirebaseAuthException catch (e) {
       error.value = _getErrorMessage(e);
-      CustomThemeFlushbar(title: 'Error', message: error.value);
+      CustomThemeFlushbar.show(title: 'Error', message: error.value);
     } catch (e) {
       error.value = 'An unexpected error occurred';
-      CustomThemeFlushbar(title: 'Error', message: error.value);
+      CustomThemeFlushbar.show(title: 'Error', message: error.value);
     } finally {
       isLoading.value = false;
     }
@@ -110,7 +119,7 @@ class AuthController extends GetxController {
 
       await _auth.signInWithEmailAndPassword(email: email, password: password);
 
-      CustomThemeFlushbar(
+      CustomThemeFlushbar.show(
         title: 'Login Successful!',
         message: 'Welcome back! Redirecting to your nutrition tracker...',
       );
@@ -118,10 +127,10 @@ class AuthController extends GetxController {
       HapticFeedback.lightImpact();
     } on FirebaseAuthException catch (e) {
       error.value = _getErrorMessage(e);
-      CustomThemeFlushbar(title: 'Login Failed', message: error.value);
+      CustomThemeFlushbar.show(title: 'Login Failed', message: error.value);
     } catch (e) {
       error.value = 'An unexpected error occurred';
-      CustomThemeFlushbar(title: 'Error', message: error.value);
+      CustomThemeFlushbar.show(title: 'Error', message: error.value);
     } finally {
       isLoading.value = false;
     }
@@ -131,12 +140,12 @@ class AuthController extends GetxController {
     try {
       await _auth.signOut();
       _userModel.value = null;
-      CustomThemeFlushbar(
+      CustomThemeFlushbar.show(
         title: 'Success',
         message: 'Logged out successfully!',
       );
     } catch (e) {
-      CustomThemeFlushbar(
+      CustomThemeFlushbar.show(
         title: 'Error',
         message: 'Error signing out: ${e.toString()}',
       );
@@ -155,7 +164,7 @@ class AuthController extends GetxController {
         colorText: Colors.white,
       );
     } on FirebaseAuthException catch (e) {
-      CustomThemeFlushbar(title: 'Error', message: _getErrorMessage(e));
+      CustomThemeFlushbar.show(title: 'Error', message: _getErrorMessage(e));
     } finally {
       isLoading.value = false;
     }
@@ -187,20 +196,25 @@ class AuthController extends GetxController {
           targetWeight: targetWeight,
           height: height,
           age: age,
-          gender: gender,
+          gender: gender != null
+              ? Gender.values.firstWhere(
+                  (e) => e.name.toLowerCase() == gender.toLowerCase(),
+                  orElse: () => Gender.male,
+                )
+              : null,
           activityLevel: activityLevel,
         );
 
         await _userService.updateUserData(updatedUser);
         _userModel.value = updatedUser;
 
-        CustomThemeFlushbar(
+        CustomThemeFlushbar.show(
           title: 'Success',
           message: 'Profile updated successfully!',
         );
       }
     } catch (e) {
-      CustomThemeFlushbar(
+      CustomThemeFlushbar.show(
         title: 'Error',
         message: 'Error updating profile: ${e.toString()}',
       );
@@ -229,13 +243,13 @@ class AuthController extends GetxController {
         await _userService.updateUserData(updatedUser);
         _userModel.value = updatedUser;
 
-        CustomThemeFlushbar(
+        CustomThemeFlushbar.show(
           title: 'Success',
           message: 'Nutrition goals updated!',
         );
       }
     } catch (e) {
-      CustomThemeFlushbar(
+      CustomThemeFlushbar.show(
         title: 'Error',
         message: 'Error updating goals: ${e.toString()}',
       );
