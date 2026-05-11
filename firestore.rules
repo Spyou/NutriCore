@@ -1,0 +1,42 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function ownsResource() {
+      return isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    function ownsIncoming() {
+      return isSignedIn() && request.resource.data.userId == request.auth.uid;
+    }
+
+    match /users/{uid} {
+      allow read, write: if isOwner(uid);
+    }
+
+    match /user_preferences/{uid} {
+      allow read, write: if isOwner(uid);
+    }
+
+    match /nutrition_entries/{docId} {
+      allow read, delete: if ownsResource();
+      allow create: if ownsIncoming();
+      allow update: if ownsResource() && ownsIncoming();
+    }
+
+    match /scanned_products/{docId} {
+      allow read: if isSignedIn();
+      allow create: if ownsIncoming();
+      allow update, delete: if ownsResource();
+    }
+  }
+}

@@ -8,6 +8,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_text_styles.dart';
 import '../controllers/nutrition_controller.dart';
+import 'shared/add_to_meal_sheet.dart';
 
 class ProductDetailsSheet extends StatelessWidget {
   final Product product;
@@ -350,20 +351,21 @@ class ProductDetailsSheet extends StatelessWidget {
         Row(
           children: [
             Expanded(
-              child: ElevatedButton.icon(
-                onPressed: () =>
-                    _showAddToMealDialog(), // 🔥 Updated to show quantity dialog
-                icon: const Icon(Icons.restaurant_menu),
-                label: const Text('Add to Meal Log'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.all(16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+              child: Builder(builder: (context) {
+                return ElevatedButton.icon(
+                  onPressed: () => AddToMealSheet.show(context, product),
+                  icon: const Icon(Icons.restaurant_menu),
+                  label: const Text('Add to Meal Log'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.all(16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
-                ),
-              ),
+                );
+              }),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -408,368 +410,6 @@ class ProductDetailsSheet extends StatelessWidget {
       ],
     );
   }
-
-  void _showAddToMealDialog() {
-    final quantityController = TextEditingController(text: '100');
-    final notesController = TextEditingController();
-    String selectedMealType = 'meal';
-
-    Get.dialog(
-      AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Add to Nutrition Log'),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Product info
-                Text(
-                  product.productName ?? 'Unknown Product',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-                if (product.brands?.isNotEmpty == true) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    product.brands!,
-                    style: TextStyle(color: Colors.grey[600]),
-                  ),
-                ],
-                const SizedBox(height: 16),
-
-                // Nutrition info per 100g
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: AppColors.calories.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: AppColors.calories.withValues(alpha: 0.3),
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      const Text(
-                        'Nutrition per 100g:',
-                        style: TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
-                        children: [
-                          _buildNutrientChip(
-                            '${_getCalories()} kcal',
-                            Icons.local_fire_department,
-                            AppColors.calories,
-                          ),
-                          _buildNutrientChip(
-                            '${_getProteins()}g P',
-                            Icons.fitness_center,
-                            AppColors.proteins,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
-                        children: [
-                          _buildNutrientChip(
-                            '${_getCarbs()}g C',
-                            Icons.grain,
-                            AppColors.carbs,
-                          ),
-                          _buildNutrientChip(
-                            '${_getFats()}g F',
-                            Icons.opacity,
-                            AppColors.fats,
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // Quantity input
-                TextField(
-                  controller: quantityController,
-                  decoration: InputDecoration(
-                    labelText: 'Quantity (grams)',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    suffixText: 'g',
-                    helperText: 'Enter the amount you consumed',
-                    prefixIcon: Icon(Icons.scale, color: AppColors.primary),
-                  ),
-                  keyboardType: TextInputType.number,
-                ),
-                const SizedBox(height: 12),
-
-                // Meal type selection
-                DropdownButtonFormField<String>(
-                  initialValue: selectedMealType,
-                  decoration: InputDecoration(
-                    labelText: 'Meal Type',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    prefixIcon: Icon(
-                      Icons.restaurant,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                  items: ['breakfast', 'lunch', 'dinner', 'snack', 'meal']
-                      .map(
-                        (type) => DropdownMenuItem(
-                          value: type,
-                          child: Text(type.capitalize!),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (value) => selectedMealType = value ?? 'meal',
-                ),
-                const SizedBox(height: 12),
-
-                // Notes
-                TextField(
-                  controller: notesController,
-                  decoration: InputDecoration(
-                    labelText: 'Notes (optional)',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    hintText: 'e.g., Brand, preparation method, etc.',
-                    prefixIcon: Icon(Icons.note, color: AppColors.primary),
-                  ),
-                  maxLines: 2,
-                ),
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Get.back(), child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () {
-              final quantity = double.tryParse(quantityController.text) ?? 100;
-              if (quantity <= 0) {
-                Get.snackbar(
-                  'Invalid Quantity',
-                  'Please enter a valid quantity',
-                  backgroundColor: Colors.orange,
-                  colorText: Colors.white,
-                );
-                return;
-              }
-
-              _addProductToNutritionLog(
-                quantity,
-                selectedMealType,
-                notesController.text,
-              );
-              Get.back();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            child: const Text('Add to Log'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNutrientChip(String text, IconData icon, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: color, size: 14),
-          const SizedBox(width: 4),
-          Text(
-            text,
-            style: TextStyle(
-              color: color,
-              fontWeight: FontWeight.w600,
-              fontSize: 11,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // 🔥 NEW: Add product to nutrition log with Firebase integration
-  Future<void> _addProductToNutritionLog(
-    double quantity,
-    String mealType,
-    String notes,
-  ) async {
-    try {
-      final nutritionController = Get.find<NutritionController>();
-
-      // Calculate nutrition values for the specified quantity
-      final factor = quantity / 100; // Convert from per-100g to actual quantity
-
-      final calories = _getCalories();
-      final proteins = _getProteins();
-      final carbs = _getCarbs();
-      final fats = _getFats();
-      final fiber = _getFiber();
-      final sugars = _getSugars();
-      final sodium = _getSodium();
-
-      final meal = {
-        'name': product.productName ?? 'Scanned Product',
-        'calories': (calories * factor).round(),
-        'proteins': (proteins * factor),
-        'carbs': (carbs * factor),
-        'fat': (fats * factor),
-        'fiber': (fiber * factor),
-        'sugar': (sugars * factor),
-        'sodium': (sodium * factor),
-        'type': mealType,
-        'time':
-            '${DateTime.now().hour.toString().padLeft(2, '0')}:${DateTime.now().minute.toString().padLeft(2, '0')}',
-        'quantity': quantity,
-        'barcode': product.barcode,
-        'brands': product.brands,
-        'imageUrl': product.imageFrontUrl,
-        'notes': notes.trim().isEmpty
-            ? 'Added from product scanner (${product.barcode})'
-            : notes.trim(),
-        'favorite': false,
-      };
-
-      // 🔥 Add to nutrition log - this will automatically sync to Firebase
-      await nutritionController.addMeal(meal);
-
-      // Close the product details sheet
-      Navigator.pop(Get.context!);
-
-      // Show success message
-      Get.snackbar(
-        '🍽️ Added to Nutrition Log!',
-        '${product.productName} (${quantity}g) added successfully\n${meal['calories']} kcal added to your daily intake',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.green,
-        colorText: Colors.white,
-        duration: const Duration(seconds: 4),
-      );
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error adding to nutrition log: $e');
-      }
-      Get.snackbar(
-        '❌ Error',
-        'Failed to add product to nutrition log: ${e.toString()}',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-        duration: const Duration(seconds: 4),
-      );
-    }
-  }
-
-  // Helper methods to get nutrition values
-  int _getCalories() {
-    try {
-      return product.nutriments
-              ?.getValue(Nutrient.energyKCal, PerSize.oneHundredGrams)
-              ?.toInt() ??
-          0;
-    } catch (e) {
-      return 0;
-    }
-  }
-
-  double _getProteins() {
-    try {
-      return product.nutriments?.getValue(
-            Nutrient.proteins,
-            PerSize.oneHundredGrams,
-          ) ??
-          0.0;
-    } catch (e) {
-      return 0.0;
-    }
-  }
-
-  double _getCarbs() {
-    try {
-      return product.nutriments?.getValue(
-            Nutrient.carbohydrates,
-            PerSize.oneHundredGrams,
-          ) ??
-          0.0;
-    } catch (e) {
-      return 0.0;
-    }
-  }
-
-  double _getFats() {
-    try {
-      return product.nutriments?.getValue(
-            Nutrient.fat,
-            PerSize.oneHundredGrams,
-          ) ??
-          0.0;
-    } catch (e) {
-      return 0.0;
-    }
-  }
-
-  double _getFiber() {
-    try {
-      return product.nutriments?.getValue(
-            Nutrient.fiber,
-            PerSize.oneHundredGrams,
-          ) ??
-          0.0;
-    } catch (e) {
-      return 0.0;
-    }
-  }
-
-  double _getSugars() {
-    try {
-      return product.nutriments?.getValue(
-            Nutrient.sugars,
-            PerSize.oneHundredGrams,
-          ) ??
-          0.0;
-    } catch (e) {
-      return 0.0;
-    }
-  }
-
-  double _getSodium() {
-    try {
-      return product.nutriments?.getValue(
-            Nutrient.sodium,
-            PerSize.oneHundredGrams,
-          ) ??
-          0.0;
-    } catch (e) {
-      return 0.0;
-    }
-  }
-
   // Helper methods (your existing ones)
   Widget _buildHandle() {
     return Container(
@@ -803,81 +443,79 @@ class ProductDetailsSheet extends StatelessWidget {
     );
   }
 
-  // In your ProductDetailsSheet, replace the _buildProductImage method:
   Widget _buildProductImage() {
-    final imageUrl =
-        product.imagePackagingUrl ??
-        product.imagePackagingSmallUrl ??
-        product.imageFrontSmallUrl;
+    return Builder(
+      builder: (context) {
+        final scheme = Theme.of(context).colorScheme;
+        final textTheme = Theme.of(context).textTheme;
+        final imageUrl = product.imageFrontSmallUrl ??
+            product.imageFrontUrl ??
+            product.imagePackagingSmallUrl ??
+            product.imagePackagingUrl;
 
-    if (imageUrl == null || imageUrl.isEmpty) {
-      return Container(
-        height: 200,
-        decoration: BoxDecoration(
-          color: AppColors.surfaceVariant,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.image_not_supported,
-                size: 64,
-                color: AppColors.textTertiary,
+        Widget shell({required Widget child}) => AspectRatio(
+              aspectRatio: 4 / 5,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: scheme.primary.withValues(alpha: 0.06),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: scheme.outlineVariant.withValues(alpha: 0.5),
+                    width: 1,
+                  ),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: child,
               ),
-              const SizedBox(height: 8),
-              Text(
-                'No Image Available',
-                style: TextStyle(color: AppColors.textTertiary, fontSize: 16),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
+            );
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(12),
-      child: CachedNetworkImage(
-        imageUrl: imageUrl,
-        height: 200,
-        width: double.infinity,
-        fit: BoxFit.cover,
-        placeholder: (context, url) => Container(
-          height: 200,
-          color: AppColors.surfaceVariant,
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                CircularProgressIndicator(color: AppColors.primary),
-                const SizedBox(height: 16),
-                const Text('Loading image...'),
-              ],
-            ),
-          ),
-        ),
-        errorWidget: (context, url, error) {
-          if (kDebugMode) {
-            print('Product image load error: $error');
-          }
-          return Container(
-            height: 200,
-            color: AppColors.surfaceVariant,
-            child: Center(
+        Widget empty(IconData icon, String label) => Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.broken_image, size: 64, color: AppColors.error),
-                  const SizedBox(height: 8),
-                  const Text('Failed to load image'),
+                  Icon(icon,
+                      size: 56, color: scheme.primary.withValues(alpha: 0.4)),
+                  const SizedBox(height: 10),
+                  Text(
+                    label,
+                    style: textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurface.withValues(alpha: 0.55),
+                    ),
+                  ),
                 ],
               ),
-            ),
+            );
+
+        if (imageUrl == null || imageUrl.isEmpty) {
+          return shell(
+            child: empty(Icons.image_not_supported_rounded, 'No image'),
           );
-        },
-      ),
+        }
+
+        return shell(
+          child: CachedNetworkImage(
+            imageUrl: imageUrl,
+            fit: BoxFit.cover,
+            fadeInDuration: const Duration(milliseconds: 220),
+            placeholder: (context, url) => Center(
+              child: SizedBox(
+                width: 28,
+                height: 28,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  color: scheme.primary.withValues(alpha: 0.6),
+                ),
+              ),
+            ),
+            errorWidget: (context, url, error) {
+              if (kDebugMode) {
+                print('Product image load error: $error');
+              }
+              return empty(Icons.broken_image_rounded, 'Image unavailable');
+            },
+          ),
+        );
+      },
     );
   }
 

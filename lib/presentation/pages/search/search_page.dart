@@ -10,6 +10,8 @@ import 'package:openfoodfacts/openfoodfacts.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../controllers/search_controller.dart' as app_search;
+import '../../widgets/product_details_sheet.dart';
+import '../../widgets/search/search_skeleton.dart';
 
 class SearchPage extends StatelessWidget {
   const SearchPage({super.key});
@@ -20,19 +22,31 @@ class SearchPage extends StatelessWidget {
       init: Get.find<app_search.SearchController>(),
       builder: (controller) => Scaffold(
         backgroundColor: AppColors.background,
-        body: CustomScrollView(
-          slivers: [
-            _buildSliverAppBar(controller),
-            SliverToBoxAdapter(
-              child: Column(
-                children: [
-                  _buildSearchBar(context, controller),
-                  _buildCategoryFilter(controller),
-                  _buildSearchContent(context, controller),
-                ],
+        body: NotificationListener<ScrollNotification>(
+          onNotification: (n) {
+            // Pre-fetch 240px before the bottom so the next page is
+            // already streaming in by the time the user reaches it.
+            if (n.metrics.pixels >= n.metrics.maxScrollExtent - 240 &&
+                !controller.isLoadingMore.value &&
+                controller.hasMore.value) {
+              controller.loadMore();
+            }
+            return false;
+          },
+          child: CustomScrollView(
+            slivers: [
+              _buildSliverAppBar(controller),
+              SliverToBoxAdapter(
+                child: Column(
+                  children: [
+                    _buildSearchBar(context, controller),
+                    _buildCategoryFilter(controller),
+                    _buildSearchContent(context, controller),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -340,7 +354,8 @@ class SearchPage extends StatelessWidget {
       ),
       child: TextField(
         controller: controller.textController,
-        onSubmitted: controller.searchProducts,
+        onChanged: controller.onSearchChanged,
+        onSubmitted: controller.commitSearch,
         decoration: InputDecoration(
           hintText: 'Search for food products...',
           hintStyle: AppTextStyles.bodyMedium(
@@ -372,48 +387,13 @@ class SearchPage extends StatelessWidget {
 
   Widget _buildCategoryFilter(app_search.SearchController controller) {
     final visualCategories = [
-      {
-        'key': 'all',
-        'label': 'All',
-        'icon': Icons.apps,
-        'color': AppColors.primary,
-      },
-      {
-        'key': 'sweets',
-        'label': 'Sweets',
-        'icon': Icons.cake,
-        'color': Colors.brown,
-      },
-      {
-        'key': 'dairy',
-        'label': 'Dairy',
-        'icon': Icons.water_drop,
-        'color': Colors.blue,
-      },
-      {
-        'key': 'beverages',
-        'label': 'Drinks',
-        'icon': Icons.local_drink,
-        'color': Colors.cyan,
-      },
-      {
-        'key': 'snacks',
-        'label': 'Snacks',
-        'icon': Icons.fastfood,
-        'color': Colors.deepOrange,
-      },
-      {
-        'key': 'fruits',
-        'label': 'Fruits',
-        'icon': Icons.apple,
-        'color': Colors.red,
-      },
-      {
-        'key': 'vegetables',
-        'label': 'Veggies',
-        'icon': Icons.eco,
-        'color': Colors.green,
-      },
+      {'key': 'all', 'label': 'All', 'icon': Icons.apps},
+      {'key': 'sweets', 'label': 'Sweets', 'icon': Icons.cake},
+      {'key': 'dairy', 'label': 'Dairy', 'icon': Icons.water_drop},
+      {'key': 'beverages', 'label': 'Drinks', 'icon': Icons.local_drink},
+      {'key': 'snacks', 'label': 'Snacks', 'icon': Icons.fastfood},
+      {'key': 'fruits', 'label': 'Fruits', 'icon': Icons.apple},
+      {'key': 'vegetables', 'label': 'Veggies', 'icon': Icons.eco},
     ];
 
     return Container(
@@ -424,8 +404,15 @@ class SearchPage extends StatelessWidget {
         itemCount: visualCategories.length,
         itemBuilder: (context, index) {
           final category = visualCategories[index];
-          return Obx(
-            () => Container(
+          final scheme = Theme.of(context).colorScheme;
+          return Obx(() {
+            final selected =
+                controller.selectedCategory.value == category['key'];
+            final bgColor = selected
+                ? scheme.primary
+                : scheme.surfaceContainerHighest;
+            final fgColor = selected ? scheme.onPrimary : scheme.onSurface;
+            return Container(
               margin: const EdgeInsets.only(right: 12),
               child: GestureDetector(
                 onTap: () =>
@@ -436,16 +423,13 @@ class SearchPage extends StatelessWidget {
                     vertical: 8,
                   ),
                   decoration: BoxDecoration(
-                    color: controller.selectedCategory.value == category['key']
-                        ? (category['color'] as Color)
-                        : AppColors.surface,
+                    color: bgColor,
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: category['color'] as Color,
-                      width:
-                          controller.selectedCategory.value == category['key']
-                          ? 0
-                          : 1,
+                      color: selected
+                          ? Colors.transparent
+                          : scheme.outlineVariant,
+                      width: 1,
                     ),
                   ),
                   child: Row(
@@ -454,20 +438,13 @@ class SearchPage extends StatelessWidget {
                       Icon(
                         category['icon'] as IconData,
                         size: 18,
-                        color:
-                            controller.selectedCategory.value == category['key']
-                            ? Colors.white
-                            : category['color'] as Color,
+                        color: fgColor,
                       ),
                       const SizedBox(width: 6),
                       Text(
                         category['label'] as String,
                         style: TextStyle(
-                          color:
-                              controller.selectedCategory.value ==
-                                  category['key']
-                              ? Colors.white
-                              : category['color'] as Color,
+                          color: fgColor,
                           fontWeight: FontWeight.w600,
                           fontSize: 13,
                         ),
@@ -476,8 +453,8 @@ class SearchPage extends StatelessWidget {
                   ),
                 ),
               ),
-            ),
-          );
+            );
+          });
         },
       ),
     );
@@ -496,6 +473,11 @@ class SearchPage extends StatelessWidget {
         return _buildInitialState(context, controller);
       }
 
+      if (controller.searchResults.isEmpty &&
+          controller.errorMessage.value.isNotEmpty) {
+        return _buildErrorState(context, controller);
+      }
+
       if (controller.searchResults.isEmpty) {
         return _buildEmptyState(context);
       }
@@ -504,22 +486,60 @@ class SearchPage extends StatelessWidget {
     });
   }
 
-  Widget _buildLoadingState(BuildContext context) {
-    return SizedBox(
-      height: 300,
+  Widget _buildErrorState(
+    BuildContext context,
+    app_search.SearchController controller,
+  ) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
       child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircularProgressIndicator(color: AppColors.primary),
-            const SizedBox(height: 16),
+            Icon(
+              Icons.cloud_off_rounded,
+              size: 48,
+              color: scheme.onSurface.withValues(alpha: 0.4),
+            ),
+            const SizedBox(height: 12),
             Text(
-              'Searching products...',
-              style: AppTextStyles.bodyLarge(context),
+              "Couldn't reach the food database",
+              textAlign: TextAlign.center,
+              style: textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              controller.errorMessage.value,
+              textAlign: TextAlign.center,
+              style: textTheme.bodyMedium?.copyWith(
+                color: scheme.onSurface.withValues(alpha: 0.65),
+              ),
+            ),
+            const SizedBox(height: 20),
+            FilledButton(
+              onPressed: () =>
+                  controller.searchProducts(controller.searchQuery.value),
+              child: const Text('Try again'),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildLoadingState(BuildContext context) {
+    // Shimmer skeletons instead of a circular spinner: keeps the layout
+    // stable as results stream in and hides any "Search Results" header
+    // (skeleton already implies the section). Mirror the margin used by
+    // `_buildSearchResults` so the skeleton doesn't shift sideways when
+    // it swaps in for real results.
+    return Container(
+      margin: const EdgeInsets.all(20),
+      child: const SearchSkeleton(itemCount: 6),
     );
   }
 
@@ -744,32 +764,73 @@ class SearchPage extends StatelessWidget {
     );
   }
 
-  Widget _buildProductCard(
+  void _openProductDetails(
     BuildContext context,
-    dynamic product,
+    Product product,
     app_search.SearchController controller,
   ) {
+    HapticFeedback.selectionClick();
+    controller.rememberQuery(controller.searchQuery.value);
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      useSafeArea: true,
+      builder: (_) => ProductDetailsSheet(product: product),
+    );
+  }
+
+  Widget _buildProductCard(
+    BuildContext context,
+    Product product,
+    app_search.SearchController controller,
+  ) {
+    final scheme = Theme.of(context).colorScheme;
+    final knownCategory = controller.getKnownCategoryName(product);
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: scheme.surface,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: scheme.shadow.withValues(alpha: 0.05),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
         ],
       ),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 60,
-            height: 60,
-            child: controller.buildCategoryIcon(product),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () => _openProductDetails(context, product, controller),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: _buildProductCardBody(
+              context,
+              product,
+              controller,
+              scheme,
+              knownCategory,
+            ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProductCardBody(
+    BuildContext context,
+    Product product,
+    app_search.SearchController controller,
+    ColorScheme scheme,
+    String? knownCategory,
+  ) {
+    return Row(
+        children: [
+          _buildProductThumbnail(context, product),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
@@ -783,57 +844,112 @@ class SearchPage extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 4),
-                // Show category tag
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.secondary.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    controller.getCategoryName(product),
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: AppColors.secondary,
-                      fontWeight: FontWeight.w600,
+                if (knownCategory != null) ...[
+                  const SizedBox(height: 4),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: scheme.secondaryContainer,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      knownCategory,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: scheme.onSecondaryContainer,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
-                ),
+                ],
                 if (product.brands?.isNotEmpty == true) ...[
                   const SizedBox(height: 4),
                   Text(
                     product.brands!,
-                    style: AppTextStyles.bodySmall(
-                      context,
-                    ).copyWith(color: AppColors.textSecondary),
+                    style: AppTextStyles.bodySmall(context).copyWith(
+                      color: scheme.onSurface.withValues(alpha: 0.6),
+                    ),
                   ),
                 ],
                 const SizedBox(height: 8),
                 Row(
                   children: [
                     _buildNutrientChip(
+                      context,
                       '${controller.getCalories(product)} kcal',
-                      AppColors.calories,
+                      scheme.primary,
                     ),
                     const SizedBox(width: 8),
                     _buildNutrientChip(
+                      context,
                       '${controller.getNutrientValue(product, Nutrient.proteins).toStringAsFixed(1)}g P',
-                      AppColors.proteins,
+                      scheme.tertiary,
                     ),
                   ],
                 ),
               ],
             ),
           ),
-          IconButton(
-            onPressed: () => controller.addProductToNutrition(product),
-            icon: Icon(Icons.add_circle, color: AppColors.primary, size: 32),
+          Material(
+            color: scheme.primary,
+            shape: const CircleBorder(),
+            child: InkWell(
+              customBorder: const CircleBorder(),
+              onTap: () {
+                controller.rememberQuery(controller.searchQuery.value);
+                controller.addProductToNutrition(product);
+              },
+              child: Padding(
+                padding: const EdgeInsets.all(6),
+                child: Icon(
+                  Icons.add_rounded,
+                  color: scheme.onPrimary,
+                  size: 22,
+                ),
+              ),
+            ),
           ),
         ],
+      );
+  }
+
+  Widget _buildProductThumbnail(BuildContext context, Product product) {
+    final scheme = Theme.of(context).colorScheme;
+    final imageUrl = product.imageFrontSmallUrl ?? product.imageFrontUrl;
+
+    Widget fallback() => Container(
+      width: 64,
+      height: 64,
+      color: scheme.surfaceContainerHighest,
+      alignment: Alignment.center,
+      child: Icon(
+        Icons.fastfood_rounded,
+        color: scheme.onSurface.withValues(alpha: 0.35),
+        size: 24,
+      ),
+    );
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: SizedBox(
+        width: 64,
+        height: 64,
+        child: (imageUrl == null || imageUrl.isEmpty)
+            ? fallback()
+            : CachedNetworkImage(
+                imageUrl: imageUrl,
+                fit: BoxFit.cover,
+                width: 64,
+                height: 64,
+                fadeInDuration: const Duration(milliseconds: 220),
+                fadeOutDuration: const Duration(milliseconds: 120),
+                placeholder: (context, url) =>
+                    const _PulsingImagePlaceholder(),
+                errorWidget: (context, url, error) => fallback(),
+              ),
       ),
     );
   }
@@ -890,9 +1006,59 @@ class SearchPage extends StatelessWidget {
               return _buildProductCard(context, product, controller);
             },
           ),
+          _buildPaginationFooter(context, controller),
         ],
       ),
     );
+  }
+
+  /// Footer row rendered under the results list. Shows a slim primary
+  /// progress bar while fetching the next page, or a muted "End of
+  /// results" caption once pagination has been exhausted.
+  Widget _buildPaginationFooter(
+    BuildContext context,
+    app_search.SearchController controller,
+  ) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    return Obx(() {
+      if (controller.isLoadingMore.value) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: SizedBox(
+            height: 32,
+            child: Center(
+              child: SizedBox(
+                width: 120,
+                height: 3,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(3),
+                  child: LinearProgressIndicator(
+                    minHeight: 3,
+                    backgroundColor: scheme.surfaceContainerHighest,
+                    valueColor: AlwaysStoppedAnimation<Color>(scheme.primary),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      }
+      if (!controller.hasMore.value && controller.searchResults.isNotEmpty) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 24),
+          child: Center(
+            child: Text(
+              'End of results',
+              style: textTheme.labelSmall?.copyWith(
+                color: scheme.onSurface.withValues(alpha: 0.4),
+              ),
+            ),
+          ),
+        );
+      }
+      return const SizedBox.shrink();
+    });
   }
 
   // ignore: unused_element
@@ -943,13 +1109,12 @@ class SearchPage extends StatelessWidget {
     );
   }
 
-  Widget _buildNutrientChip(String text, Color color) {
+  Widget _buildNutrientChip(BuildContext context, String text, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Text(
         text,
@@ -1246,5 +1411,54 @@ class SearchPage extends StatelessWidget {
   String getCategoryName(Product product) {
     final categoryInfo = _getCategoryFromProduct(product);
     return categoryInfo['category'] as String;
+  }
+}
+
+class _PulsingImagePlaceholder extends StatefulWidget {
+  const _PulsingImagePlaceholder();
+
+  @override
+  State<_PulsingImagePlaceholder> createState() =>
+      _PulsingImagePlaceholderState();
+}
+
+class _PulsingImagePlaceholderState extends State<_PulsingImagePlaceholder>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1100),
+    )..repeat(reverse: true);
+    _animation = Tween<double>(begin: 0.5, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return FadeTransition(
+      opacity: _animation,
+      child: Container(
+        color: scheme.primary.withValues(alpha: 0.10),
+        alignment: Alignment.center,
+        child: Icon(
+          Icons.image_rounded,
+          color: scheme.primary.withValues(alpha: 0.45),
+          size: 22,
+        ),
+      ),
+    );
   }
 }

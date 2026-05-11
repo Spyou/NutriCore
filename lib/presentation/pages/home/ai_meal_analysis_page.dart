@@ -32,16 +32,18 @@ class _AIMealAnalysisPageState extends State<AIMealAnalysisPage>
   late Animation<double> _fadeAnimation;
 
   static String get _geminiApiKey => EnvConfig.geminiApiKey;
-  late final GenerativeModel _model;
+  GenerativeModel? _model;
+  bool get _apiKeyMissing => _geminiApiKey.isEmpty;
 
   @override
   void initState() {
     super.initState();
-    if (_geminiApiKey.isEmpty) {
-      throw Exception('GEMINI_API_KEY not found in .env file');
+    if (!_apiKeyMissing) {
+      _model = GenerativeModel(
+        model: 'gemini-2.0-flash',
+        apiKey: _geminiApiKey,
+      );
     }
-
-    _model = GenerativeModel(model: 'gemini-2.0-flash', apiKey: _geminiApiKey);
 
     // Initialize animations
     _animationController = AnimationController(
@@ -68,6 +70,9 @@ class _AIMealAnalysisPageState extends State<AIMealAnalysisPage>
 
   @override
   Widget build(BuildContext context) {
+    if (_apiKeyMissing) {
+      return _buildApiKeyMissingScreen(context);
+    }
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -816,7 +821,11 @@ All nutritional values should be numbers (integers for calories, decimals for ot
         Content.multi([TextPart(prompt), DataPart('image/jpeg', imageBytes)]),
       ];
 
-      final response = await _model.generateContent(content);
+      final model = _model;
+      if (model == null) {
+        throw Exception('AI features are not configured.');
+      }
+      final response = await model.generateContent(content);
       final responseText = response.text;
 
       if (responseText != null) {
@@ -963,5 +972,77 @@ All nutritional values should be numbers (integers for calories, decimals for ot
         message: 'Could not parse the AI response. Please try again.',
       );
     }
+  }
+
+  Widget _buildApiKeyMissingScreen(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_rounded, color: scheme.onSurface),
+          onPressed: () => Get.back(),
+        ),
+      ),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(
+                width: 72,
+                height: 72,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: scheme.primaryContainer.withValues(alpha: 0.5),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.auto_awesome_outlined,
+                  size: 34,
+                  color: scheme.primary,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'AI Meal Analysis is not configured',
+                textAlign: TextAlign.center,
+                style: text.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: scheme.onSurface,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'A Gemini API key is required to analyse meals from a photo. Add GEMINI_API_KEY to your build configuration to enable this feature.',
+                textAlign: TextAlign.center,
+                style: text.bodyMedium?.copyWith(
+                  color: scheme.onSurface.withValues(alpha: 0.65),
+                  height: 1.45,
+                ),
+              ),
+              const SizedBox(height: 28),
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: scheme.primary,
+                  foregroundColor: scheme.onPrimary,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                onPressed: () => Get.back(),
+                child: const Text('Go back'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

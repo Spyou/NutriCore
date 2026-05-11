@@ -1,11 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:nutri_check/core/config/off_config.dart';
 import 'package:nutri_check/core/utils/components/custom_flushbar.dart';
 import 'package:nutri_check/domain/repositories/preferences_repository.dart';
 import 'package:nutri_check/presentation/controllers/auth_controller.dart';
-import 'package:nutri_check/presentation/controllers/nutrition_controller.dart';
+import 'package:nutri_check/presentation/widgets/shared/add_to_meal_sheet.dart';
 import 'package:openfoodfacts/openfoodfacts.dart';
 
 class SearchController extends GetxController {
@@ -14,14 +17,39 @@ class SearchController extends GetxController {
   SearchController({required PreferencesRepository preferencesRepository})
     : _preferencesRepository = preferencesRepository;
 
+  final GetStorage _box = GetStorage();
+  static const Duration _cacheTtl = Duration(minutes: 10);
+  static const String _cacheKeyPrefix = 'search_cache:';
+
   var isLoading = false.obs;
   var searchQuery = ''.obs;
   var searchResults = <Product>[].obs;
   var recentSearches = <String>[].obs;
   var suggestedProducts = <Product>[].obs;
   var selectedCategory = 'all'.obs;
+  var errorMessage = ''.obs;
+
+  final RxInt currentPage = 1.obs;
+  final RxBool hasMore = true.obs;
+  final RxBool isLoadingMore = false.obs;
+  static const int _pageSize = 50;
+
+  /// Fields requested for each product in search results. Centralised here
+  /// so the initial search and `loadMore` stay in sync.
+  List<ProductField> get _searchFields => const [
+        ProductField.BARCODE,
+        ProductField.NAME,
+        ProductField.BRANDS,
+        ProductField.CATEGORIES,
+        ProductField.NUTRIMENTS,
+        ProductField.IMAGE_FRONT_URL,
+        ProductField.IMAGE_FRONT_SMALL_URL,
+      ];
 
   final TextEditingController textController = TextEditingController();
+
+  Timer? _debounce;
+  int _searchId = 0; // monotonic — used to ignore stale responses
 
   final List<String> categories = [
     'all',
@@ -46,8 +74,57 @@ class SearchController extends GetxController {
 
   @override
   void onClose() {
+    _debounce?.cancel();
     textController.dispose();
     super.onClose();
+  }
+
+  /// Live-debounced entry point bound to the text field's `onChanged`.
+  /// Flips `isLoading` immediately so the shimmer is visible before any
+  /// network/cache work resolves.
+  void onSearchChanged(String query) {
+    _debounce?.cancel();
+    final trimmed = query.trim();
+    searchQuery.value = trimmed;
+    // Reset pagination state for the new query.
+    currentPage.value = 1;
+    hasMore.value = true;
+    if (trimmed.length < 2) {
+      searchResults.clear();
+      isLoading.value = false;
+      errorMessage.value = '';
+      return;
+    }
+    // Show shimmer instantly — even before API/cache resolves
+    isLoading.value = true;
+    _debounce = Timer(const Duration(milliseconds: 350), () {
+      searchProducts(trimmed);
+    });
+  }
+
+  /// Save a query to recent searches. Called on Enter / when a user
+  /// taps a result — NOT on every keystroke. Avoids polluting history
+  /// with partial queries.
+  Future<void> rememberQuery(String query) async {
+    final q = query.trim();
+    if (q.isEmpty) return;
+    if (recentSearches.contains(q)) {
+      // Move to top
+      recentSearches.remove(q);
+    }
+    recentSearches.insert(0, q);
+    if (recentSearches.length > 10) {
+      recentSearches.removeLast();
+    }
+    await _saveRecentSearch(q);
+  }
+
+  /// Called from the search field's onSubmitted (Enter). Commits the
+  /// query to history and ensures a fetch fires immediately.
+  Future<void> commitSearch(String query) async {
+    _debounce?.cancel();
+    await rememberQuery(query);
+    await searchProducts(query);
   }
 
   Future<void> searchProducts(String query) async {
@@ -56,55 +133,120 @@ class SearchController extends GetxController {
       return;
     }
 
+    // Reset pagination — every fresh search starts at page 1.
+    currentPage.value = 1;
+    hasMore.value = true;
+
+    final int myId = ++_searchId;
+
     try {
       isLoading.value = true;
+      errorMessage.value = '';
       searchQuery.value = query;
 
-      if (!recentSearches.contains(query)) {
-        recentSearches.insert(0, query);
-        if (recentSearches.length > 10) {
-          recentSearches.removeLast();
+      // Try cache first (TTL 10 minutes). Skip the network entirely on hit.
+      final cached = _readCache(query);
+      if (cached != null) {
+        // Delay so shimmer is actually visible on a cache hit — without
+        // this, the loading state vanishes within a frame and users think
+        // the UI is broken.
+        await Future.delayed(const Duration(milliseconds: 350));
+        if (myId != _searchId) return;
+        searchResults.assignAll(cached);
+        if (kDebugMode) {
+          print('Loaded ${cached.length} cached products for: $query');
         }
-        await _saveRecentSearch(query);
+        isLoading.value = false;
+        return;
       }
+
       final SearchResult result = await OpenFoodAPIClient.searchProducts(
         null,
         ProductSearchQueryConfiguration(
           parametersList: [
             SearchTerms(terms: [query]),
+            const PageSize(size: _pageSize),
+            const PageNumber(page: 1),
           ],
-          fields: [
-            ProductField.BARCODE,
-            ProductField.NAME,
-            ProductField.BRANDS,
-            ProductField.CATEGORIES,
-            ProductField.NUTRIMENTS,
-          ],
+          fields: _searchFields,
           language: OpenFoodFactsLanguage.ENGLISH,
           country: OpenFoodFactsCountry.INDIA,
-          version: ProductQueryVersion.v3,
+          version: const ProductQueryVersion(2),
         ),
       );
 
+      if (myId != _searchId) return;
+
       if (result.products != null) {
         searchResults.assignAll(result.products!);
+        hasMore.value = result.products!.length >= _pageSize;
+        _writeCache(query, result.products!);
         if (kDebugMode) {
-          print('Found ${result.products!.length} products for: $query');
+          print('Page 1: ${result.products!.length} products, '
+              'hasMore=${hasMore.value}, totalCount=${result.count}');
         }
       } else {
         searchResults.clear();
+        hasMore.value = false;
       }
     } catch (e) {
       if (kDebugMode) {
         print('Search error: $e');
       }
 
-      CustomThemeFlushbar.show(
-        title: 'Search Error',
-        message: 'Failed to search products: ${e.toString()}',
-      );
+      if (myId != _searchId) return;
+      searchResults.clear();
+      errorMessage.value = 'Search is taking a break. Tap to retry.';
     } finally {
-      isLoading.value = false;
+      if (myId == _searchId) {
+        isLoading.value = false;
+      }
+    }
+  }
+
+  /// Fetches the next page of results for the current query and appends
+  /// them to [searchResults]. No-ops while a fetch is already in flight,
+  /// when the previous page returned fewer than [_pageSize] items, or
+  /// while the initial search is still loading.
+  Future<void> loadMore() async {
+    if (isLoadingMore.value || !hasMore.value || isLoading.value) return;
+    final q = searchQuery.value.trim();
+    if (q.length < 2) return;
+    try {
+      isLoadingMore.value = true;
+      final nextPage = currentPage.value + 1;
+      final result = await OpenFoodAPIClient.searchProducts(
+        null,
+        ProductSearchQueryConfiguration(
+          parametersList: [
+            SearchTerms(terms: [q]),
+            const PageSize(size: _pageSize),
+            PageNumber(page: nextPage),
+          ],
+          fields: _searchFields,
+          language: OpenFoodFactsLanguage.ENGLISH,
+          country: OpenFoodFactsCountry.INDIA,
+          version: const ProductQueryVersion(2),
+        ),
+      );
+      if (kDebugMode) {
+        print('loadMore page $nextPage → '
+            '${result.products?.length ?? 0} products');
+      }
+      if (result.products != null && result.products!.isNotEmpty) {
+        searchResults.addAll(result.products!);
+        currentPage.value = nextPage;
+        if (result.products!.length < _pageSize) hasMore.value = false;
+      } else {
+        hasMore.value = false;
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('loadMore error on page ${currentPage.value + 1}: $e');
+      }
+      hasMore.value = false;
+    } finally {
+      isLoadingMore.value = false;
     }
   }
 
@@ -119,6 +261,69 @@ class SearchController extends GetxController {
     textController.clear();
     searchQuery.value = '';
     searchResults.clear();
+    currentPage.value = 1;
+    hasMore.value = true;
+    isLoadingMore.value = false;
+  }
+
+  String _cacheKey(String query) =>
+      '$_cacheKeyPrefix${query.trim().toLowerCase()}';
+
+  /// Reads cached search results for [query]. Returns null on miss,
+  /// expiry, or any deserialization failure.
+  List<Product>? _readCache(String query) {
+    try {
+      final dynamic raw = _box.read(_cacheKey(query));
+      if (raw is! Map) return null;
+      final Map<String, dynamic> entry = Map<String, dynamic>.from(raw);
+      final int savedAt = (entry['savedAt'] as num?)?.toInt() ?? 0;
+      final int now = DateTime.now().millisecondsSinceEpoch;
+      if (now - savedAt > _cacheTtl.inMilliseconds) return null;
+      final dynamic productsRaw = entry['products'];
+      if (productsRaw is! List) return null;
+      final List<Product> products = [];
+      for (final item in productsRaw) {
+        if (item is Map) {
+          try {
+            products.add(
+              Product.fromJson(Map<String, dynamic>.from(item)),
+            );
+          } catch (_) {
+            // Skip malformed entry rather than failing the whole cache.
+          }
+        }
+      }
+      return products;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Search cache read failed: $e');
+      }
+      return null;
+    }
+  }
+
+  /// Persists [products] under the cache key for [query]. Silently
+  /// skips on any serialization failure so a cache miss never crashes
+  /// the search flow.
+  void _writeCache(String query, List<Product> products) {
+    try {
+      final List<Map<String, dynamic>> productMaps = [];
+      for (final p in products) {
+        try {
+          productMaps.add(p.toJson());
+        } catch (_) {
+          // Skip products that can't be serialized.
+        }
+      }
+      _box.write(_cacheKey(query), {
+        'savedAt': DateTime.now().millisecondsSinceEpoch,
+        'products': productMaps,
+      });
+    } catch (e) {
+      if (kDebugMode) {
+        print('Search cache write failed: $e');
+      }
+    }
   }
 
   Future<void> _loadRecentSearches() async {
@@ -171,6 +376,8 @@ class SearchController extends GetxController {
             ProductField.NAME,
             ProductField.BRANDS,
             ProductField.NUTRIMENTS,
+            ProductField.IMAGE_FRONT_URL,
+            ProductField.IMAGE_FRONT_SMALL_URL,
           ],
           language: OpenFoodFactsLanguage.ENGLISH,
           country: OpenFoodFactsCountry.INDIA,
@@ -189,118 +396,9 @@ class SearchController extends GetxController {
   }
 
   Future<void> addProductToNutrition(Product product) async {
-    try {
-      if (!Get.isRegistered<NutritionController>()) {
-        CustomThemeFlushbar.show(
-          title: 'Error',
-          message: 'Nutrition log is not available right now',
-        );
-        return;
-      }
-      final nutritionController = Get.find<NutritionController>();
-      final quantityController = TextEditingController(text: '100');
-      String selectedMealType = 'meal';
-
-      final result = await Get.dialog<Map<String, dynamic>>(
-        AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: const Text('Add to Nutrition Log'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                product.productName ?? 'Unknown Product',
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: quantityController,
-                decoration: const InputDecoration(
-                  labelText: 'Quantity (grams)',
-                  border: OutlineInputBorder(),
-                  suffixText: 'g',
-                ),
-                keyboardType: TextInputType.number,
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                initialValue: selectedMealType,
-                decoration: const InputDecoration(
-                  labelText: 'Meal Type',
-                  border: OutlineInputBorder(),
-                ),
-                items: ['breakfast', 'lunch', 'dinner', 'snack', 'meal']
-                    .map(
-                      (type) => DropdownMenuItem(
-                        value: type,
-                        child: Text(type.capitalize!),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (value) => selectedMealType = value ?? 'meal',
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(onPressed: () => Get.back(), child: const Text('Cancel')),
-            ElevatedButton(
-              onPressed: () {
-                final quantity =
-                    double.tryParse(quantityController.text) ?? 100;
-                Get.back(
-                  result: {'quantity': quantity, 'mealType': selectedMealType},
-                );
-              },
-              child: const Text('Add'),
-            ),
-          ],
-        ),
-      );
-
-      if (result != null) {
-        final quantity = result['quantity'] as double;
-        final mealType = result['mealType'] as String;
-        final factor = quantity / 100;
-
-        final calories = getCalories(product);
-        final proteins = getNutrientValue(product, Nutrient.proteins);
-        final carbs = getNutrientValue(product, Nutrient.carbohydrates);
-        final fats = getNutrientValue(product, Nutrient.fat);
-
-        final meal = {
-          'name': product.productName ?? 'Search Result',
-          'calories': (calories * factor).round(),
-          'proteins': (proteins * factor),
-          'carbs': (carbs * factor),
-          'fat': (fats * factor),
-          'fiber': (getNutrientValue(product, Nutrient.fiber) * factor),
-          'sugar': (getNutrientValue(product, Nutrient.sugars) * factor),
-          'sodium': (getNutrientValue(product, Nutrient.sodium) * factor),
-          'type': mealType,
-          'time':
-              '${DateTime.now().hour.toString().padLeft(2, '0')}:${DateTime.now().minute.toString().padLeft(2, '0')}',
-          'quantity': quantity,
-          'barcode': product.barcode,
-          'brands': product.brands,
-          'notes': 'Added from search',
-          'favorite': false,
-        };
-
-        await nutritionController.addMeal(meal);
-
-        CustomThemeFlushbar.show(
-          title: 'Success',
-          message: '${product.productName} added to nutrition log',
-        );
-      }
-    } catch (e) {
-      CustomThemeFlushbar.show(
-        title: 'Error',
-        message: 'Failed to add product to nutrition log',
-      );
-    }
+    final ctx = Get.context;
+    if (ctx == null) return;
+    await AddToMealSheet.show(ctx, product);
   }
 
   int getCalories(Product product) {
@@ -606,6 +704,7 @@ class SearchController extends GetxController {
       'gradient': [Colors.grey[400]!, Colors.grey[600]!],
       'size': 28.0,
       'category': 'Food Product',
+      'known': false,
     };
   }
 
@@ -616,5 +715,66 @@ class SearchController extends GetxController {
   String getCategoryName(Product product) {
     final categoryInfo = _getCategoryFromProduct(product);
     return categoryInfo['category'] as String;
+  }
+
+  /// Returns a friendly category label only when the product matches a
+  /// well-known category. Returns null when the product can't be confidently
+  /// classified, so the UI can hide the pill instead of showing nonsense
+  /// (the leading entry in OFF `categoriesTags` is often unreliable).
+  String? getKnownCategoryName(Product product) {
+    final productName = (product.productName ?? '').toLowerCase();
+    final categories = (product.categories ?? '').toLowerCase();
+    final brands = (product.brands ?? '').toLowerCase();
+    final fullText = '$productName $categories $brands';
+
+    const knownGroups = <String, List<String>>{
+      'Sweets': [
+        'chocolate', 'candy', 'sweet', 'cookie', 'biscuit', 'cake',
+        'pastry', 'dessert', 'ice cream', 'cadbury', 'kitkat', 'snickers',
+      ],
+      'Dairy': [
+        'milk', 'cheese', 'yogurt', 'yoghurt', 'butter', 'cream',
+        'dairy', 'lassi', 'curd', 'paneer', 'amul',
+      ],
+      'Drinks': [
+        'drink', 'juice', 'soda', 'cola', 'pepsi', 'coca', 'tea',
+        'coffee', 'beverage', 'shake', 'smoothie', 'thumsup',
+      ],
+      'Bakery': [
+        'bread', 'bun', 'roll', 'toast', 'bakery', 'croissant',
+        'muffin', 'bagel', 'baguette',
+      ],
+      'Fruits': [
+        'fruit', 'apple', 'banana', 'orange', 'grape', 'berry',
+        'mango', 'pineapple', 'strawberry', 'kiwi', 'peach',
+      ],
+      'Vegetables': [
+        'vegetable', 'carrot', 'broccoli', 'spinach', 'lettuce',
+        'tomato', 'cucumber', 'pepper', 'onion', 'potato',
+      ],
+      'Meat': [
+        'meat', 'chicken', 'beef', 'pork', 'fish', 'salmon', 'tuna',
+        'egg', 'seafood',
+      ],
+      'Grains': [
+        'cereal', 'rice', 'wheat', 'oat', 'grain', 'pasta', 'noodle',
+        'quinoa', 'barley',
+      ],
+      'Nuts': [
+        'almond', 'peanut', 'cashew', 'walnut', 'sunflower seed',
+        'pumpkin seed',
+      ],
+      'Snacks': [
+        'snack', 'chip', 'crisp', 'popcorn', 'pretzel', 'cracker',
+        'fries', 'burger', 'pizza',
+      ],
+    };
+
+    for (final entry in knownGroups.entries) {
+      if (_containsAny(fullText, entry.value)) {
+        return entry.key;
+      }
+    }
+    return null;
   }
 }
