@@ -7,8 +7,8 @@ import 'package:nutri_check/core/utils/components/custom_flushbar.dart';
 import 'package:nutri_check/domain/entities/meal_entry.dart';
 
 import '../../controllers/nutrition_controller.dart';
-import '../../widgets/home/today_progress_ring.dart';
 import '../../widgets/nutrition/add_manual_meal_sheet.dart';
+import '../../widgets/nutrition/nutrition_today_card.dart';
 import '../../widgets/nutrition/log_meal_action_sheet.dart';
 import '../../widgets/shared/meal_type_helpers.dart';
 
@@ -33,7 +33,7 @@ class NutritionPage extends GetView<NutritionController> {
                   children: [
                     _buildViewModeToggle(context),
                     const SizedBox(height: 20),
-                    const TodayProgressRing(),
+                    const NutritionTodayCard(),
                     const SizedBox(height: 20),
                     _buildWaterTracking(context),
                     const SizedBox(height: 20),

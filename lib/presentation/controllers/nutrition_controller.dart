@@ -52,6 +52,13 @@ class NutritionController extends GetxController {
   var totalFats = 0.0.obs;
   var fatGoal = AppConfig.defaultFatGoal.obs;
 
+  // Yesterday's total kcal for the day-over-day delta.
+  final RxDouble yesterdayCalories = 0.0.obs;
+
+  // Last 7 days of kcal totals, oldest first. Length always 7. Trailing
+  // element is today.
+  final RxList<double> weekCalories = RxList<double>.filled(7, 0.0);
+
   var waterIntake = 0.0.obs;
   var waterGoal = AppConfig.defaultWaterGoal.obs;
   var currentWeight = AppConfig.defaultWeight.obs;
@@ -123,6 +130,13 @@ class NutritionController extends GetxController {
         },
         time: const Duration(milliseconds: 150),
       ),
+      debounce<List<MealEntry>>(
+        todayMeals,
+        (_) {
+          loadHistoricalSummary();
+        },
+        time: const Duration(seconds: 1),
+      ),
     ]);
   }
 
@@ -131,9 +145,67 @@ class NutritionController extends GetxController {
       _loadSavedWeight();
       await _loadPreferences();
       await _loadDataForViewMode('daily');
+      await loadHistoricalSummary();
     } catch (e) {
       if (kDebugMode) {
         print('Error initializing NutritionController: $e');
+      }
+    }
+  }
+
+  /// Loads yesterday's total kcal and the last 7 days of kcal totals
+  /// (oldest first, today at index 6). Tolerates per-day failures by
+  /// leaving the corresponding entry at 0.
+  Future<void> loadHistoricalSummary() async {
+    try {
+      final authController = Get.find<AuthController>();
+      if (authController.user == null) return;
+      final uid = authController.user!.uid;
+
+      final today = DateTime(
+        selectedDate.value.year,
+        selectedDate.value.month,
+        selectedDate.value.day,
+      );
+      final yesterday = today.subtract(const Duration(days: 1));
+
+      final yResult = await _nutritionRepo.getDailyIntake(uid, yesterday);
+      yResult.fold(
+        onSuccess: (intake) {
+          yesterdayCalories.value = intake.meals.fold<double>(
+            0.0,
+            (sum, m) => sum + m.calories,
+          );
+        },
+        onFailure: (_) {
+          yesterdayCalories.value = 0.0;
+        },
+      );
+
+      final List<double> week = List<double>.filled(7, 0.0);
+      for (int i = 0; i < 7; i++) {
+        final date = today.subtract(Duration(days: 6 - i));
+        try {
+          final result = await _nutritionRepo.getDailyIntake(uid, date);
+          result.fold(
+            onSuccess: (intake) {
+              week[i] = intake.meals.fold<double>(
+                0.0,
+                (sum, m) => sum + m.calories,
+              );
+            },
+            onFailure: (_) {
+              week[i] = 0.0;
+            },
+          );
+        } catch (_) {
+          week[i] = 0.0;
+        }
+      }
+      weekCalories.assignAll(week);
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error loading historical summary: $e');
       }
     }
   }
