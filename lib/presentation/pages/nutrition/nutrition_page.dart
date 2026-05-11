@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
@@ -5,9 +6,10 @@ import 'package:get/get.dart';
 import 'package:nutri_check/core/utils/components/custom_flushbar.dart';
 import 'package:nutri_check/domain/entities/meal_entry.dart';
 
-import '../../../core/constants/app_colors.dart';
-import '../../../core/constants/app_text_styles.dart';
 import '../../controllers/nutrition_controller.dart';
+import '../../widgets/home/today_progress_ring.dart';
+import '../../widgets/nutrition/add_manual_meal_sheet.dart';
+import '../../widgets/nutrition/log_meal_action_sheet.dart';
 import '../../widgets/shared/meal_type_helpers.dart';
 
 class NutritionPage extends GetView<NutritionController> {
@@ -16,37 +18,30 @@ class NutritionPage extends GetView<NutritionController> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
       body: RefreshIndicator(
         onRefresh: () async {
           await controller.manualRefresh();
         },
         child: CustomScrollView(
           slivers: [
-            _buildSliverAppBar(),
+            _buildSliverAppBar(context),
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.all(20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildViewModeToggle(),
+                    _buildViewModeToggle(context),
                     const SizedBox(height: 20),
-                    _buildStatsOverview(controller),
+                    const TodayProgressRing(),
                     const SizedBox(height: 20),
-                    _buildCalorieProgress(),
+                    _buildWaterTracking(context),
                     const SizedBox(height: 20),
-                    _buildMacroBreakdown(),
-                    const SizedBox(height: 20),
-                    _buildWaterTracking(),
-                    const SizedBox(height: 20),
-                    _buildMealFilters(),
+                    _buildMealFilters(context),
                     const SizedBox(height: 12),
-                    _buildMealsList(),
+                    _buildMealsList(context),
                     const SizedBox(height: 20),
-                    // _buildQuickActions(),
-                    // const SizedBox(height: 20),
-                    _buildFavoriteMeals(),
+                    _buildFavoriteMeals(context),
                     const SizedBox(height: 100),
                   ],
                 ),
@@ -55,11 +50,14 @@ class NutritionPage extends GetView<NutritionController> {
           ],
         ),
       ),
-      floatingActionButton: _buildFloatingActionButtons(),
+      floatingActionButton: _buildFloatingActionButtons(context),
     );
   }
 
-  Widget _buildSliverAppBar() {
+  Widget _buildSliverAppBar(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
     return SliverAppBar(
       expandedHeight: 120,
       toolbarHeight: 44,
@@ -89,7 +87,10 @@ class NutritionPage extends GetView<NutritionController> {
           return Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: AppColors.primaryGradient,
+                colors: [
+                  scheme.primary,
+                  scheme.primary.withValues(alpha: 0.85),
+                ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -106,11 +107,10 @@ class NutritionPage extends GetView<NutritionController> {
                     ? Text(
                         'Nutrition',
                         key: const ValueKey('collapsed'),
-                        style: AppTextStyles.headingMedium(Get.context!)
-                            .copyWith(
-                              color: AppColors.textOnPrimary,
-                              fontWeight: FontWeight.w600,
-                            ),
+                        style: textTheme.titleLarge?.copyWith(
+                          color: scheme.onPrimary,
+                          fontWeight: FontWeight.w600,
+                        ),
                       )
                     : null,
               ),
@@ -118,30 +118,25 @@ class NutritionPage extends GetView<NutritionController> {
                 child: Padding(
                   padding: const EdgeInsets.only(
                     left: 20,
-                    right: 80, // More space for actions
+                    right: 80,
                     top: 8,
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      // Only show when expanded
                       if (shrinkPercentage < 0.5) ...[
                         Text(
                           'Nutrition Tracker',
-                          style: AppTextStyles.displayMedium(Get.context!)
-                              .copyWith(
-                                color: AppColors.textOnPrimary,
-                                fontWeight: FontWeight.w700,
-                                fontSize: 28,
-                              ),
+                          style: textTheme.headlineMedium?.copyWith(
+                            color: scheme.onPrimary,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 28,
+                          ),
                         ),
                         const SizedBox(height: 4),
-                        // Constrained row for date navigation
                         SizedBox(
-                          width:
-                              MediaQuery.of(context).size.width -
-                              120, // Constrain width
+                          width: MediaQuery.of(context).size.width - 120,
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
@@ -149,18 +144,18 @@ class NutritionPage extends GetView<NutritionController> {
                                 child: Obx(
                                   () => Text(
                                     _formatDate(controller.selectedDate.value),
-                                    style: AppTextStyles.bodyLarge(Get.context!)
-                                        .copyWith(
-                                          color: AppColors.textOnPrimary
-                                              .withValues(alpha: 0.9),
-                                          fontWeight: FontWeight.w500,
-                                        ),
+                                    style: textTheme.bodyLarge?.copyWith(
+                                      color: scheme.onPrimary.withValues(
+                                        alpha: 0.9,
+                                      ),
+                                      fontWeight: FontWeight.w500,
+                                    ),
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                               ),
                               const SizedBox(width: 8),
-                              _buildDateNavigation(),
+                              _buildDateNavigation(context),
                             ],
                           ),
                         ),
@@ -175,7 +170,6 @@ class NutritionPage extends GetView<NutritionController> {
         },
       ),
       actions: [
-        // Loading indicator
         Obx(
           () => controller.isLoading.value
               ? Padding(
@@ -184,25 +178,24 @@ class NutritionPage extends GetView<NutritionController> {
                     width: 20,
                     height: 20,
                     child: CircularProgressIndicator(
-                      color: AppColors.textOnPrimary,
+                      color: scheme.onPrimary,
                       strokeWidth: 2,
                     ),
                   ),
                 )
               : const SizedBox.shrink(),
         ),
-
-        // More options button
         IconButton(
-          onPressed: _showMoreOptions,
-          icon: Icon(Icons.more_vert, color: AppColors.textOnPrimary),
+          onPressed: () => _showMoreOptions(context),
+          icon: Icon(Icons.more_vert, color: scheme.onPrimary),
           constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
         ),
       ],
     );
   }
 
-  Widget _buildDateNavigation() {
+  Widget _buildDateNavigation(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Row(
       children: [
         Material(
@@ -223,11 +216,7 @@ class NutritionPage extends GetView<NutritionController> {
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
               ),
-              child: Icon(
-                Icons.chevron_left,
-                color: AppColors.textOnPrimary,
-                size: 16,
-              ),
+              child: Icon(Icons.chevron_left, color: scheme.onPrimary, size: 16),
             ),
           ),
         ),
@@ -252,7 +241,7 @@ class NutritionPage extends GetView<NutritionController> {
               ),
               child: Icon(
                 Icons.chevron_right,
-                color: AppColors.textOnPrimary,
+                color: scheme.onPrimary,
                 size: 16,
               ),
             ),
@@ -262,20 +251,19 @@ class NutritionPage extends GetView<NutritionController> {
     );
   }
 
-  Widget _buildViewModeToggle() {
+  Widget _buildViewModeToggle(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
     return Obx(
       () => Container(
         padding: const EdgeInsets.all(4),
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: scheme.surface,
           borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          border: Border.all(
+            color: scheme.outlineVariant.withValues(alpha: 0.4),
+          ),
         ),
         child: Row(
           children: ['daily', 'weekly', 'monthly'].map((mode) {
@@ -283,7 +271,6 @@ class NutritionPage extends GetView<NutritionController> {
             return Expanded(
               child: GestureDetector(
                 onTap: () {
-                  // 🔥 FIXED: Proper view mode change
                   HapticFeedback.lightImpact();
                   controller.changeViewMode(mode);
                 },
@@ -291,28 +278,19 @@ class NutritionPage extends GetView<NutritionController> {
                   duration: const Duration(milliseconds: 200),
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   decoration: BoxDecoration(
-                    color: isSelected ? AppColors.primary : Colors.transparent,
+                    color: isSelected ? scheme.primary : Colors.transparent,
                     borderRadius: BorderRadius.circular(8),
-                    boxShadow: isSelected
-                        ? [
-                            BoxShadow(
-                              color: AppColors.primary.withValues(alpha: 0.3),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ]
-                        : null,
                   ),
                   child: Text(
                     mode.capitalize!,
                     textAlign: TextAlign.center,
-                    style: AppTextStyles.labelLarge(Get.context!).copyWith(
+                    style: textTheme.labelLarge?.copyWith(
                       color: isSelected
-                          ? AppColors.textOnPrimary
-                          : AppColors.textSecondary,
+                          ? scheme.onPrimary
+                          : scheme.onSurface.withValues(alpha: 0.65),
                       fontWeight: isSelected
                           ? FontWeight.w700
-                          : FontWeight.normal,
+                          : FontWeight.w500,
                     ),
                   ),
                 ),
@@ -324,358 +302,19 @@ class NutritionPage extends GetView<NutritionController> {
     );
   }
 
-  Widget _buildStatsOverview(NutritionController controller) {
-    return Obx(() {
-      final stats = controller.currentStats;
-      final viewMode = controller.viewMode.value;
+  Widget _buildWaterTracking(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
 
-      return Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header with period info
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  '${viewMode.capitalize!} Overview',
-                  style: AppTextStyles.headingMedium(Get.context!),
-                ),
-                if (controller.isLoadingViewData.value)
-                  SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: AppColors.primary,
-                    ),
-                  ),
-              ],
-            ),
-
-            const SizedBox(height: 8),
-
-            // Period info
-            Text(
-              _getPeriodText(viewMode, stats),
-              style: AppTextStyles.bodySmall(
-                Get.context!,
-              ).copyWith(color: AppColors.textSecondary),
-            ),
-
-            const SizedBox(height: 16),
-
-            // Stats row
-            Row(
-              children: [
-                Expanded(
-                  child: _buildStatItem(
-                    'Calories',
-                    '${(stats['totalCalories'] ?? 0).toInt()}',
-                    Icons.local_fire_department,
-                    AppColors.calories,
-                    subtitle: viewMode != 'daily'
-                        ? 'Avg: ${(stats['averageCalories'] ?? 0).toInt()}/day'
-                        : null,
-                  ),
-                ),
-                Container(
-                  width: 1,
-                  height: 40,
-                  color: AppColors.textTertiary.withValues(alpha: 0.3),
-                ),
-                Expanded(
-                  child: _buildStatItem(
-                    'Meals',
-                    '${stats['totalMeals'] ?? 0}',
-                    Icons.restaurant,
-                    AppColors.secondary,
-                    subtitle: viewMode != 'daily'
-                        ? '${stats['daysWithData'] ?? 0} days'
-                        : null,
-                  ),
-                ),
-                Container(
-                  width: 1,
-                  height: 40,
-                  color: AppColors.textTertiary.withValues(alpha: 0.3),
-                ),
-                Expanded(
-                  child: _buildStatItem(
-                    'Weight',
-                    '${controller.userWeight.value.toInt()} kg',
-                    Icons.monitor_weight,
-                    AppColors.info,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      );
-    });
-  }
-
-  String _getPeriodText(String viewMode, Map<String, dynamic> stats) {
-    switch (viewMode) {
-      case 'daily':
-        return 'Today • ${stats['date'] ?? ''}';
-      case 'weekly':
-        return 'This Week • ${stats['startDate']} to ${stats['endDate']}';
-      case 'monthly':
-        return '${stats['monthName']} • ${stats['daysWithData']}/${stats['totalDays']} days logged';
-      default:
-        return '';
-    }
-  }
-
-  Widget _buildStatItem(
-    String label,
-    String value,
-    IconData icon,
-    Color color, {
-    String? subtitle,
-  }) {
-    return Column(
-      children: [
-        Icon(icon, color: color, size: 24),
-        const SizedBox(height: 8),
-        Text(
-          value,
-          style: AppTextStyles.headingSmall(
-            Get.context!,
-          ).copyWith(color: color),
-        ),
-        Text(label, style: AppTextStyles.labelMedium(Get.context!)),
-        if (subtitle != null) ...[
-          const SizedBox(height: 2),
-          Text(
-            subtitle,
-            style: AppTextStyles.labelSmall(
-              Get.context!,
-            ).copyWith(color: AppColors.textTertiary),
-          ),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildCalorieProgress() {
-    return Obx(() {
-      final progress =
-          controller.totalCalories.value / controller.calorieGoal.value;
-      final remaining =
-          controller.calorieGoal.value - controller.totalCalories.value;
-
-      return Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              AppColors.calories.withValues(alpha: 0.1),
-              AppColors.calories.withValues(alpha: 0.05),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.calories.withValues(alpha: 0.3)),
-        ),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: AppColors.calories,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(
-                    Icons.local_fire_department,
-                    color: Colors.white,
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '${controller.totalCalories.value.toInt()} kcal',
-                        style: AppTextStyles.headingLarge(
-                          Get.context!,
-                        ).copyWith(color: AppColors.calories),
-                      ),
-                      Text(
-                        remaining > 0
-                            ? '${remaining.toInt()} kcal remaining'
-                            : '${(-remaining).toInt()} kcal over',
-                        style: AppTextStyles.bodyMedium(Get.context!).copyWith(
-                          color: remaining > 0
-                              ? AppColors.success
-                              : AppColors.error,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Text(
-                  '${(progress * 100).toInt()}%',
-                  style: AppTextStyles.headingSmall(Get.context!).copyWith(
-                    color: AppColors.calories,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: LinearProgressIndicator(
-                value: progress.clamp(0.0, 1.0),
-                backgroundColor: Colors.white.withValues(alpha: 0.3),
-                valueColor: AlwaysStoppedAnimation<Color>(
-                  progress > 1.0 ? AppColors.error : AppColors.calories,
-                ),
-                minHeight: 8,
-              ),
-            ),
-          ],
-        ),
-      );
-    });
-  }
-
-  Widget _buildMacroBreakdown() {
     return Obx(
       () => Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: scheme.surface,
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Macronutrients',
-                  style: AppTextStyles.headingMedium(Get.context!),
-                ),
-                IconButton(
-                  onPressed: _showDetailedNutrition,
-                  icon: const Icon(Icons.info_outline, size: 20),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildMacroCircle(
-                  'Proteins',
-                  controller.totalProteins.value,
-                  controller.proteinGoal.value,
-                  AppColors.proteins,
-                ),
-                _buildMacroCircle(
-                  'Carbs',
-                  controller.totalCarbs.value,
-                  controller.carbGoal.value,
-                  AppColors.carbs,
-                ),
-                _buildMacroCircle(
-                  'Fats',
-                  controller.totalFats.value,
-                  controller.fatGoal.value,
-                  AppColors.fats,
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMacroCircle(
-    String label,
-    double current,
-    double goal,
-    Color color,
-  ) {
-    final progress = current / goal;
-
-    return Column(
-      children: [
-        Stack(
-          alignment: Alignment.center,
-          children: [
-            SizedBox(
-              width: 60,
-              height: 60,
-              child: CircularProgressIndicator(
-                value: progress.clamp(0.0, 1.0),
-                backgroundColor: color.withValues(alpha: 0.2),
-                valueColor: AlwaysStoppedAnimation<Color>(color),
-                strokeWidth: 6,
-              ),
-            ),
-            Text(
-              '${(progress * 100).toInt()}%',
-              style: AppTextStyles.labelMedium(
-                Get.context!,
-              ).copyWith(fontWeight: FontWeight.bold, color: color),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Text(label, style: AppTextStyles.labelMedium(Get.context!)),
-        Text(
-          '${current.toInt()}/${goal.toInt()}g',
-          style: AppTextStyles.labelSmall(Get.context!).copyWith(color: color),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildWaterTracking() {
-    return Obx(
-      () => Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          border: Border.all(
+            color: scheme.outlineVariant.withValues(alpha: 0.3),
+          ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -685,12 +324,15 @@ class NutritionPage extends GetView<NutritionController> {
               children: [
                 Text(
                   'Water Intake',
-                  style: AppTextStyles.headingMedium(Get.context!),
+                  style: textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: scheme.onSurface,
+                  ),
                 ),
                 Text(
                   '${controller.waterIntake.value.toInt()}/${controller.waterGoal.value.toInt()} glasses',
-                  style: AppTextStyles.bodyMedium(Get.context!).copyWith(
-                    color: AppColors.primary,
+                  style: textTheme.bodyMedium?.copyWith(
+                    color: scheme.primary,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -700,16 +342,17 @@ class NutritionPage extends GetView<NutritionController> {
             Row(
               children: [
                 Expanded(
-                  child: LinearProgressIndicator(
-                    value:
-                        (controller.waterIntake.value /
-                                controller.waterGoal.value)
-                            .clamp(0.0, 1.0),
-                    backgroundColor: AppColors.primary.withValues(alpha: 0.2),
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      AppColors.primary,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: LinearProgressIndicator(
+                      value:
+                          (controller.waterIntake.value /
+                                  controller.waterGoal.value)
+                              .clamp(0.0, 1.0),
+                      backgroundColor: scheme.primary.withValues(alpha: 0.18),
+                      valueColor: AlwaysStoppedAnimation<Color>(scheme.primary),
+                      minHeight: 8,
                     ),
-                    minHeight: 8,
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -718,13 +361,13 @@ class NutritionPage extends GetView<NutritionController> {
                     IconButton(
                       onPressed: controller.removeWater,
                       icon: const Icon(Icons.remove_circle_outline),
-                      color: AppColors.error,
+                      color: scheme.error,
                       iconSize: 28,
                     ),
                     IconButton(
                       onPressed: controller.addWater,
                       icon: const Icon(Icons.add_circle_outline),
-                      color: AppColors.primary,
+                      color: scheme.primary,
                       iconSize: 28,
                     ),
                   ],
@@ -737,7 +380,9 @@ class NutritionPage extends GetView<NutritionController> {
     );
   }
 
-  Widget _buildMealFilters() {
+  Widget _buildMealFilters(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     final mealTypes = ['all', 'breakfast', 'lunch', 'dinner', 'snack'];
 
     return Column(
@@ -748,16 +393,19 @@ class NutritionPage extends GetView<NutritionController> {
           children: [
             Text(
               'Today\'s Meals',
-              style: AppTextStyles.headingMedium(Get.context!),
+              style: textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: scheme.onSurface,
+              ),
             ),
             Row(
               children: [
                 IconButton(
-                  onPressed: _showSearchDialog,
+                  onPressed: () => _showSearchDialog(context),
                   icon: const Icon(Icons.search, size: 20),
                 ),
                 IconButton(
-                  onPressed: _showMealOptions,
+                  onPressed: () => _showMealOptions(context),
                   icon: const Icon(Icons.filter_list, size: 20),
                 ),
               ],
@@ -777,12 +425,12 @@ class NutritionPage extends GetView<NutritionController> {
                         label: Text(_getMealTypeLabel(type)),
                         selected: controller.selectedMealType.value == type,
                         onSelected: (_) => controller.filterByMealType(type),
-                        selectedColor: AppColors.primary,
-                        labelStyle: TextStyle(
+                        selectedColor: scheme.primary,
+                        labelStyle: textTheme.labelMedium?.copyWith(
                           color: controller.selectedMealType.value == type
-                              ? Colors.white
-                              : AppColors.textPrimary,
-                          fontSize: 12,
+                              ? scheme.onPrimary
+                              : scheme.onSurface,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
@@ -795,18 +443,20 @@ class NutritionPage extends GetView<NutritionController> {
     );
   }
 
-  Widget _buildMealsList() {
+  Widget _buildMealsList(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     return Obx(() {
       final meals = controller.filteredMeals;
 
       if (controller.isLoading.value) {
         return Center(
-          child: CircularProgressIndicator(color: AppColors.primary),
+          child: CircularProgressIndicator(color: scheme.primary),
         );
       }
 
       if (meals.isEmpty) {
-        return _buildEmptyMealsState();
+        return _buildEmptyMealsState(context);
       }
 
       return Column(
@@ -814,6 +464,7 @@ class NutritionPage extends GetView<NutritionController> {
           final index = entry.key;
           final meal = entry.value;
           return _buildMealCard(
+            context,
             meal,
             index,
             controller.viewMode.value,
@@ -824,83 +475,74 @@ class NutritionPage extends GetView<NutritionController> {
     });
   }
 
-  Widget _buildEmptyMealsState() {
-    return Obx(() {
-      String message;
-      String subtitle;
-      IconData icon;
+  Widget _buildEmptyMealsState(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
 
-      if (controller.searchQuery.value.isNotEmpty) {
-        message = 'No meals found';
-        subtitle = 'No meals match "${controller.searchQuery.value}"';
-        icon = Icons.search_off;
-      } else if (controller.selectedMealType.value != 'all') {
-        message = 'No ${controller.selectedMealType.value} meals';
-        subtitle = 'Try adding a ${controller.selectedMealType.value} meal';
-        icon = Icons.restaurant_outlined;
-      } else {
-        message = 'No meals logged today';
-        subtitle = 'Add your first meal to start tracking';
-        icon = Icons.add_circle_outline;
-      }
-
-      return Center(
-        child: Container(
-          padding: const EdgeInsets.all(40),
-          child: Column(
-            children: [
-              Icon(icon, size: 64, color: AppColors.textTertiary),
-              const SizedBox(height: 16),
-              Text(
-                message,
-                style: AppTextStyles.headingSmall(
-                  Get.context!,
-                ).copyWith(color: AppColors.textSecondary),
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 32),
+        child: Column(
+          children: [
+            Icon(
+              Icons.restaurant_menu_rounded,
+              size: 56,
+              color: scheme.onSurface.withValues(alpha: 0.35),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'No meals logged for this day',
+              style: textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: scheme.onSurface.withValues(alpha: 0.85),
               ),
-              const SizedBox(height: 8),
-              Text(
-                subtitle,
-                style: AppTextStyles.bodyMedium(
-                  Get.context!,
-                ).copyWith(color: AppColors.textTertiary),
-                textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Track your first meal to get started',
+              style: textTheme.bodySmall?.copyWith(
+                color: scheme.onSurface.withValues(alpha: 0.55),
               ),
-              if (controller.searchQuery.value.isNotEmpty ||
-                  controller.selectedMealType.value != 'all') ...[
-                const SizedBox(height: 20),
-                ElevatedButton.icon(
-                  onPressed: () => controller.resetFilters(),
-                  icon: const Icon(Icons.clear_all),
-                  label: const Text('Clear Filters'),
-                ),
-              ],
-            ],
-          ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            FilledButton.tonalIcon(
+              onPressed: () => LogMealActionSheet.show(context),
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('Log a meal'),
+            ),
+            const SizedBox(height: 10),
+            TextButton.icon(
+              onPressed: () => controller.copyYesterdayMeals(),
+              icon: const Icon(Icons.history_rounded, size: 18),
+              label: const Text('Copy yesterday'),
+            ),
+          ],
         ),
-      );
-    });
+      ),
+    );
   }
 
-  // Add this method to your NutritionPage class
   String _getMealPeriodContext(MealEntry meal, String viewMode) {
     if (viewMode == 'weekly') {
-      final dayName = _formatDate(meal.timestamp);
-      return dayName;
+      return _formatDate(meal.timestamp);
     } else if (viewMode == 'monthly') {
-      final date = _formatDate(meal.timestamp);
-      return date;
+      return _formatDate(meal.timestamp);
     }
     return '';
   }
 
   Widget _buildMealCard(
+    BuildContext context,
     MealEntry meal,
     int index,
     String viewMode,
     NutritionController controller,
   ) {
+    final scheme = Theme.of(context).colorScheme;
+
     if (viewMode != 'daily') {
-      return _buildStaticMealCard(meal, index, viewMode, controller);
+      return _buildStaticMealCard(context, meal, index, viewMode, controller);
     }
 
     return Slidable(
@@ -909,24 +551,25 @@ class NutritionPage extends GetView<NutritionController> {
         motion: const ScrollMotion(),
         children: [
           SlidableAction(
-            onPressed: (context) => _editMeal(index, meal, controller),
-            backgroundColor: AppColors.primary,
-            foregroundColor: Colors.white,
+            onPressed: (_) => _openEditSheet(context, index, meal),
+            backgroundColor: scheme.primary,
+            foregroundColor: scheme.onPrimary,
             icon: Icons.edit,
             label: 'Edit',
           ),
-
           SlidableAction(
-            onPressed: (context) => controller.duplicateMeal(index),
-            backgroundColor: AppColors.secondary,
-            foregroundColor: Colors.white,
+            onPressed: (_) => controller.duplicateMeal(index),
+            backgroundColor: scheme.secondary,
+            foregroundColor: scheme.onSecondary,
             icon: Icons.copy,
             label: 'Copy',
           ),
-
           SlidableAction(
-            onPressed: (context) async {
-              final confirmed = await _showDeleteConfirmation(meal.name);
+            onPressed: (slideCtx) async {
+              final confirmed = await _showDeleteConfirmation(
+                context,
+                meal.name,
+              );
               if (confirmed) {
                 final deletedMealData = <String, dynamic>{
                   'name': meal.name,
@@ -940,10 +583,10 @@ class NutritionPage extends GetView<NutritionController> {
                   'isFavorite': meal.isFavorite,
                 };
                 controller.deleteMeal(index);
-                ScaffoldMessenger.of(context).showSnackBar(
+                if (!slideCtx.mounted) return;
+                ScaffoldMessenger.of(slideCtx).showSnackBar(
                   SnackBar(
                     content: Text('${meal.name} deleted'),
-                    backgroundColor: Colors.green,
                     action: SnackBarAction(
                       label: 'Undo',
                       onPressed: () {
@@ -954,20 +597,19 @@ class NutritionPage extends GetView<NutritionController> {
                 );
               }
             },
-            backgroundColor: Colors.red,
-            foregroundColor: Colors.white,
+            backgroundColor: scheme.error,
+            foregroundColor: scheme.onError,
             icon: Icons.delete,
             label: 'Delete',
           ),
         ],
       ),
-
       startActionPane: ActionPane(
         motion: const ScrollMotion(),
         children: [
           SlidableAction(
             borderRadius: BorderRadius.circular(12),
-            onPressed: (context) => controller.toggleFavorite({
+            onPressed: (_) => controller.toggleFavorite({
               'name': meal.name,
               'calories': meal.calories,
               'proteins': meal.proteins,
@@ -975,154 +617,222 @@ class NutritionPage extends GetView<NutritionController> {
               'fat': meal.fat,
               'type': meal.type.name,
             }),
-            backgroundColor: meal.isFavorite ? Colors.grey : AppColors.warning,
-            foregroundColor: Colors.white,
+            backgroundColor: meal.isFavorite
+                ? scheme.surfaceContainerHighest
+                : scheme.tertiary,
+            foregroundColor: meal.isFavorite
+                ? scheme.onSurface
+                : scheme.onTertiary,
             icon: meal.isFavorite ? Icons.favorite : Icons.favorite_border,
             label: meal.isFavorite ? 'Unfav' : 'Fav',
           ),
         ],
       ),
-
-      child: _buildMealCardContent(meal, index, viewMode, controller),
+      child: _buildMealCardContent(context, meal, index, viewMode, controller),
     );
   }
 
   Widget _buildStaticMealCard(
+    BuildContext context,
     MealEntry meal,
     int index,
     String viewMode,
     NutritionController controller,
   ) {
-    return _buildMealCardContent(meal, index, viewMode, controller);
+    return _buildMealCardContent(context, meal, index, viewMode, controller);
+  }
+
+  void _openEditSheet(BuildContext context, int index, MealEntry meal) {
+    AddManualMealSheet.show(
+      context,
+      editIndex: index,
+      existing: {
+        'name': meal.name,
+        'calories': meal.calories,
+        'proteins': meal.proteins,
+        'carbs': meal.carbs,
+        'fat': meal.fat,
+        'type': meal.type.name,
+        'notes': meal.notes,
+        'imageUrl': meal.imageUrl,
+        'favorite': meal.isFavorite,
+      },
+    );
   }
 
   Widget _buildMealCardContent(
+    BuildContext context,
     MealEntry meal,
     int index,
     String viewMode,
     NutritionController controller,
   ) {
-    final color = MealTypeHelpers.getColor(meal.type);
-    final icon = MealTypeHelpers.getIcon(meal.type);
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: meal.isFavorite
-              ? AppColors.warning.withValues(alpha: 0.3)
-              : AppColors.textTertiary.withValues(alpha: 0.2),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final accent = MealTypeHelpers.getColor(meal.type);
+    final mealIcon = MealTypeHelpers.getIcon(meal.type);
+    final imageUrl = meal.imageUrl;
+
+    final Widget leading = (imageUrl == null || imageUrl.isEmpty)
+        ? Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: accent.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(mealIcon, color: accent, size: 24),
+          )
+        : ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: SizedBox(
+              width: 56,
+              height: 56,
+              child: CachedNetworkImage(
+                imageUrl: imageUrl,
+                fit: BoxFit.cover,
+                placeholder: (_, __) => Container(
+                  color: scheme.primary.withValues(alpha: 0.08),
                 ),
-                child: Icon(icon, color: color, size: 20),
+                errorWidget: (_, __, ___) => Container(
+                  color: accent.withValues(alpha: 0.12),
+                  child: Icon(mealIcon, color: accent, size: 24),
+                ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+            ),
+          );
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: viewMode == 'daily'
+              ? () => _openEditSheet(context, index, meal)
+              : null,
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: scheme.surface,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: meal.isFavorite
+                    ? scheme.tertiary.withValues(alpha: 0.4)
+                    : scheme.outlineVariant.withValues(alpha: 0.4),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
-                    Row(
+                    leading,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  meal.name,
+                                  style: textTheme.bodyLarge?.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    color: scheme.onSurface,
+                                  ),
+                                ),
+                              ),
+                              if (meal.isFavorite)
+                                Icon(
+                                  Icons.favorite,
+                                  color: scheme.tertiary,
+                                  size: 16,
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${meal.calories.toInt()} kcal • P: ${meal.proteins.toInt()}g • C: ${meal.carbs.toInt()}g • F: ${meal.fat.toInt()}g',
+                            style: textTheme.bodySmall?.copyWith(
+                              color: scheme.onSurface.withValues(alpha: 0.65),
+                            ),
+                          ),
+                          if (viewMode != 'daily') ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              _getMealPeriodContext(meal, viewMode),
+                              style: textTheme.labelSmall?.copyWith(
+                                color: scheme.primary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        Expanded(
-                          child: Text(
-                            meal.name,
-                            style: AppTextStyles.bodyLarge(
-                              Get.context!,
-                            ).copyWith(fontWeight: FontWeight.w600),
+                        Text(
+                          '${meal.timestamp.hour.toString().padLeft(2, '0')}:${meal.timestamp.minute.toString().padLeft(2, '0')}',
+                          style: textTheme.labelMedium?.copyWith(
+                            color: scheme.onSurface.withValues(alpha: 0.65),
                           ),
                         ),
-                        if (meal.isFavorite)
-                          Icon(
-                            Icons.favorite,
-                            color: AppColors.warning,
-                            size: 16,
+                        const SizedBox(height: 8),
+                        if (viewMode == 'daily')
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: scheme.primary.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(
+                              Icons.swipe,
+                              size: 16,
+                              color: scheme.primary,
+                            ),
                           ),
                       ],
                     ),
-                    Text(
-                      '${meal.calories.toInt()} kcal • P: ${meal.proteins.toInt()}g • C: ${meal.carbs.toInt()}g • F: ${meal.fat.toInt()}g',
-                      style: AppTextStyles.bodySmall(
-                        Get.context!,
-                      ).copyWith(color: AppColors.textSecondary),
-                    ),
-                    if (viewMode != 'daily') ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        _getMealPeriodContext(meal, viewMode),
-                        style: AppTextStyles.labelSmall(Get.context!).copyWith(
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
                   ],
                 ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    '${meal.timestamp.hour.toString().padLeft(2, '0')}:${meal.timestamp.minute.toString().padLeft(2, '0')}',
-                    style: AppTextStyles.labelMedium(
-                      Get.context!,
-                    ).copyWith(color: AppColors.textSecondary),
-                  ),
-                  const SizedBox(height: 8),
-                  if (viewMode == 'daily')
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(
-                        Icons.swipe,
-                        size: 16,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                ],
-              ),
-            ],
+              ],
+            ),
           ),
-        ],
+        ),
       ),
     );
   }
 
-  Future<bool> _showDeleteConfirmation(String mealName) async {
+  Future<bool> _showDeleteConfirmation(
+    BuildContext context,
+    String mealName,
+  ) async {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     return await showDialog<bool>(
-          context: Get.context!,
-          builder: (BuildContext context) {
+          context: context,
+          builder: (BuildContext dialogContext) {
             return AlertDialog(
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
               title: Row(
                 children: [
-                  const Icon(Icons.delete_outline, color: Colors.red, size: 28),
+                  Icon(Icons.delete_outline, color: scheme.error, size: 28),
                   const SizedBox(width: 12),
                   Text(
                     'Delete Meal',
-                    style: AppTextStyles.headingMedium(
-                      Get.context!,
-                    ).copyWith(color: Colors.red),
+                    style: textTheme.titleLarge?.copyWith(
+                      color: scheme.error,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ],
               ),
@@ -1132,31 +842,32 @@ class NutritionPage extends GetView<NutritionController> {
                 children: [
                   Text(
                     'Are you sure you want to delete this meal?',
-                    style: AppTextStyles.bodyMedium(Get.context!),
+                    style: textTheme.bodyMedium,
                   ),
                   const SizedBox(height: 8),
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
+                      color: scheme.surfaceContainerHighest.withValues(
+                        alpha: 0.5,
+                      ),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(
                       children: [
                         Icon(
                           Icons.restaurant,
-                          color: AppColors.primary,
+                          color: scheme.primary,
                           size: 20,
                         ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             mealName,
-                            style: AppTextStyles.bodyMedium(Get.context!)
-                                .copyWith(
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.primary,
-                                ),
+                            style: textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: scheme.primary,
+                            ),
                           ),
                         ),
                       ],
@@ -1165,8 +876,8 @@ class NutritionPage extends GetView<NutritionController> {
                   const SizedBox(height: 12),
                   Text(
                     'This action cannot be undone.',
-                    style: AppTextStyles.bodySmall(Get.context!).copyWith(
-                      color: AppColors.textSecondary,
+                    style: textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurface.withValues(alpha: 0.65),
                       fontStyle: FontStyle.italic,
                     ),
                   ),
@@ -1174,140 +885,34 @@ class NutritionPage extends GetView<NutritionController> {
               ),
               actions: [
                 TextButton(
-                  onPressed: () => Navigator.of(context).pop(false),
+                  onPressed: () => Navigator.of(dialogContext).pop(false),
                   child: Text(
                     'Cancel',
-                    style: TextStyle(color: AppColors.textSecondary),
-                  ),
-                ),
-                ElevatedButton(
-                  onPressed: () => Navigator.of(context).pop(true),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                    style: TextStyle(
+                      color: scheme.onSurface.withValues(alpha: 0.65),
                     ),
                   ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.delete, size: 18),
-                      SizedBox(width: 4),
-                      Text('Delete'),
-                    ],
+                ),
+                FilledButton.icon(
+                  onPressed: () => Navigator.of(dialogContext).pop(true),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: scheme.error,
+                    foregroundColor: scheme.onError,
                   ),
+                  icon: const Icon(Icons.delete, size: 18),
+                  label: const Text('Delete'),
                 ),
               ],
             );
           },
         ) ??
-        false; // Return false if dialog is dismissed
+        false;
   }
 
-  // Widget _buildQuickActions() {
-  //   return Column(
-  //     crossAxisAlignment: CrossAxisAlignment.start,
-  //     children: [
-  //       Text('Quick Actions', style: AppTextStyles.headingMedium(Get.context!)),
-  //       const SizedBox(height: 12),
-  //       GridView.count(
-  //         shrinkWrap: true,
-  //         padding: EdgeInsets.zero,
-  //         physics: const NeverScrollableScrollPhysics(),
-  //         crossAxisCount: 2,
-  //         childAspectRatio: 2.5,
-  //         crossAxisSpacing: 12,
-  //         mainAxisSpacing: 12,
-  //         children: [
-  //           _buildQuickActionCard(
-  //             '🔄 Manual Sync',
-  //             Icons.refresh,
-  //             AppColors.info,
-  //             () async {
-  //               await controller.manualRefresh();
-  //               Get.snackbar(
-  //                 '🔄 Refreshed',
-  //                 'Data refreshed from Firebase',
-  //                 snackPosition: SnackPosition.BOTTOM,
-  //                 backgroundColor: AppColors.success,
-  //                 colorText: Colors.white,
-  //               );
-  //             },
-  //           ),
-  //           _buildQuickActionCard(
-  //             'Scan Food',
-  //             Icons.qr_code_scanner,
-  //             AppColors.primary,
-  //             () => Get.find<MainController>().changeIndex(2),
-  //           ),
-  //           _buildQuickActionCard(
-  //             '💾 Sync Data',
-  //             Icons.cloud_sync,
-  //             AppColors.info,
-  //             () async {
-  //               await controller.loadDataFromFirebase();
-  //               Get.snackbar(
-  //                 '☁️ Synced',
-  //                 'Data synced with Firebase successfully',
-  //                 snackPosition: SnackPosition.BOTTOM,
-  //                 backgroundColor: AppColors.success,
-  //                 colorText: Colors.white,
-  //               );
-  //             },
-  //           ),
-  //           _buildQuickActionCard(
-  //             'Water +1',
-  //             Icons.water_drop,
-  //             AppColors.info,
-  //             controller.addWater,
-  //           ),
-  //           _buildQuickActionCard(
-  //             'Export Data',
-  //             Icons.download,
-  //             AppColors.success,
-  //             controller.exportData,
-  //           ),
-  //         ],
-  //       ),
-  //     ],
-  //   );
-  // }
+  Widget _buildFavoriteMeals(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
 
-  // Widget _buildQuickActionCard(
-  //   String label,
-  //   IconData icon,
-  //   Color color,
-  //   VoidCallback onTap,
-  // ) {
-  //   return GestureDetector(
-  //     onTap: onTap,
-  //     child: Container(
-  //       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-  //       decoration: BoxDecoration(
-  //         color: color.withValues(alpha: 0.1),
-  //         borderRadius: BorderRadius.circular(12),
-  //         border: Border.all(color: color.withValues(alpha: 0.3)),
-  //       ),
-  //       child: Row(
-  //         children: [
-  //           Icon(icon, color: color, size: 24),
-  //           const SizedBox(width: 12),
-  //           Expanded(
-  //             child: Text(
-  //               label,
-  //               style: AppTextStyles.labelLarge(
-  //                 Get.context!,
-  //               ).copyWith(color: color, fontWeight: FontWeight.w600),
-  //             ),
-  //           ),
-  //         ],
-  //       ),
-  //     ),
-  //   );
-  // }
-
-  Widget _buildFavoriteMeals() {
     return Obx(() {
       if (controller.favoriteMeals.isEmpty) return const SizedBox.shrink();
 
@@ -1319,11 +924,17 @@ class NutritionPage extends GetView<NutritionController> {
             children: [
               Text(
                 'Favorite Meals',
-                style: AppTextStyles.headingMedium(Get.context!),
+                style: textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: scheme.onSurface,
+                ),
               ),
               IconButton(
                 onPressed: () => controller.clearAllFavorites(),
-                icon: Icon(Icons.clear_all, color: Colors.grey[600]),
+                icon: Icon(
+                  Icons.clear_all,
+                  color: scheme.onSurface.withValues(alpha: 0.65),
+                ),
                 tooltip: 'Clear all favorites',
               ),
             ],
@@ -1335,9 +946,9 @@ class NutritionPage extends GetView<NutritionController> {
               scrollDirection: Axis.horizontal,
               itemCount: controller.favoriteMeals.length,
               separatorBuilder: (context, index) => const SizedBox(width: 12),
-              itemBuilder: (context, index) {
+              itemBuilder: (cardCtx, index) {
                 final meal = controller.favoriteMeals[index];
-                return _buildFavoriteMealCard(meal);
+                return _buildFavoriteMealCard(cardCtx, meal);
               },
             ),
           ),
@@ -1346,53 +957,64 @@ class NutritionPage extends GetView<NutritionController> {
     });
   }
 
-  Widget _buildFavoriteMealCard(Map<String, dynamic> meal) {
+  Widget _buildFavoriteMealCard(
+    BuildContext context,
+    Map<String, dynamic> meal,
+  ) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
     return GestureDetector(
       onTap: () => _addFavoriteToLog(meal),
-      onLongPress: () => _showFavoriteMealOptions(meal),
+      onLongPress: () => _showFavoriteMealOptions(context, meal),
       child: Container(
         width: 140,
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: scheme.surface,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
+          border: Border.all(color: scheme.tertiary.withValues(alpha: 0.35)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Icon(Icons.favorite, color: AppColors.warning, size: 16),
+                Icon(Icons.favorite, color: scheme.tertiary, size: 16),
                 const SizedBox(width: 4),
                 Expanded(
                   child: Text(
-                    meal['name'],
-                    style: AppTextStyles.labelLarge(
-                      Get.context!,
-                    ).copyWith(fontWeight: FontWeight.w600),
+                    meal['name']?.toString() ?? '',
+                    style: textTheme.labelLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: scheme.onSurface,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 GestureDetector(
                   onTap: () => controller.removeFromFavorites(meal),
-                  child: Icon(Icons.close, size: 14, color: Colors.grey[600]),
+                  child: Icon(
+                    Icons.close,
+                    size: 14,
+                    color: scheme.onSurface.withValues(alpha: 0.6),
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 8),
             Text(
               '${meal['calories']} kcal',
-              style: AppTextStyles.bodySmall(
-                Get.context!,
-              ).copyWith(color: AppColors.textSecondary),
+              style: textTheme.bodySmall?.copyWith(
+                color: scheme.onSurface.withValues(alpha: 0.65),
+              ),
             ),
             Text(
               'P: ${meal['proteins']}g • C: ${meal['carbs']}g',
-              style: AppTextStyles.labelSmall(
-                Get.context!,
-              ).copyWith(color: AppColors.textTertiary),
+              style: textTheme.labelSmall?.copyWith(
+                color: scheme.onSurface.withValues(alpha: 0.45),
+              ),
             ),
           ],
         ),
@@ -1400,11 +1022,16 @@ class NutritionPage extends GetView<NutritionController> {
     );
   }
 
-  void _showFavoriteMealOptions(Map<String, dynamic> meal) {
+  void _showFavoriteMealOptions(
+    BuildContext context,
+    Map<String, dynamic> meal,
+  ) {
+    final scheme = Theme.of(context).colorScheme;
+
     Get.bottomSheet(
       Container(
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: scheme.surface,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         ),
         child: Column(
@@ -1415,12 +1042,12 @@ class NutritionPage extends GetView<NutritionController> {
               height: 4,
               margin: const EdgeInsets.symmetric(vertical: 12),
               decoration: BoxDecoration(
-                color: AppColors.textTertiary,
+                color: scheme.outlineVariant,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
             ListTile(
-              leading: Icon(Icons.add, color: AppColors.primary),
+              leading: Icon(Icons.add, color: scheme.primary),
               title: const Text('Add to Today\'s Log'),
               onTap: () {
                 Get.back();
@@ -1428,7 +1055,7 @@ class NutritionPage extends GetView<NutritionController> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.favorite_border, color: Colors.red),
+              leading: Icon(Icons.favorite_border, color: scheme.error),
               title: const Text('Remove from Favorites'),
               onTap: () {
                 Get.back();
@@ -1442,432 +1069,13 @@ class NutritionPage extends GetView<NutritionController> {
     );
   }
 
-  Widget _buildFloatingActionButtons() {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        FloatingActionButton(
-          onPressed: _showAddMealDialog,
-          backgroundColor: AppColors.primary,
-          heroTag: 'add_meal',
-          child: const Icon(Icons.add, color: Colors.white),
-        ),
-        const SizedBox(height: 12),
-        FloatingActionButton.small(
-          onPressed: _showQuickAddDialog,
-          backgroundColor: AppColors.secondary,
-          heroTag: 'quick_add',
-          child: const Icon(Icons.flash_on, color: Colors.white),
-        ),
-      ],
-    );
-  }
-
-  // Dialog Methods
-  void _showAddMealDialog() {
-    final nameController = TextEditingController();
-    final caloriesController = TextEditingController();
-    final proteinsController = TextEditingController();
-    final carbsController = TextEditingController();
-    final fatsController = TextEditingController();
-    final notesController = TextEditingController();
-    String selectedType = 'meal';
-
-    Get.dialog(
-      AlertDialog(
-        title: const Text('Add Meal'),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: nameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Meal Name *',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  initialValue: selectedType,
-                  decoration: const InputDecoration(
-                    labelText: 'Meal Type',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: ['breakfast', 'lunch', 'dinner', 'snack', 'meal']
-                      .map(
-                        (type) => DropdownMenuItem(
-                          value: type,
-                          child: Text(_getMealTypeLabel(type)),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (value) => selectedType = value ?? 'meal',
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: caloriesController,
-                        decoration: const InputDecoration(
-                          labelText: 'Calories *',
-                          border: OutlineInputBorder(),
-                        ),
-                        keyboardType: TextInputType.number,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextField(
-                        controller: proteinsController,
-                        decoration: const InputDecoration(
-                          labelText: 'Proteins (g)',
-                          border: OutlineInputBorder(),
-                        ),
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: carbsController,
-                        decoration: const InputDecoration(
-                          labelText: 'Carbs (g)',
-                          border: OutlineInputBorder(),
-                        ),
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextField(
-                        controller: fatsController,
-                        decoration: const InputDecoration(
-                          labelText: 'Fats (g)',
-                          border: OutlineInputBorder(),
-                        ),
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: notesController,
-                  decoration: const InputDecoration(
-                    labelText: 'Notes (optional)',
-                    border: OutlineInputBorder(),
-                  ),
-                  maxLines: 2,
-                ),
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Get.back(), child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () {
-              final name = nameController.text.trim();
-              final calories = double.tryParse(caloriesController.text) ?? 0;
-              final proteins = double.tryParse(proteinsController.text) ?? 0;
-              final carbs = double.tryParse(carbsController.text) ?? 0;
-              final fats = double.tryParse(fatsController.text) ?? 0;
-
-              if (name.isNotEmpty && calories > 0) {
-                controller.addMeal({
-                  'name': name,
-                  'calories': calories,
-                  'proteins': proteins,
-                  'carbs': carbs,
-                  'fat': fats,
-                  'fiber': 0.0,
-                  'sugar': 0.0,
-                  'sodium': 0.0,
-                  'type': selectedType,
-                  'time':
-                      '${DateTime.now().hour.toString().padLeft(2, '0')}:${DateTime.now().minute.toString().padLeft(2, '0')}',
-                  'image': null,
-                  'notes': notesController.text.trim(),
-                  'favorite': false,
-                });
-                Get.back();
-                HapticFeedback.lightImpact();
-                Get.snackbar(
-                  '🎉 Success',
-                  'Meal added and synced to Firebase!',
-                  snackPosition: SnackPosition.BOTTOM,
-                  backgroundColor: AppColors.success,
-                  colorText: Colors.white,
-                );
-              } else {
-                Get.snackbar(
-                  'Error',
-                  'Please enter meal name and calories',
-                  snackPosition: SnackPosition.BOTTOM,
-                  backgroundColor: AppColors.error,
-                  colorText: Colors.white,
-                );
-              }
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-            child: const Text('Add Meal'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _editMeal(int index, MealEntry meal, NutritionController controller) {
-    final nameController = TextEditingController(text: meal.name);
-    final caloriesController = TextEditingController(
-      text: meal.calories.toString(),
-    );
-    final proteinsController = TextEditingController(
-      text: meal.proteins.toString(),
-    );
-    final carbsController = TextEditingController(text: meal.carbs.toString());
-    final fatsController = TextEditingController(text: meal.fat.toString());
-    final notesController = TextEditingController(text: meal.notes ?? '');
-    String selectedType = meal.type.name;
-
-    Get.dialog(
-      AlertDialog(
-        title: const Text('Edit Meal'),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: nameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Meal Name *',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  initialValue: selectedType,
-                  decoration: const InputDecoration(
-                    labelText: 'Meal Type',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: ['breakfast', 'lunch', 'dinner', 'snack', 'meal']
-                      .map(
-                        (type) => DropdownMenuItem(
-                          value: type,
-                          child: Text(_getMealTypeLabel(type)),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (value) => selectedType = value ?? 'meal',
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: caloriesController,
-                        decoration: const InputDecoration(
-                          labelText: 'Calories *',
-                          border: OutlineInputBorder(),
-                        ),
-                        keyboardType: TextInputType.number,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextField(
-                        controller: proteinsController,
-                        decoration: const InputDecoration(
-                          labelText: 'Proteins (g)',
-                          border: OutlineInputBorder(),
-                        ),
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: carbsController,
-                        decoration: const InputDecoration(
-                          labelText: 'Carbs (g)',
-                          border: OutlineInputBorder(),
-                        ),
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextField(
-                        controller: fatsController,
-                        decoration: const InputDecoration(
-                          labelText: 'Fats (g)',
-                          border: OutlineInputBorder(),
-                        ),
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: notesController,
-                  decoration: const InputDecoration(
-                    labelText: 'Notes (optional)',
-                    border: OutlineInputBorder(),
-                  ),
-                  maxLines: 2,
-                ),
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Get.back(), child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () {
-              final name = nameController.text.trim();
-              final calories = double.tryParse(caloriesController.text) ?? 0;
-              final proteins = double.tryParse(proteinsController.text) ?? 0;
-              final carbs = double.tryParse(carbsController.text) ?? 0;
-              final fats = double.tryParse(fatsController.text) ?? 0;
-
-              if (name.isNotEmpty && calories > 0) {
-                controller.editMeal(index, {
-                  'name': name,
-                  'calories': calories,
-                  'proteins': proteins,
-                  'carbs': carbs,
-                  'fat': fats,
-                  'type': selectedType,
-                  'notes': notesController.text.trim(),
-                });
-                Get.back();
-                Get.snackbar(
-                  '✅ Success',
-                  'Meal updated and synced to Firebase!',
-                  snackPosition: SnackPosition.BOTTOM,
-                  backgroundColor: AppColors.success,
-                  colorText: Colors.white,
-                );
-              }
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-            child: const Text('Save Changes'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showQuickAddDialog() {
-    final quickItems = [
-      {
-        'name': 'Apple',
-        'calories': 95,
-        'proteins': 0.5,
-        'carbs': 25.0,
-        'fat': 0.3,
-      },
-      {
-        'name': 'Banana',
-        'calories': 105,
-        'proteins': 1.3,
-        'carbs': 27.0,
-        'fat': 0.4,
-      },
-      {
-        'name': 'Greek Yogurt',
-        'calories': 100,
-        'proteins': 17.0,
-        'carbs': 9.0,
-        'fat': 0.4,
-      },
-      {
-        'name': 'Protein Shake',
-        'calories': 200,
-        'proteins': 25.0,
-        'carbs': 5.0,
-        'fat': 3.0,
-      },
-      {
-        'name': 'Chicken Breast (100g)',
-        'calories': 165,
-        'proteins': 31.0,
-        'carbs': 0.0,
-        'fat': 3.6,
-      },
-      {
-        'name': 'Brown Rice (1 cup)',
-        'calories': 216,
-        'proteins': 5.0,
-        'carbs': 45.0,
-        'fat': 1.8,
-      },
-    ];
-
-    Get.bottomSheet(
-      Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            Text('Quick Add', style: AppTextStyles.headingMedium(Get.context!)),
-            const SizedBox(height: 16),
-            ...quickItems.map(
-              (item) => ListTile(
-                leading: Icon(
-                  Icons.add_circle_outline,
-                  color: AppColors.primary,
-                ),
-                title: Text(item['name'] as String),
-                subtitle: Text('${item['calories']} kcal'),
-                onTap: () {
-                  controller.addQuickMeal(item['name'] as String, item);
-                  Get.back();
-                  Get.snackbar(
-                    '🎉 Added',
-                    '${item['name']} added to your log and synced!',
-                    snackPosition: SnackPosition.BOTTOM,
-                    backgroundColor: AppColors.success,
-                    colorText: Colors.white,
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
+  Widget _buildFloatingActionButtons(BuildContext context) {
+    return FloatingActionButton.extended(
+      onPressed: () => LogMealActionSheet.show(context),
+      backgroundColor: Theme.of(context).colorScheme.primary,
+      foregroundColor: Theme.of(context).colorScheme.onPrimary,
+      icon: const Icon(Icons.add_rounded),
+      label: const Text('Log meal'),
     );
   }
 
@@ -1883,12 +1091,14 @@ class NutritionPage extends GetView<NutritionController> {
     controller.addMeal(mealToAdd);
 
     CustomThemeFlushbar.show(
-      title: '❤️ Added',
-      message: '${meal['name']} added from favorites and synced!',
+      title: 'Added',
+      message: '${meal['name']} added from favorites',
     );
   }
 
-  void _showSearchDialog() {
+  void _showSearchDialog(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     final TextEditingController searchController = TextEditingController();
     searchController.text = controller.searchQuery.value;
 
@@ -1896,11 +1106,14 @@ class NutritionPage extends GetView<NutritionController> {
       AlertDialog(
         title: Row(
           children: [
-            Icon(Icons.search, color: AppColors.primary),
+            Icon(Icons.search, color: scheme.primary),
             const SizedBox(width: 12),
             Text(
               'Search Meals',
-              style: AppTextStyles.headingSmall(Get.context!),
+              style: textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: scheme.onSurface,
+              ),
             ),
           ],
         ),
@@ -1912,11 +1125,14 @@ class NutritionPage extends GetView<NutritionController> {
               autofocus: true,
               decoration: InputDecoration(
                 hintText: 'Search by meal name...',
-                prefixIcon: Icon(Icons.search, color: AppColors.primary),
+                prefixIcon: Icon(Icons.search, color: scheme.primary),
                 suffixIcon: Obx(
                   () => controller.searchQuery.value.isNotEmpty
                       ? IconButton(
-                          icon: Icon(Icons.clear, color: AppColors.outline),
+                          icon: Icon(
+                            Icons.clear,
+                            color: scheme.outline,
+                          ),
                           onPressed: () {
                             searchController.clear();
                             controller.clearSearch();
@@ -1936,9 +1152,9 @@ class NutritionPage extends GetView<NutritionController> {
             Obx(
               () => Text(
                 '${controller.filteredMeals.length} meals found',
-                style: AppTextStyles.bodySmall(
-                  Get.context!,
-                ).copyWith(color: AppColors.textSecondary),
+                style: textTheme.bodySmall?.copyWith(
+                  color: scheme.onSurface.withValues(alpha: 0.65),
+                ),
               ),
             ),
           ],
@@ -1951,7 +1167,7 @@ class NutritionPage extends GetView<NutritionController> {
             },
             child: const Text('Clear'),
           ),
-          ElevatedButton(
+          FilledButton(
             onPressed: () => Get.back(),
             child: const Text('Done'),
           ),
@@ -1960,12 +1176,15 @@ class NutritionPage extends GetView<NutritionController> {
     );
   }
 
-  void _showMealOptions() {
+  void _showMealOptions(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
     Get.bottomSheet(
       Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: scheme.surface,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         ),
         child: Column(
@@ -1973,34 +1192,34 @@ class NutritionPage extends GetView<NutritionController> {
           children: [
             Text(
               'Meal Options',
-              style: AppTextStyles.headingMedium(Get.context!),
+              style: textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: scheme.onSurface,
+              ),
             ),
             const SizedBox(height: 16),
             ListTile(
-              leading: Icon(Icons.cloud_sync, color: AppColors.info),
+              leading: Icon(Icons.cloud_sync, color: scheme.tertiary),
               title: const Text('Sync with Firebase'),
               onTap: () async {
                 Get.back();
                 await controller.loadDataFromFirebase();
-                Get.snackbar(
-                  '☁️ Synced',
-                  'Data refreshed from Firebase',
-                  snackPosition: SnackPosition.BOTTOM,
-                  backgroundColor: AppColors.success,
-                  colorText: Colors.white,
+                CustomThemeFlushbar.show(
+                  title: 'Synced',
+                  message: 'Data refreshed from Firebase',
                 );
               },
             ),
             ListTile(
-              leading: Icon(Icons.clear_all, color: AppColors.error),
+              leading: Icon(Icons.clear_all, color: scheme.error),
               title: const Text('Clear All Meals'),
               onTap: () {
                 Get.back();
-                _showClearAllConfirmation();
+                _showClearAllConfirmation(context);
               },
             ),
             ListTile(
-              leading: Icon(Icons.download, color: AppColors.success),
+              leading: Icon(Icons.download, color: scheme.primary),
               title: const Text('Export Data'),
               onTap: () {
                 Get.back();
@@ -2008,7 +1227,7 @@ class NutritionPage extends GetView<NutritionController> {
               },
             ),
             ListTile(
-              leading: Icon(Icons.upload, color: AppColors.info),
+              leading: Icon(Icons.upload, color: scheme.tertiary),
               title: const Text('Import Data'),
               onTap: () {
                 Get.back();
@@ -2021,7 +1240,9 @@ class NutritionPage extends GetView<NutritionController> {
     );
   }
 
-  void _showClearAllConfirmation() {
+  void _showClearAllConfirmation(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     Get.dialog(
       AlertDialog(
         title: const Text('Clear All Meals'),
@@ -2030,16 +1251,19 @@ class NutritionPage extends GetView<NutritionController> {
         ),
         actions: [
           TextButton(onPressed: () => Get.back(), child: const Text('Cancel')),
-          ElevatedButton(
+          FilledButton(
             onPressed: () {
               controller.clearAllMeals();
               Get.back();
               CustomThemeFlushbar.show(
                 title: 'Cleared',
-                message: 'All meals have been cleared and synced to Firebase',
+                message: 'All meals have been cleared',
               );
             },
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+            style: FilledButton.styleFrom(
+              backgroundColor: scheme.error,
+              foregroundColor: scheme.onError,
+            ),
             child: const Text('Clear All'),
           ),
         ],
@@ -2047,12 +1271,15 @@ class NutritionPage extends GetView<NutritionController> {
     );
   }
 
-  void _showMoreOptions() {
+  void _showMoreOptions(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
     Get.bottomSheet(
       Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: scheme.surface,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         ),
         child: Column(
@@ -2060,54 +1287,55 @@ class NutritionPage extends GetView<NutritionController> {
           children: [
             Text(
               'More Options',
-              style: AppTextStyles.headingMedium(Get.context!),
+              style: textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: scheme.onSurface,
+              ),
             ),
             const SizedBox(height: 16),
             ListTile(
-              leading: Icon(Icons.settings, color: AppColors.primary),
+              leading: Icon(Icons.settings, color: scheme.primary),
               title: const Text('Goals & Settings'),
               onTap: () {
                 Get.back();
-                _showGoalsDialog();
+                _showGoalsDialog(context);
               },
             ),
             ListTile(
-              leading: Icon(Icons.analytics, color: AppColors.secondary),
+              leading: Icon(Icons.analytics, color: scheme.secondary),
               title: const Text('Detailed Nutrition'),
               onTap: () {
                 Get.back();
-                _showDetailedNutrition();
+                _showDetailedNutrition(context);
               },
             ),
             ListTile(
-              leading: Icon(Icons.history, color: AppColors.info),
+              leading: Icon(Icons.history, color: scheme.tertiary),
               title: const Text('Weekly Report'),
               onTap: () {
                 Get.back();
-                _showWeeklyReport();
+                _showWeeklyReport(context);
               },
             ),
             const Divider(),
             ListTile(
-              leading: Icon(Icons.sync, color: AppColors.info),
+              leading: Icon(Icons.sync, color: scheme.tertiary),
               title: const Text('Sync Data'),
               onTap: () {
                 Get.back();
                 controller.loadDataFromFirebase();
               },
             ),
-
             ListTile(
-              leading: Icon(Icons.download, color: AppColors.success),
+              leading: Icon(Icons.download, color: scheme.primary),
               title: const Text('Export Data'),
               onTap: () {
                 Get.back();
                 controller.exportData();
               },
             ),
-
             ListTile(
-              leading: Icon(Icons.info, color: AppColors.tertiary),
+              leading: Icon(Icons.info, color: scheme.tertiary),
               title: const Text('About Nutri-Check'),
               onTap: () {
                 Get.back();
@@ -2118,7 +1346,7 @@ class NutritionPage extends GetView<NutritionController> {
                       'This Nutrition Tracker helps you log and monitor your daily meals and nutritional intake. Data is synced with Firebase for backup and accessibility across devices. Stay healthy and informed!',
                     ),
                     actions: [
-                      ElevatedButton(
+                      FilledButton(
                         onPressed: () => Get.back(),
                         child: const Text('OK'),
                       ),
@@ -2133,7 +1361,7 @@ class NutritionPage extends GetView<NutritionController> {
     );
   }
 
-  void _showGoalsDialog() {
+  void _showGoalsDialog(BuildContext context) {
     final calorieController = TextEditingController(
       text: controller.calorieGoal.value.toString(),
     );
@@ -2209,7 +1437,7 @@ class NutritionPage extends GetView<NutritionController> {
         ),
         actions: [
           TextButton(onPressed: () => Get.back(), child: const Text('Cancel')),
-          ElevatedButton(
+          FilledButton(
             onPressed: () {
               controller.updateGoals(
                 calories: double.tryParse(calorieController.text),
@@ -2219,15 +1447,11 @@ class NutritionPage extends GetView<NutritionController> {
                 water: double.tryParse(waterController.text),
               );
               Get.back();
-              Get.snackbar(
-                'Success',
-                'Your goals have been updated and synced!',
-                snackPosition: SnackPosition.BOTTOM,
-                backgroundColor: AppColors.success,
-                colorText: Colors.white,
+              CustomThemeFlushbar.show(
+                title: 'Success',
+                message: 'Your goals have been updated',
               );
             },
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
             child: const Text('Save Goals'),
           ),
         ],
@@ -2235,7 +1459,10 @@ class NutritionPage extends GetView<NutritionController> {
     );
   }
 
-  void _showDetailedNutrition() {
+  void _showDetailedNutrition(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
     Get.dialog(
       AlertDialog(
         title: const Text('Detailed Nutrition'),
@@ -2246,53 +1473,59 @@ class NutritionPage extends GetView<NutritionController> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 _buildNutrientRow(
+                  context,
                   'Calories',
                   '${controller.totalCalories.value.toInt()}',
                   'kcal',
-                  AppColors.calories,
+                  scheme.primary,
                 ),
                 _buildNutrientRow(
+                  context,
                   'Proteins',
                   '${controller.totalProteins.value.toInt()}',
                   'g',
-                  AppColors.proteins,
+                  scheme.primary,
                 ),
                 _buildNutrientRow(
+                  context,
                   'Carbohydrates',
                   '${controller.totalCarbs.value.toInt()}',
                   'g',
-                  AppColors.carbs,
+                  scheme.tertiary,
                 ),
                 _buildNutrientRow(
+                  context,
                   'Fats',
                   '${controller.totalFats.value.toInt()}',
                   'g',
-                  AppColors.fats,
+                  scheme.secondary,
                 ),
                 const Divider(),
                 Text(
                   'Data synced with NutriCheck!',
-                  style: AppTextStyles.bodySmall(
-                    Get.context!,
-                  ).copyWith(color: AppColors.textTertiary),
+                  style: textTheme.bodySmall?.copyWith(
+                    color: scheme.onSurface.withValues(alpha: 0.45),
+                  ),
                 ),
               ],
             ),
           ),
         ),
         actions: [
-          ElevatedButton(onPressed: () => Get.back(), child: const Text('OK')),
+          FilledButton(onPressed: () => Get.back(), child: const Text('OK')),
         ],
       ),
     );
   }
 
   Widget _buildNutrientRow(
+    BuildContext context,
     String name,
     String value,
     String unit,
     Color color,
   ) {
+    final textTheme = Theme.of(context).textTheme;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
@@ -2306,21 +1539,23 @@ class NutritionPage extends GetView<NutritionController> {
             ),
           ),
           const SizedBox(width: 12),
-          Expanded(
-            child: Text(name, style: AppTextStyles.bodyMedium(Get.context!)),
-          ),
+          Expanded(child: Text(name, style: textTheme.bodyMedium)),
           Text(
             '$value $unit',
-            style: AppTextStyles.bodyMedium(
-              Get.context!,
-            ).copyWith(color: color, fontWeight: FontWeight.w600),
+            style: textTheme.bodyMedium?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),
     );
   }
 
-  void _showWeeklyReport() {
+  void _showWeeklyReport(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
     Get.dialog(
       AlertDialog(
         title: const Text('Weekly Report'),
@@ -2334,23 +1569,22 @@ class NutritionPage extends GetView<NutritionController> {
               ),
               const SizedBox(height: 16),
               Text(
-                'Advanced analytics coming soon! 📊\nYour data is being tracked in Firebase.',
-                style: AppTextStyles.bodyMedium(
-                  Get.context!,
-                ).copyWith(color: AppColors.textTertiary),
+                'Advanced analytics coming soon.\nYour data is being tracked in Firebase.',
+                style: textTheme.bodyMedium?.copyWith(
+                  color: scheme.onSurface.withValues(alpha: 0.55),
+                ),
                 textAlign: TextAlign.center,
               ),
             ],
           ),
         ),
         actions: [
-          ElevatedButton(onPressed: () => Get.back(), child: const Text('OK')),
+          FilledButton(onPressed: () => Get.back(), child: const Text('OK')),
         ],
       ),
     );
   }
 
-  // Helper Methods
   String _formatDate(DateTime date) {
     const months = [
       'Jan',

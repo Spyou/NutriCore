@@ -608,6 +608,74 @@ class NutritionController extends GetxController {
     );
   }
 
+  Future<void> copyYesterdayMeals() async {
+    try {
+      final authController = Get.find<AuthController>();
+      if (authController.user == null) return;
+
+      final today = selectedDate.value;
+      final yesterday = DateTime(
+        today.year,
+        today.month,
+        today.day,
+      ).subtract(const Duration(days: 1));
+
+      final result = await _nutritionRepo.getDailyIntake(
+        authController.user!.uid,
+        yesterday,
+      );
+
+      List<MealEntry> yesterdayMeals = const [];
+      result.fold(
+        onSuccess: (intake) {
+          yesterdayMeals = intake.meals;
+        },
+        onFailure: (_) {
+          yesterdayMeals = const [];
+        },
+      );
+
+      if (yesterdayMeals.isEmpty) {
+        CustomThemeFlushbar.show(
+          title: 'Nothing to copy',
+          message: 'You didn\'t log any meals yesterday',
+        );
+        return;
+      }
+
+      for (final meal in yesterdayMeals) {
+        final originalTs = meal.timestamp;
+        final hh = originalTs.hour.toString().padLeft(2, '0');
+        final mm = originalTs.minute.toString().padLeft(2, '0');
+        await addMeal({
+          'name': meal.name,
+          'type': meal.type.name,
+          'calories': meal.calories,
+          'proteins': meal.proteins,
+          'carbs': meal.carbs,
+          'fat': meal.fat,
+          'fiber': meal.fiber,
+          'sugar': meal.sugar,
+          'sodium': meal.sodium,
+          'notes': meal.notes ?? '',
+          'imageUrl': meal.imageUrl ?? '',
+          'favorite': meal.isFavorite,
+          'time': '$hh:$mm',
+        });
+      }
+
+      CustomThemeFlushbar.show(
+        title: 'Copied',
+        message: '${yesterdayMeals.length} meals from yesterday added to today',
+      );
+    } catch (_) {
+      CustomThemeFlushbar.show(
+        title: 'Failed',
+        message: 'Couldn\'t copy yesterday\'s meals',
+      );
+    }
+  }
+
   Future<void> duplicateMeal(int index) async {
     if (index < 0 || index >= todayMeals.length) return;
     final original = todayMeals[index];
