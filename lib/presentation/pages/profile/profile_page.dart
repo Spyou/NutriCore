@@ -4,7 +4,6 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:nutri_check/presentation/controllers/nutrition_controller.dart';
-import 'package:nutri_check/presentation/pages/profile/about_me.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
@@ -12,7 +11,6 @@ import '../../controllers/profile_controller.dart';
 import '../../widgets/profile/achievements_row.dart';
 import '../../widgets/profile/bmi_indicator.dart';
 import '../../widgets/profile/edit_profile_sheet.dart';
-import '../../widgets/profile/health_connect_card.dart';
 import '../../widgets/profile/weekly_summary_card.dart';
 import '../../widgets/profile/weight_history_card.dart';
 import 'settings_subpage.dart';
@@ -48,18 +46,21 @@ class ProfilePage extends StatelessWidget {
                         child: Column(
                           children: [
                             _buildProfileCard(context, controller),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 20),
+                            _sectionHeader(context, 'This week'),
+                            const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 16),
+                              child: WeeklySummaryCard(),
+                            ),
+                            const SizedBox(height: 20),
+                            _sectionHeader(context, 'Achievements'),
+                            const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 16),
+                              child: AchievementsRow(),
+                            ),
+                            const SizedBox(height: 20),
+                            _sectionHeader(context, 'Your stats'),
                             _buildStatsRow(context, controller),
-                            const SizedBox(height: 16),
-                            const Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 16),
-                              child: WeightHistoryCard(),
-                            ),
-                            const SizedBox(height: 16),
-                            const Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 16),
-                              child: HealthConnectCard(),
-                            ),
                             const SizedBox(height: 16),
                             const Padding(
                               padding: EdgeInsets.symmetric(horizontal: 16),
@@ -68,18 +69,11 @@ class ProfilePage extends StatelessWidget {
                             const SizedBox(height: 16),
                             const Padding(
                               padding: EdgeInsets.symmetric(horizontal: 16),
-                              child: WeeklySummaryCard(),
+                              child: WeightHistoryCard(),
                             ),
-                            const SizedBox(height: 16),
-                            const Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 16),
-                              child: AchievementsRow(),
-                            ),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 20),
                             _buildSettingsRow(context),
                             const SizedBox(height: 24),
-                            _developerInfo(context),
-                            const SizedBox(height: 20),
                           ],
                         ),
                       ),
@@ -608,24 +602,22 @@ class ProfilePage extends StatelessWidget {
     );
   }
 
-  Widget _developerInfo(BuildContext context) {
+  Widget _sectionHeader(BuildContext context, String title) {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10),
-          child: Text(
-            'Developer',
-            style: textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-              color: scheme.onSurface,
-            ),
+    return Align(
+      alignment: AlignmentDirectional.centerStart,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 0, 16, 10),
+        child: Text(
+          title,
+          style: textTheme.labelLarge?.copyWith(
+            fontWeight: FontWeight.w800,
+            color: scheme.onSurface.withValues(alpha: 0.75),
+            letterSpacing: 0.4,
           ),
         ),
-        const DeveloperAndDonationSection(),
-      ],
+      ),
     );
   }
 

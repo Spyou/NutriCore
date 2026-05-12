@@ -7,6 +7,7 @@ import '../../widgets/profile/edit_profile_sheet.dart';
 import '../notification/notification_settings_page.dart';
 import '../theme/theme_settings_page.dart';
 import 'about_me.dart';
+import 'health_connect_page.dart';
 
 class SettingsSubPage extends StatelessWidget {
   const SettingsSubPage({super.key});
@@ -144,6 +145,23 @@ class SettingsSubPage extends StatelessWidget {
                     title: 'Theme settings',
                     subtitle: 'Customize colors and seed',
                     onTap: () => Get.to(() => const ThemeSettingsPage()),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              _section(
+                scheme: scheme,
+                textTheme: textTheme,
+                title: 'Integrations',
+                children: [
+                  _navTile(
+                    scheme: scheme,
+                    textTheme: textTheme,
+                    icon: Icons.favorite_border_rounded,
+                    iconColor: scheme.primary,
+                    title: 'Health Connect',
+                    subtitle: 'Sync steps, weight and active calories',
+                    onTap: () => Get.to(() => const HealthConnectPage()),
                   ),
                 ],
               ),
