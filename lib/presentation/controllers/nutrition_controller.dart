@@ -15,6 +15,7 @@ import 'package:nutri_check/domain/repositories/nutrition_repository.dart';
 import 'package:nutri_check/domain/repositories/preferences_repository.dart';
 import 'package:nutri_check/domain/usecases/calculate_bmr.dart';
 import 'package:nutri_check/presentation/controllers/auth_controller.dart';
+import 'package:nutri_check/presentation/controllers/profile_controller.dart';
 
 class NutritionController extends GetxController {
   final NutritionRepository _nutritionRepo;
@@ -45,6 +46,23 @@ class NutritionController extends GetxController {
 
   var totalCalories = 0.0.obs;
   var calorieGoal = AppConfig.defaultCalorieGoal.obs;
+
+  /// Calories burned today via active workouts, sourced from Health
+  /// Connect (when connected). Adds headroom to the daily budget.
+  double get activeCaloriesBurnedToday {
+    try {
+      if (!Get.isRegistered<ProfileController>()) return 0.0;
+      return Get.find<ProfileController>().healthActiveCaloriesToday.value;
+    } catch (_) {
+      return 0.0;
+    }
+  }
+
+  /// `calorieGoal` plus today's active calories burned (from Health
+  /// Connect). UI surfaces (home ring, nutrition card) should bind to
+  /// this so the budget reflects real expenditure.
+  double get effectiveCalorieGoal =>
+      calorieGoal.value + activeCaloriesBurnedToday;
   var totalProteins = 0.0.obs;
   var proteinGoal = AppConfig.defaultProteinGoal.obs;
   var totalCarbs = 0.0.obs;

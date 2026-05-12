@@ -38,7 +38,8 @@ class NutritionTodayCard extends StatelessWidget {
                 height: 110,
                 child: Obx(() {
                   final consumed = controller.totalCalories.value;
-                  final goal = controller.calorieGoal.value;
+                  controller.activeCaloriesBurnedToday;
+                  final goal = controller.effectiveCalorieGoal;
                   final progress = goal <= 0
                       ? 0.0
                       : (consumed / goal).clamp(0.0, 1.0);
@@ -97,19 +98,37 @@ class NutritionTodayCard extends StatelessWidget {
                     }),
                     const SizedBox(height: 2),
                     Obx(() {
-                      final goal = controller.calorieGoal.value;
-                      return Text(
-                        'of ${numberFormat.format(goal.round())} today',
-                        style: textTheme.bodyMedium?.copyWith(
-                          color: scheme.onSurface.withValues(alpha: 0.6),
-                          fontWeight: FontWeight.w500,
-                        ),
+                      final burned = controller.activeCaloriesBurnedToday;
+                      final goal = controller.effectiveCalorieGoal;
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'of ${numberFormat.format(goal.round())} today',
+                            style: textTheme.bodyMedium?.copyWith(
+                              color: scheme.onSurface.withValues(alpha: 0.6),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          if (burned > 0) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              '+${numberFormat.format(burned.round())} burned',
+                              style: textTheme.labelSmall?.copyWith(
+                                color: scheme.primary.withValues(alpha: 0.85),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ],
                       );
                     }),
                     const SizedBox(height: 12),
                     Obx(() {
                       final consumed = controller.totalCalories.value;
-                      final goal = controller.calorieGoal.value;
+                      controller.activeCaloriesBurnedToday;
+                      final goal = controller.effectiveCalorieGoal;
                       final over = consumed > goal;
                       final remaining = over
                           ? (consumed - goal)
@@ -245,7 +264,8 @@ class NutritionTodayCard extends StatelessWidget {
           // ── 4. Delta line ───────────────────────────────────────────
           Obx(() {
             final consumed = controller.totalCalories.value;
-            final goal = controller.calorieGoal.value;
+            controller.activeCaloriesBurnedToday;
+            final goal = controller.effectiveCalorieGoal;
             final yesterday = controller.yesterdayCalories.value;
             final delta = consumed - yesterday;
             final fmt = NumberFormat.decimalPattern();

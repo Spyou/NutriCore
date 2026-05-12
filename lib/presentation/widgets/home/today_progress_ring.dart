@@ -46,7 +46,9 @@ class TodayProgressRing extends StatelessWidget {
                   height: 160,
                   child: Obx(() {
                     final consumed = controller.totalCalories.value;
-                    final goal = controller.calorieGoal.value;
+                    // Read burned so Obx reacts to Health Connect changes.
+                    controller.activeCaloriesBurnedToday;
+                    final goal = controller.effectiveCalorieGoal;
                     final progress = goal <= 0
                         ? 0.0
                         : (consumed / goal).clamp(0.0, 1.0);
@@ -87,14 +89,31 @@ class TodayProgressRing extends StatelessWidget {
                 ),
                 const SizedBox(height: 14),
                 Obx(() {
-                  final goal = controller.calorieGoal.value;
-                  return Text(
-                    'of ${numberFormat.format(goal.round())} today',
-                    textAlign: TextAlign.center,
-                    style: textTheme.bodyMedium?.copyWith(
-                      color: scheme.onSurface.withValues(alpha: 0.6),
-                      fontWeight: FontWeight.w500,
-                    ),
+                  final burned = controller.activeCaloriesBurnedToday;
+                  final goal = controller.effectiveCalorieGoal;
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'of ${numberFormat.format(goal.round())} today',
+                        textAlign: TextAlign.center,
+                        style: textTheme.bodyMedium?.copyWith(
+                          color: scheme.onSurface.withValues(alpha: 0.6),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      if (burned > 0) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          '+${numberFormat.format(burned.round())} burned today',
+                          textAlign: TextAlign.center,
+                          style: textTheme.labelSmall?.copyWith(
+                            color: scheme.primary.withValues(alpha: 0.85),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ],
                   );
                 }),
                 const SizedBox(height: 20),
