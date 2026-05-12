@@ -4,6 +4,8 @@ import 'package:flutter/services.dart';
 import 'package:nutri_check/core/utils/components/custom_flushbar.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../widgets/profile/tip_sheet.dart';
+
 class DeveloperAndDonationSection extends StatelessWidget {
   static const String _developerName = 'Krishna Vishwakarma';
   static const String _developerRole = 'App developer · UI/UX';
@@ -11,10 +13,8 @@ class DeveloperAndDonationSection extends StatelessWidget {
   static const String _githubUrl = 'https://github.com/spyou';
   static const String _linkedinUrl =
       'https://linkedin.com/in/krishna-vishwakarma-8974b332a';
-  static const String _buyMeACoffeeUrl = 'https://buymeacoffee.com/krishna069';
   static const String _avatarUrl =
       'https://avatars.githubusercontent.com/u/88382789?v=4';
-  static const String _appVersion = '1.0.0';
 
   const DeveloperAndDonationSection({super.key});
 
@@ -33,10 +33,10 @@ class DeveloperAndDonationSection extends StatelessWidget {
         ),
         const SizedBox(height: 20),
         _SupportCard(
-          onCoffee: () => _launchUrl(context, _buyMeACoffeeUrl),
+          onTip: () => TipSheet.show(context),
         ),
         const SizedBox(height: 20),
-        const _AppMetaCard(version: _appVersion),
+        const _AppMetaCard(),
       ],
     );
   }
@@ -286,9 +286,9 @@ class _Row extends StatelessWidget {
 // ─── support card ────────────────────────────────────────────────────────
 
 class _SupportCard extends StatelessWidget {
-  final VoidCallback onCoffee;
+  final VoidCallback onTip;
 
-  const _SupportCard({required this.onCoffee});
+  const _SupportCard({required this.onTip});
 
   @override
   Widget build(BuildContext context) {
@@ -344,9 +344,9 @@ class _SupportCard extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: FilledButton.tonalIcon(
-              onPressed: onCoffee,
-              icon: const Icon(Icons.local_cafe_rounded, size: 18),
-              label: const Text('Buy me a coffee'),
+              onPressed: onTip,
+              icon: const Icon(Icons.favorite_rounded, size: 18),
+              label: const Text('Send a tip'),
             ),
           ),
         ],
@@ -358,71 +358,21 @@ class _SupportCard extends StatelessWidget {
 // ─── app meta card ───────────────────────────────────────────────────────
 
 class _AppMetaCard extends StatelessWidget {
-  final String version;
-  const _AppMetaCard({required this.version});
+  const _AppMetaCard();
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    return Container(
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerHighest.withValues(alpha: 0.4),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      padding: const EdgeInsets.all(18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const _MetaRow(label: 'App', value: 'NutriCore'),
-          const SizedBox(height: 6),
-          _MetaRow(label: 'Version', value: version),
-          const SizedBox(height: 6),
-          const _MetaRow(label: 'Built with', value: 'Flutter'),
-          const SizedBox(height: 12),
-          Text(
-            '© ${DateTime.now().year} Krishna Vishwakarma. All rights reserved.',
-            style: textTheme.labelSmall?.copyWith(
-              color: scheme.onSurface.withValues(alpha: 0.5),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MetaRow extends StatelessWidget {
-  final String label;
-  final String value;
-  const _MetaRow({required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-    return Row(
-      children: [
-        SizedBox(
-          width: 90,
-          child: Text(
-            label,
-            style: textTheme.bodySmall?.copyWith(
-              color: scheme.onSurface.withValues(alpha: 0.6),
-              fontWeight: FontWeight.w600,
-            ),
-          ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Text(
+        '© ${DateTime.now().year} Krishna Vishwakarma. All rights reserved.',
+        textAlign: TextAlign.center,
+        style: textTheme.labelSmall?.copyWith(
+          color: scheme.onSurface.withValues(alpha: 0.5),
         ),
-        Expanded(
-          child: Text(
-            value,
-            style: textTheme.bodyMedium?.copyWith(
-              color: scheme.onSurface,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-      ],
+      ),
     );
   }
 }
