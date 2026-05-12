@@ -12,6 +12,8 @@ import '../../controllers/profile_controller.dart';
 import '../../widgets/profile/achievements_row.dart';
 import '../../widgets/profile/bmi_indicator.dart';
 import '../../widgets/profile/edit_profile_sheet.dart';
+import '../../widgets/profile/health_connect_card.dart';
+import '../../widgets/profile/weekly_summary_card.dart';
 import '../../widgets/profile/weight_history_card.dart';
 import 'settings_subpage.dart';
 
@@ -30,6 +32,7 @@ class ProfilePage extends StatelessWidget {
 
             await nutritionController.refreshData();
             await profileController.refreshStats();
+            await profileController.refreshHealthData();
           },
           child: Obx(
             () => controller.isLoading.value
@@ -55,7 +58,17 @@ class ProfilePage extends StatelessWidget {
                             const SizedBox(height: 16),
                             const Padding(
                               padding: EdgeInsets.symmetric(horizontal: 16),
+                              child: HealthConnectCard(),
+                            ),
+                            const SizedBox(height: 16),
+                            const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 16),
                               child: BmiIndicator(),
+                            ),
+                            const SizedBox(height: 16),
+                            const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 16),
+                              child: WeeklySummaryCard(),
                             ),
                             const SizedBox(height: 16),
                             const Padding(

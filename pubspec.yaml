@@ -51,6 +51,7 @@ dependencies:
   cloud_firestore: ^4.13.6
   firebase_storage: ^11.6.0
   cloudinary_public: ^0.23.1
+  health: ^11.0.0
   google_sign_in: ^6.2.1
   
   

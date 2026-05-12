@@ -25,7 +25,8 @@ android {
 
     defaultConfig {
         applicationId = "com.spyou.nutri_check"
-        minSdk = flutter.minSdkVersion
+        // Health Connect requires API 26+.
+        minSdk = 26
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName

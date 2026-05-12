@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:nutri_check/core/services/cloudinary_service.dart';
+import 'package:nutri_check/core/services/health_connect_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -80,6 +82,16 @@ class ProfileController extends GetxController {
   var isUploadingImage = false.obs;
   var isSyncing = false.obs;
   var isExporting = false.obs;
+
+  // Health Connect mirror state. `healthAvailable` distinguishes "device
+  // doesn't support it" (hide the card / show an unsupported message) from
+  // "supported but not yet granted" (show a Connect CTA).
+  final RxBool healthAvailable = false.obs;
+  final RxBool healthConnected = false.obs;
+  final RxInt healthStepsToday = 0.obs;
+  final RxDouble healthActiveCaloriesToday = 0.0.obs;
+  final RxnDouble healthLatestWeightKg = RxnDouble();
+  final RxBool isSyncingHealth = false.obs;
 
   final nameController = TextEditingController();
   final bioController = TextEditingController();
@@ -187,8 +199,82 @@ class ProfileController extends GetxController {
       await _loadAchievementsState();
       _setupAchievementListeners();
       _checkAchievements();
+      // Best-effort: pull Health Connect state once the auth-backed
+      // profile has loaded. Failures here are silent — the card surfaces
+      // a Connect CTA when permissions aren't granted yet.
+      unawaited(refreshHealthData());
     } catch (e) {
       _showErrorSnackbar('Failed to initialize profile');
+    }
+  }
+
+  /// Refreshes the Health Connect mirror. Safe to call any time: returns
+  /// quickly when the platform doesn't support Health Connect or the user
+  /// hasn't granted permissions yet. Errors are swallowed because this is
+  /// an enrichment feature, not a critical path.
+  Future<void> refreshHealthData() async {
+    if (isSyncingHealth.value) return;
+    isSyncingHealth.value = true;
+    try {
+      final svc = HealthConnectService.instance;
+      final available = await svc.isAvailable();
+      healthAvailable.value = available;
+      if (!available) {
+        healthConnected.value = false;
+        return;
+      }
+      final connected = await svc.hasPermissions();
+      healthConnected.value = connected;
+      if (!connected) return;
+
+      final results = await Future.wait<dynamic>([
+        svc.readStepsForDay(DateTime.now()),
+        svc.readActiveCaloriesToday(),
+        svc.readLatestWeightKg(),
+      ]);
+      healthStepsToday.value = (results[0] as int);
+      healthActiveCaloriesToday.value = (results[1] as double);
+      healthLatestWeightKg.value = results[2] as double?;
+    } catch (e) {
+      if (kDebugMode) {
+        print('refreshHealthData error: $e');
+      }
+    } finally {
+      isSyncingHealth.value = false;
+    }
+  }
+
+  /// Drives the system permission prompt. Returns whether all requested
+  /// reads were granted. After a successful grant we immediately pull
+  /// the initial snapshot so the card has data to show.
+  Future<bool> connectHealth() async {
+    final svc = HealthConnectService.instance;
+    final granted = await svc.requestPermissions();
+    if (granted) {
+      await refreshHealthData();
+    } else {
+      // The user may have granted partial access; re-check so the UI
+      // reflects the actual state instead of staying in the CTA branch.
+      await refreshHealthData();
+    }
+    return granted;
+  }
+
+  /// Opens the Play Store to install or update the Health Connect app.
+  /// Used when [healthAvailable] is false — the device might be missing
+  /// the provider entirely or running an outdated build.
+  Future<void> installHealthConnect() async {
+    try {
+      isSyncingHealth.value = true;
+      await HealthConnectService.instance.openPlayStoreForInstall();
+      await Future.delayed(const Duration(seconds: 1));
+      await refreshHealthData();
+    } catch (e) {
+      if (kDebugMode) {
+        print('installHealthConnect error: $e');
+      }
+    } finally {
+      isSyncingHealth.value = false;
     }
   }
 

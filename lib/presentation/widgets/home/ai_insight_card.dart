@@ -3,12 +3,62 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 
+import 'package:nutri_check/core/services/gemini_insights_service.dart';
 import 'package:nutri_check/domain/entities/meal_entry.dart';
 import 'package:nutri_check/presentation/controllers/nutrition_controller.dart';
+import 'package:nutri_check/presentation/controllers/profile_controller.dart';
 import 'package:nutri_check/presentation/pages/home/ai_meal_analysis_page.dart';
 
-class AiInsightCard extends StatelessWidget {
+class AiInsightCard extends StatefulWidget {
   const AiInsightCard({super.key});
+
+  @override
+  State<AiInsightCard> createState() => _AiInsightCardState();
+}
+
+class _AiInsightCardState extends State<AiInsightCard> {
+  String? _aiInsight;
+  bool _fetched = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _fetchInsight());
+  }
+
+  Future<void> _fetchInsight() async {
+    if (_fetched) return;
+    _fetched = true;
+    try {
+      final n = Get.find<NutritionController>();
+      String userName = '';
+      try {
+        userName = Get.find<ProfileController>().userName.value;
+      } catch (_) {}
+      int streak = 0;
+      try {
+        streak = Get.find<ProfileController>().streakDays.value;
+      } catch (_) {}
+
+      final text = await GeminiInsightsService.instance.dailyInsight(
+        userName: userName,
+        consumedKcal: n.totalCalories.value.round(),
+        goalKcal: n.calorieGoal.value.round(),
+        proteinG: n.totalProteins.value,
+        carbsG: n.totalCarbs.value,
+        fatG: n.totalFats.value,
+        mealsToday: n.todayMeals.length,
+        streakDays: streak,
+        weekCalories: n.weekCalories.toList(),
+      );
+      if (!mounted) return;
+      if (text != null && text.isNotEmpty) {
+        setState(() => _aiInsight = text);
+      }
+    } catch (_) {
+      // Silent failure - the rule-based fallback continues to display.
+    }
+  }
 
   String _buildInsight(NutritionController c) {
     final now = DateTime.now();
@@ -17,12 +67,12 @@ class AiInsightCard extends StatelessWidget {
 
     if (meals.isEmpty) {
       if (hour < 10) {
-        return 'Start your day right. Snap your breakfast and AI will log it for you.';
+        return 'Start your day right. Snap your breakfast and we will log it for you.';
       }
       if (hour < 17) {
-        return 'Nothing logged yet today. Just snap a photo — AI will handle the rest.';
+        return 'Nothing logged yet today. Just snap a photo to track instantly.';
       }
-      return 'No meals tracked today. A quick photo is all the AI needs.';
+      return 'No meals tracked today. A quick photo is all it takes.';
     }
 
     MealEntry? lastMeal;
@@ -44,14 +94,14 @@ class AiInsightCard extends StatelessWidget {
         c.totalProteins.value < c.proteinGoal.value * 0.4) {
       final gap = (c.proteinGoal.value - c.totalProteins.value).clamp(0, 9999);
       final gapStr = NumberFormat.decimalPattern().format(gap.round());
-      return "You're ${gapStr}g short on protein today. AI can analyse your plate in seconds.";
+      return "You're ${gapStr}g short on protein today. Capture your plate in seconds.";
     }
 
     if (hoursSinceLast >= 3) {
       return "You're on track. Capture your next meal to keep momentum.";
     }
 
-    return 'Snap a meal photo and let AI break down the nutrition for you.';
+    return 'Snap a meal photo and get an instant nutrition breakdown.';
   }
 
   void _open() {
@@ -110,20 +160,24 @@ class AiInsightCard extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           Obx(() {
-            final text = _buildInsight(controller);
             // touch reactives so Obx rebuilds when they change
             controller.totalProteins.value;
             controller.proteinGoal.value;
             controller.todayMeals.length;
-            return Text(
-              text,
-              maxLines: 3,
-              overflow: TextOverflow.ellipsis,
-              style: textTheme.titleMedium?.copyWith(
-                color: scheme.onSurface,
-                fontWeight: FontWeight.w700,
-                height: 1.3,
-                letterSpacing: -0.2,
+            final text = _aiInsight ?? _buildInsight(controller);
+            return AnimatedSwitcher(
+              duration: const Duration(milliseconds: 250),
+              child: Text(
+                text,
+                key: ValueKey<String>(text),
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: textTheme.titleMedium?.copyWith(
+                  color: scheme.onSurface,
+                  fontWeight: FontWeight.w700,
+                  height: 1.3,
+                  letterSpacing: -0.2,
+                ),
               ),
             );
           }),

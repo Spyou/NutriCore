@@ -232,8 +232,17 @@ class AuthController extends GetxController {
           .createUserWithEmailAndPassword(email: email, password: password);
 
       if (userCredential.user != null) {
-        await userCredential.user!.updateDisplayName(displayName);
-        await userCredential.user!.reload();
+        // Pigeon cast bug — wrap so signup completes even on cast error.
+        try {
+          await userCredential.user!.updateDisplayName(displayName);
+        } catch (e) {
+          if (kDebugMode) {
+            print('updateDisplayName threw (ignored): $e');
+          }
+        }
+        try {
+          await userCredential.user!.reload();
+        } catch (_) {/* same Pigeon issue, non-fatal */}
         // Persist the user doc with onboardingComplete: false so the
         // auth-state listener routes to OnboardingPage on the next pass.
         await _createUserDocument(
@@ -470,10 +479,26 @@ class AuthController extends GetxController {
     try {
       if (_user.value != null && _userModel.value != null) {
         if (displayName != null) {
-          await _user.value!.updateDisplayName(displayName);
+          // Known firebase_auth+google_sign_in Pigeon cast bug: the
+          // call still mutates server state but throws on Dart-side
+          // decoding. Treat as non-fatal — Firestore write below is
+          // the canonical store.
+          try {
+            await _user.value!.updateDisplayName(displayName);
+          } catch (e) {
+            if (kDebugMode) {
+              print('updateDisplayName threw (ignored): $e');
+            }
+          }
         }
         if (photoURL != null) {
-          await _user.value!.updatePhotoURL(photoURL);
+          try {
+            await _user.value!.updatePhotoURL(photoURL);
+          } catch (e) {
+            if (kDebugMode) {
+              print('updatePhotoURL threw (ignored): $e');
+            }
+          }
         }
 
         final updatedUser = _userModel.value!.copyWith(

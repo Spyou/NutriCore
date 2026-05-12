@@ -86,17 +86,23 @@ class _EditProfileSheetState extends State<EditProfileSheet> {
 
       if (!mounted) return;
       Navigator.of(context).pop();
-      CustomThemeFlushbar.show(
-        title: 'Saved',
-        message: 'Profile updated',
-      );
+      // Defer to next frame — calling Flushbar.show during a Navigator-
+      // locked frame (the pop above) throws "_debugLocked" in Flutter.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        CustomThemeFlushbar.show(
+          title: 'Saved',
+          message: 'Profile updated',
+        );
+      });
     } catch (_) {
       if (!mounted) return;
       setState(() => _submitting = false);
-      CustomThemeFlushbar.show(
-        title: 'Error',
-        message: 'Failed to update profile',
-      );
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        CustomThemeFlushbar.show(
+          title: 'Error',
+          message: 'Failed to update profile',
+        );
+      });
     }
   }
 
