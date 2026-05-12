@@ -1,731 +1,457 @@
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:nutri_check/core/utils/components/custom_flushbar.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class DeveloperAndDonationSection extends StatelessWidget {
-  final String developerName = 'Krishna Vishwakarma';
-  final String developerEmail = 'krishnavishwakarma2525@gmail.com';
-  final String upiId = 'krishnavishwakarma9136@okhdfcbank';
-  final String buyMeACoffeeUrl = 'https://buymeacoffee.com/krishna069';
-  final String githubUrl = 'https://github.com/spyou';
-  final String linkedinUrl =
+  static const String _developerName = 'Krishna Vishwakarma';
+  static const String _developerRole = 'App developer · UI/UX';
+  static const String _developerEmail = 'krishnavishwakarma2525@gmail.com';
+  static const String _githubUrl = 'https://github.com/spyou';
+  static const String _linkedinUrl =
       'https://linkedin.com/in/krishna-vishwakarma-8974b332a';
+  static const String _buyMeACoffeeUrl = 'https://buymeacoffee.com/krishna069';
+  static const String _avatarUrl =
+      'https://avatars.githubusercontent.com/u/88382789?v=4';
+  static const String _appVersion = '1.0.0';
 
   const DeveloperAndDonationSection({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _buildDeveloperSection(context),
-        const SizedBox(height: 24),
+        const _ProfileHeader(),
+        const SizedBox(height: 20),
+        _ContactCard(
+          onEmail: () => _launchUrl(context, 'mailto:$_developerEmail'),
+          onCopyEmail: () => _copy(context, _developerEmail, 'Email'),
+          onGithub: () => _launchUrl(context, _githubUrl),
+          onLinkedIn: () => _launchUrl(context, _linkedinUrl),
+        ),
+        const SizedBox(height: 20),
+        _SupportCard(
+          onCoffee: () => _launchUrl(context, _buyMeACoffeeUrl),
+        ),
+        const SizedBox(height: 20),
+        const _AppMetaCard(version: _appVersion),
       ],
     );
   }
 
-  Widget _buildDeveloperSection(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [scheme.primary.withValues(alpha: 0.1), scheme.surface],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: scheme.primary.withValues(alpha: 0.2)),
-        boxShadow: [
-          BoxShadow(
-            color: scheme.shadow.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                height: 48,
-                width: 48,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      scheme.primary,
-                      scheme.primary.withValues(alpha: 0.8),
-                    ],
-                  ),
-                  image: const DecorationImage(
-                    image: CachedNetworkImageProvider(
-                      'https://avatars.githubusercontent.com/u/88382789?v=4',
-                    ),
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'About the Developer',
-                      style: textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: scheme.primary,
-                      ),
-                    ),
-                    Text(
-                      'App Developer & UI/UX Designer',
-                      style: textTheme.bodySmall?.copyWith(
-                        color: scheme.onSurface.withValues(alpha: 0.65),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          _buildInfoRow(context, Icons.person_outline, 'Name', developerName),
-          const SizedBox(height: 12),
-          _buildInfoRow(
-            context,
-            Icons.email_outlined,
-            'Email',
-            developerEmail,
-            isClickable: true,
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              _buildSocialButton(
-                context: context,
-                icon: Icons.code,
-                label: 'GitHub',
-                color: scheme.onSurface,
-                onTap: () {
-                  launchUrl(Uri.parse(githubUrl));
-                },
-              ),
-              const SizedBox(width: 12),
-              _buildSocialButton(
-                context: context,
-                icon: Icons.work_outline,
-                label: 'LinkedIn',
-                color: scheme.secondary,
-                onTap: () {
-                  launchUrl(Uri.parse(linkedinUrl));
-                },
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ignore: unused_element
-  Widget _buildDonationSection(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [scheme.tertiary.withValues(alpha: 0.1), scheme.surface],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: scheme.tertiary.withValues(alpha: 0.3)),
-        boxShadow: [
-          BoxShadow(
-            color: scheme.tertiary.withValues(alpha: 0.1),
-            blurRadius: 15,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      scheme.tertiary,
-                      scheme.tertiary.withValues(alpha: 0.8),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(
-                  Icons.favorite,
-                  color: Colors.white,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Support Development',
-                      style: textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: scheme.tertiary,
-                      ),
-                    ),
-                    Text(
-                      'Help keep NutriCheck free and improve',
-                      style: textTheme.bodySmall?.copyWith(
-                        color: scheme.onSurface.withValues(alpha: 0.65),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'If you love using NutriCheck and want to support its development, you can buy me a coffee! Your support helps me dedicate more time to adding new features and keeping the app free for everyone.',
-            style: textTheme.bodyMedium?.copyWith(
-              color: scheme.onSurface,
-              height: 1.4,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: scheme.secondary.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
-              border:
-                  Border.all(color: scheme.secondary.withValues(alpha: 0.3)),
-            ),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    Icon(
-                      Icons.account_balance_wallet,
-                      color: scheme.secondary,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'UPI ID',
-                      style: textTheme.bodyLarge?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: scheme.secondary,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: SelectableText(
-                        upiId,
-                        style: textTheme.bodyLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: scheme.onSurface,
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: () => _copyToClipboard(context, upiId),
-                      icon: Icon(Icons.copy, color: scheme.secondary),
-                      tooltip: 'Copy UPI ID',
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: _buildDonationButton(
-                  context,
-                  icon: Icons.payment,
-                  label: 'Pay via UPI',
-                  color: scheme.tertiary,
-                  onTap: () => _launchUPI(context),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildDonationButton(
-                  context,
-                  icon: Icons.coffee,
-                  label: 'Buy Coffee',
-                  color: scheme.error,
-                  onTap: () {
-                    _launchUrl(buyMeACoffeeUrl, context: context);
-                  },
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'Quick Amounts:',
-            style: textTheme.labelMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: scheme.onSurface.withValues(alpha: 0.65),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              _buildQuickAmountButton(context, '₹10', '10'),
-              const SizedBox(width: 8),
-              _buildQuickAmountButton(context, '₹25', '25'),
-              const SizedBox(width: 8),
-              _buildQuickAmountButton(context, '₹100', '100'),
-              const SizedBox(width: 8),
-              _buildQuickAmountButton(context, '₹500', '500'),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: scheme.error.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.star, color: scheme.error, size: 16),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Every contribution helps improve NutriCheck for everyone!',
-                    style: textTheme.bodySmall?.copyWith(
-                      color: scheme.onSurface.withValues(alpha: 0.65),
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInfoRow(
-    BuildContext context,
-    IconData icon,
-    String label,
-    String value, {
-    bool isClickable = false,
-  }) {
-    final scheme = Theme.of(context).colorScheme;
-    return Row(
-      children: [
-        Icon(icon, color: scheme.onSurface.withValues(alpha: 0.65), size: 20),
-        const SizedBox(width: 12),
-        Text(
-          '$label: ',
-          style: TextStyle(
-            color: scheme.onSurface.withValues(alpha: 0.65),
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        Expanded(
-          child: GestureDetector(
-            onTap: isClickable ? () => _launchUrl('mailto:$value') : null,
-            child: Text(
-              value,
-              style: TextStyle(
-                color: isClickable ? scheme.primary : scheme.onSurface,
-                fontWeight: FontWeight.w600,
-                decoration: isClickable ? TextDecoration.underline : null,
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSocialButton({
-    required BuildContext context,
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: color.withValues(alpha: 0.3)),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, color: color, size: 18),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: TextStyle(
-                  color: color,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 12,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDonationButton(
-    BuildContext context, {
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [color, color.withValues(alpha: 0.8)],
-          ),
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: color.withValues(alpha: 0.3),
-              blurRadius: 8,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: Colors.white, size: 20),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildQuickAmountButton(
-    BuildContext context,
-    String label,
-    String amount,
-  ) {
-    final scheme = Theme.of(context).colorScheme;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () => _launchUPIWithAmount(context, amount),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          decoration: BoxDecoration(
-            color: scheme.tertiary.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(8),
-            border:
-                Border.all(color: scheme.tertiary.withValues(alpha: 0.3)),
-          ),
-          child: Text(
-            label,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: scheme.tertiary,
-              fontWeight: FontWeight.w600,
-              fontSize: 12,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _launchUPI(BuildContext context) async {
-    final upiUrl = _buildUPIUrl();
-    await _launchPaymentUrl(context, upiUrl, 'UPI payment');
-  }
-
-  Future<void> _launchUPIWithAmount(BuildContext context, String amount) async {
-    final upiUrl = _buildUPIUrl(
-      amount: amount,
-      note: 'Coffee for NutriCheck Developer - Thank you!',
-    );
-    await _launchPaymentUrl(context, upiUrl, 'UPI payment');
-    _showThankYouMessage(amount);
-  }
-
-  String _buildUPIUrl({String? amount, String? note}) {
-    final params = <String, String>{
-      'pa': upiId,
-      'pn': developerName,
-      'cu': 'INR',
-      'mode': '02',
-    };
-
-    if (amount != null && amount.isNotEmpty) {
-      params['am'] = amount;
-    }
-
-    if (note != null && note.isNotEmpty) {
-      params['tn'] = Uri.encodeComponent(note);
-    }
-
-    final query = params.entries.map((e) => '${e.key}=${e.value}').join('&');
-
-    return 'upi://pay?$query';
-  }
-
-  Future<void> _launchPaymentUrl(
-    BuildContext context,
-    String url,
-    String paymentType,
-  ) async {
+  static Future<void> _launchUrl(BuildContext context, String url) async {
     try {
       final uri = Uri.parse(url);
-      if (kDebugMode) {
-        print('Attempting to launch: $url');
-      }
-
-      final canLaunch = await canLaunchUrl(uri);
-
-      if (canLaunch) {
-        final launched = await launchUrl(
-          uri,
-          mode: LaunchMode.externalApplication,
-        );
-
-        if (launched) {
-          CustomThemeFlushbar.show(
-            title: 'Opening Payment App',
-            message: 'Redirecting to your payment app...',
-          );
-        } else {
-          if (!context.mounted) return;
-          await _tryAlternativePaymentMethods(context, paymentType);
-        }
-      } else {
+      final ok = await canLaunchUrl(uri);
+      if (!ok) {
         if (!context.mounted) return;
-        await _tryAlternativePaymentMethods(context, paymentType);
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('Payment launch error: $e');
-      }
-      if (!context.mounted) return;
-      await _tryAlternativePaymentMethods(context, paymentType);
-    }
-  }
-
-  Future<void> _tryAlternativePaymentMethods(
-    BuildContext context,
-    String paymentType,
-  ) async {
-    final alternativeUrls = [
-      'tez://upi/pay?pa=$upiId&pn=${Uri.encodeComponent(developerName)}&cu=INR',
-      'phonepe://pay?pa=$upiId&pn=${Uri.encodeComponent(developerName)}&cu=INR',
-      'paytmmp://pay?pa=$upiId&pn=${Uri.encodeComponent(developerName)}&cu=INR',
-    ];
-
-    for (final url in alternativeUrls) {
-      try {
-        final uri = Uri.parse(url);
-        if (await canLaunchUrl(uri)) {
-          await launchUrl(uri, mode: LaunchMode.externalApplication);
-          CustomThemeFlushbar.show(
-            title: 'Opening Payment App',
-            message: 'Redirecting to your payment app...',
-          );
-          return;
-        }
-      } catch (e) {
-        if (kDebugMode) {
-          print('Failed alternative: $url - $e');
-        }
-      }
-    }
-
-    if (!context.mounted) return;
-    _showPaymentFailureDialog(context, paymentType);
-  }
-
-  void _showPaymentFailureDialog(BuildContext context, String paymentType) {
-    final scheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            Icon(Icons.payment, color: scheme.error),
-            const SizedBox(width: 8),
-            const Flexible(
-              child: Text(
-                'Payment App Not Found',
-                style: TextStyle(fontSize: 18),
-              ),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'To make UPI payments, please install one of these apps:',
-              style: TextStyle(fontSize: 16),
-            ),
-            const SizedBox(height: 16),
-            _buildAppSuggestion(
-                context, 'Google Pay', Icons.account_balance_wallet),
-            _buildAppSuggestion(context, 'PhonePe', Icons.phone_android),
-            _buildAppSuggestion(context, 'Paytm', Icons.payment),
-            _buildAppSuggestion(context, 'Any UPI App', Icons.apps),
-            const SizedBox(height: 16),
-            Text(
-              'Or copy the UPI ID below and use it in any payment app:',
-              style: textTheme.bodyMedium?.copyWith(
-                color: scheme.onSurface.withValues(alpha: 0.65),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              _copyToClipboard(context, upiId);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: scheme.tertiary,
-              foregroundColor: scheme.onTertiary,
-            ),
-            child: const Text('Copy UPI ID'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAppSuggestion(BuildContext context, String name, IconData icon) {
-    final scheme = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          Icon(icon,
-              color: scheme.onSurface.withValues(alpha: 0.65), size: 20),
-          const SizedBox(width: 12),
-          Text(name, style: const TextStyle(fontSize: 14)),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _launchUrl(
-    String url, {
-    BuildContext? context,
-    String? errorMessage,
-  }) async {
-    try {
-      final uri = Uri.parse(url);
-      if (kDebugMode) {
-        print('Attempting to launch URL: $url');
-      }
-
-      final canLaunch = await canLaunchUrl(uri);
-
-      if (canLaunch) {
-        final launched = await launchUrl(
-          uri,
-          mode: LaunchMode.externalApplication,
-        );
-
-        if (!launched && context != null) {
-          CustomThemeFlushbar.show(
-            title: 'Error',
-            message: 'Failed to open link',
-          );
-        }
-      } else {
-        if (context != null) {
-          CustomThemeFlushbar.show(
-            title: 'Error',
-            message: errorMessage ?? 'No app available to open this link',
-          );
-        }
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('URL launch error: $e');
-      }
-      if (context != null) {
         CustomThemeFlushbar.show(
-          title: 'Error',
-          message: errorMessage ?? 'Could not open link: ${e.toString()}',
+          title: 'Cannot open',
+          message: 'No app is available to handle this link.',
         );
+        return;
       }
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      if (!context.mounted) return;
+      CustomThemeFlushbar.show(
+        title: 'Cannot open',
+        message: 'Failed to launch link.',
+      );
     }
   }
 
-  void _copyToClipboard(BuildContext context, String text) {
+  static void _copy(BuildContext context, String text, String label) {
     Clipboard.setData(ClipboardData(text: text));
     CustomThemeFlushbar.show(
       title: 'Copied',
-      message: 'UPI ID copied to clipboard',
+      message: '$label copied to clipboard',
     );
   }
+}
 
-  void _showThankYouMessage(String amount) {
-    Future.delayed(const Duration(seconds: 1), () {
-      CustomThemeFlushbar.show(
-        title: 'Thank You!',
-        message: 'Your ₹$amount contribution means the world to me!',
-      );
-    });
+// ─── header ───────────────────────────────────────────────────────────────
+
+class _ProfileHeader extends StatelessWidget {
+  const _ProfileHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    return Column(
+      children: [
+        Container(
+          width: 84,
+          height: 84,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: scheme.outlineVariant.withValues(alpha: 0.6),
+              width: 1,
+            ),
+          ),
+          child: ClipOval(
+            child: CachedNetworkImage(
+              imageUrl: DeveloperAndDonationSection._avatarUrl,
+              fit: BoxFit.cover,
+              placeholder: (_, __) => Container(
+                color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+              ),
+              errorWidget: (_, __, ___) => Icon(
+                Icons.person_rounded,
+                size: 40,
+                color: scheme.onSurface.withValues(alpha: 0.4),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 14),
+        Text(
+          DeveloperAndDonationSection._developerName,
+          style: textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.w800,
+            color: scheme.onSurface,
+            letterSpacing: -0.4,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          DeveloperAndDonationSection._developerRole,
+          style: textTheme.bodyMedium?.copyWith(
+            color: scheme.onSurface.withValues(alpha: 0.65),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ─── contact card ─────────────────────────────────────────────────────────
+
+class _ContactCard extends StatelessWidget {
+  final VoidCallback onEmail;
+  final VoidCallback onCopyEmail;
+  final VoidCallback onGithub;
+  final VoidCallback onLinkedIn;
+
+  const _ContactCard({
+    required this.onEmail,
+    required this.onCopyEmail,
+    required this.onGithub,
+    required this.onLinkedIn,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    return Container(
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        border: Border.all(color: scheme.outlineVariant),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        children: [
+          _Row(
+            icon: Icons.mail_outline_rounded,
+            label: 'Email',
+            value: DeveloperAndDonationSection._developerEmail,
+            onTap: onEmail,
+            trailing: IconButton(
+              tooltip: 'Copy',
+              onPressed: onCopyEmail,
+              icon: Icon(
+                Icons.content_copy_rounded,
+                size: 18,
+                color: scheme.onSurface.withValues(alpha: 0.55),
+              ),
+            ),
+          ),
+          Divider(
+            height: 1,
+            color: scheme.outlineVariant.withValues(alpha: 0.5),
+          ),
+          _Row(
+            icon: Icons.code_rounded,
+            label: 'GitHub',
+            value: 'github.com/spyou',
+            onTap: onGithub,
+            trailing: Icon(
+              Icons.open_in_new_rounded,
+              size: 18,
+              color: scheme.onSurface.withValues(alpha: 0.55),
+            ),
+          ),
+          Divider(
+            height: 1,
+            color: scheme.outlineVariant.withValues(alpha: 0.5),
+          ),
+          _Row(
+            icon: Icons.work_outline_rounded,
+            label: 'LinkedIn',
+            value: 'Krishna Vishwakarma',
+            onTap: onLinkedIn,
+            trailing: Icon(
+              Icons.open_in_new_rounded,
+              size: 18,
+              color: scheme.onSurface.withValues(alpha: 0.55),
+            ),
+          ),
+        ].map((w) {
+          // No-op map; preserved so the const Divider stays inline.
+          return w;
+        }).toList(),
+      ),
+    ).withSectionHeader(context, 'Contact', textTheme, scheme);
+  }
+}
+
+class _Row extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final VoidCallback onTap;
+  final Widget? trailing;
+
+  const _Row({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.onTap,
+    this.trailing,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 8, 14),
+          child: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: scheme.primary.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: scheme.primary, size: 18),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: textTheme.labelSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: scheme.onSurface.withValues(alpha: 0.6),
+                        letterSpacing: 0.4,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      value,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: scheme.onSurface,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (trailing != null) trailing!,
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── support card ────────────────────────────────────────────────────────
+
+class _SupportCard extends StatelessWidget {
+  final VoidCallback onCoffee;
+
+  const _SupportCard({required this.onCoffee});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    return Container(
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        border: Border.all(color: scheme.outlineVariant),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: scheme.tertiary.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.favorite_outline_rounded,
+                  color: scheme.tertiary,
+                  size: 18,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'Support development',
+                style: textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: scheme.onSurface,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'NutriCore is built and maintained by one person. '
+            'If it helps you stay on track, a small tip keeps it free '
+            'and free of ads.',
+            style: textTheme.bodySmall?.copyWith(
+              color: scheme.onSurface.withValues(alpha: 0.7),
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.tonalIcon(
+              onPressed: onCoffee,
+              icon: const Icon(Icons.local_cafe_rounded, size: 18),
+              label: const Text('Buy me a coffee'),
+            ),
+          ),
+        ],
+      ),
+    ).withSectionHeader(context, 'Support', textTheme, scheme);
+  }
+}
+
+// ─── app meta card ───────────────────────────────────────────────────────
+
+class _AppMetaCard extends StatelessWidget {
+  final String version;
+  const _AppMetaCard({required this.version});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    return Container(
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _MetaRow(label: 'App', value: 'NutriCore'),
+          const SizedBox(height: 6),
+          _MetaRow(label: 'Version', value: version),
+          const SizedBox(height: 6),
+          const _MetaRow(label: 'Built with', value: 'Flutter'),
+          const SizedBox(height: 12),
+          Text(
+            '© ${DateTime.now().year} Krishna Vishwakarma. All rights reserved.',
+            style: textTheme.labelSmall?.copyWith(
+              color: scheme.onSurface.withValues(alpha: 0.5),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MetaRow extends StatelessWidget {
+  final String label;
+  final String value;
+  const _MetaRow({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    return Row(
+      children: [
+        SizedBox(
+          width: 90,
+          child: Text(
+            label,
+            style: textTheme.bodySmall?.copyWith(
+              color: scheme.onSurface.withValues(alpha: 0.6),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: textTheme.bodyMedium?.copyWith(
+              color: scheme.onSurface,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ─── small extension to attach a section header above a card ──────────────
+
+extension _WithSectionHeader on Widget {
+  Widget withSectionHeader(
+    BuildContext context,
+    String title,
+    TextTheme textTheme,
+    ColorScheme scheme,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(4, 0, 0, 8),
+          child: Text(
+            title,
+            style: textTheme.labelLarge?.copyWith(
+              fontWeight: FontWeight.w800,
+              color: scheme.onSurface.withValues(alpha: 0.75),
+              letterSpacing: 0.4,
+            ),
+          ),
+        ),
+        this,
+      ],
+    );
   }
 }
