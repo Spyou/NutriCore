@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 
-import 'package:nutri_check/core/services/gemini_insights_service.dart';
+import 'package:nutri_check/core/services/openrouter_insights_service.dart';
 import 'package:nutri_check/domain/entities/meal_entry.dart';
 import 'package:nutri_check/presentation/controllers/nutrition_controller.dart';
 import 'package:nutri_check/presentation/controllers/profile_controller.dart';
@@ -40,7 +40,7 @@ class _AiInsightCardState extends State<AiInsightCard> {
         streak = Get.find<ProfileController>().streakDays.value;
       } catch (_) {}
 
-      final text = await GeminiInsightsService.instance.dailyInsight(
+      final text = await OpenRouterInsightsService.instance.dailyInsight(
         userName: userName,
         consumedKcal: n.totalCalories.value.round(),
         goalKcal: n.calorieGoal.value.round(),

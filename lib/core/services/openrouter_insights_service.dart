@@ -1,29 +1,68 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:get_storage/get_storage.dart';
-import 'package:google_generative_ai/google_generative_ai.dart';
+import 'package:http/http.dart' as http;
 
 import '../config/env_config.dart';
 
-/// Wraps Gemini generation for short, personalized nutrition insights.
-/// Results are cached in [GetStorage] to keep the home dashboard cheap and
-/// instant on repeat visits.
-class GeminiInsightsService {
-  static final GeminiInsightsService instance = GeminiInsightsService._();
-  GeminiInsightsService._();
+/// Wraps OpenRouter text generation for short, personalized nutrition
+/// insights. Uses the free `openai/gpt-oss-20b` model. Results are cached
+/// in [GetStorage] to keep the home dashboard cheap and instant on repeat
+/// visits.
+class OpenRouterInsightsService {
+  static final OpenRouterInsightsService instance = OpenRouterInsightsService._();
+  OpenRouterInsightsService._();
 
-  static const _model = 'gemini-2.0-flash';
+  static const _endpoint = 'https://openrouter.ai/api/v1/chat/completions';
+  static const _model = 'openai/gpt-oss-20b:free';
   static const _cacheKey = 'insights.daily';
   static const _cacheTtl = Duration(hours: 4);
 
   final _box = GetStorage();
-  GenerativeModel? _client;
 
-  bool get isConfigured => EnvConfig.geminiApiKey.isNotEmpty;
+  bool get isConfigured => EnvConfig.hasOpenRouterKey;
 
-  GenerativeModel? get _ensureClient {
+  Future<String?> _chat(String prompt) async {
     if (!isConfigured) return null;
-    _client ??= GenerativeModel(model: _model, apiKey: EnvConfig.geminiApiKey);
-    return _client;
+    try {
+      final res = await http
+          .post(
+            Uri.parse(_endpoint),
+            headers: {
+              'Authorization': 'Bearer ${EnvConfig.openRouterApiKey}',
+              'Content-Type': 'application/json',
+              'HTTP-Referer': 'https://nutricore.app',
+              'X-Title': 'NutriCore',
+            },
+            body: jsonEncode({
+              'model': _model,
+              'messages': [
+                {'role': 'user', 'content': prompt},
+              ],
+              'max_tokens': 200,
+              'temperature': 0.6,
+            }),
+          )
+          .timeout(const Duration(seconds: 20));
+
+      if (res.statusCode != 200) {
+        if (kDebugMode) {
+          print('OpenRouter error ${res.statusCode}: ${res.body}');
+        }
+        return null;
+      }
+      final body = jsonDecode(res.body) as Map<String, dynamic>;
+      final choices = body['choices'] as List?;
+      if (choices == null || choices.isEmpty) return null;
+      final msg = choices.first['message'] as Map<String, dynamic>?;
+      final text = (msg?['content'] as String?)?.trim();
+      if (text == null || text.isEmpty) return null;
+      return text;
+    } catch (e) {
+      if (kDebugMode) print('OpenRouter chat error: $e');
+      return null;
+    }
   }
 
   /// One-line personalized insight for the home dashboard. Cached for
@@ -40,8 +79,7 @@ class GeminiInsightsService {
     required List<double> weekCalories,
     bool forceRefresh = false,
   }) async {
-    final client = _ensureClient;
-    if (client == null) return null;
+    if (!isConfigured) return null;
 
     if (!forceRefresh) {
       final cached = _readCache();
@@ -68,16 +106,10 @@ TODAY:
 Return ONLY the insight sentence. No quotes, no labels.
 ''';
 
-    try {
-      final response = await client.generateContent([Content.text(prompt)]);
-      final text = response.text?.trim();
-      if (text == null || text.isEmpty) return null;
-      _writeCache(text);
-      return text;
-    } catch (e) {
-      if (kDebugMode) print('Gemini daily insight error: $e');
-      return null;
-    }
+    final text = await _chat(prompt);
+    if (text == null) return null;
+    _writeCache(text);
+    return text;
   }
 
   /// 3-bullet weekly summary for the Profile / dedicated Insights view.
@@ -91,8 +123,7 @@ Return ONLY the insight sentence. No quotes, no labels.
     required double weightChangeKg,
     bool forceRefresh = false,
   }) async {
-    final client = _ensureClient;
-    if (client == null) return null;
+    if (!isConfigured) return null;
 
     final cacheKey = 'insights.weekly.${_todayKey()}';
     if (!forceRefresh) {
@@ -116,18 +147,12 @@ DATA:
 
 Return ONLY the 3 bullets.
 ''';
+    final text = await _chat(prompt);
+    if (text == null) return null;
     try {
-      final response = await client.generateContent([Content.text(prompt)]);
-      final text = response.text?.trim();
-      if (text == null || text.isEmpty) return null;
-      try {
-        _box.write(cacheKey, text);
-      } catch (_) {}
-      return text;
-    } catch (e) {
-      if (kDebugMode) print('Gemini weekly summary error: $e');
-      return null;
-    }
+      _box.write(cacheKey, text);
+    } catch (_) {}
+    return text;
   }
 
   String? _readCache() {

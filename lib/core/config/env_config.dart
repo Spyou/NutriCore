@@ -1,13 +1,18 @@
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class EnvConfig {
-  static String get geminiApiKey {
-    final fromDotenv = dotenv.maybeGet('GEMINI_API_KEY') ?? '';
+  /// OpenRouter API key. Used for all AI generation (insights, weekly
+  /// summary, meal photo analysis). Get one at https://openrouter.ai.
+  static String get openRouterApiKey {
+    final fromDotenv = dotenv.maybeGet('OPENROUTER_API_KEY') ?? '';
     if (fromDotenv.isNotEmpty) return fromDotenv;
-    return const String.fromEnvironment('GEMINI_API_KEY', defaultValue: '');
+    return const String.fromEnvironment(
+      'OPENROUTER_API_KEY',
+      defaultValue: '',
+    );
   }
 
-  static bool get hasGeminiKey => geminiApiKey.isNotEmpty;
+  static bool get hasOpenRouterKey => openRouterApiKey.isNotEmpty;
 
   /// Cloudinary cloud name (from the Cloudinary dashboard, e.g. `dxyz123`).
   static String get cloudinaryCloudName =>

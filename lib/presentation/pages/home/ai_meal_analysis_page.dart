@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:nutri_check/core/config/env_config.dart';
 import 'package:get/get.dart';
-import 'package:google_generative_ai/google_generative_ai.dart';
+import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:nutri_check/core/utils/components/custom_flushbar.dart';
 
@@ -29,20 +29,16 @@ class _AIMealAnalysisPageState extends State<AIMealAnalysisPage>
   late Animation<double> _scaleAnimation;
   late Animation<double> _fadeAnimation;
 
-  static String get _geminiApiKey => EnvConfig.geminiApiKey;
-  GenerativeModel? _model;
-  bool get _apiKeyMissing => _geminiApiKey.isEmpty;
+  static String get _apiKey => EnvConfig.openRouterApiKey;
+  static const String _visionModel =
+      'meta-llama/llama-3.2-11b-vision-instruct:free';
+  static const String _endpoint =
+      'https://openrouter.ai/api/v1/chat/completions';
+  bool get _apiKeyMissing => _apiKey.isEmpty;
 
   @override
   void initState() {
     super.initState();
-    if (!_apiKeyMissing) {
-      _model = GenerativeModel(
-        model: 'gemini-2.0-flash',
-        apiKey: _geminiApiKey,
-      );
-    }
-
     // Initialize animations
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 800),
@@ -813,16 +809,48 @@ Please provide realistic estimates based on typical serving sizes.
 All nutritional values should be numbers (integers for calories, decimals for others).
 ''';
 
-      final content = [
-        Content.multi([TextPart(prompt), DataPart('image/jpeg', imageBytes)]),
-      ];
-
-      final model = _model;
-      if (model == null) {
+      if (_apiKeyMissing) {
         throw Exception('AI features are not configured.');
       }
-      final response = await model.generateContent(content);
-      final responseText = response.text;
+      final dataUrl = 'data:image/jpeg;base64,${base64Encode(imageBytes)}';
+      final res = await http
+          .post(
+            Uri.parse(_endpoint),
+            headers: {
+              'Authorization': 'Bearer $_apiKey',
+              'Content-Type': 'application/json',
+              'HTTP-Referer': 'https://nutricore.app',
+              'X-Title': 'NutriCore',
+            },
+            body: jsonEncode({
+              'model': _visionModel,
+              'messages': [
+                {
+                  'role': 'user',
+                  'content': [
+                    {'type': 'text', 'text': prompt},
+                    {
+                      'type': 'image_url',
+                      'image_url': {'url': dataUrl},
+                    },
+                  ],
+                },
+              ],
+              'max_tokens': 600,
+              'temperature': 0.2,
+            }),
+          )
+          .timeout(const Duration(seconds: 45));
+
+      if (res.statusCode != 200) {
+        throw Exception('OpenRouter ${res.statusCode}: ${res.body}');
+      }
+      final body = jsonDecode(res.body) as Map<String, dynamic>;
+      final choices = body['choices'] as List?;
+      final msg = (choices != null && choices.isNotEmpty)
+          ? choices.first['message'] as Map<String, dynamic>?
+          : null;
+      final responseText = msg?['content'] as String?;
 
       if (responseText != null) {
         String jsonString = responseText.trim();
@@ -1009,7 +1037,7 @@ All nutritional values should be numbers (integers for calories, decimals for ot
               ),
               const SizedBox(height: 12),
               Text(
-                'A Gemini API key is required to analyse meals from a photo. Add GEMINI_API_KEY to your build configuration to enable this feature.',
+                'An OpenRouter API key is required to analyse meals from a photo. Add OPENROUTER_API_KEY to your .env to enable this feature.',
                 textAlign: TextAlign.center,
                 style: text.bodyMedium?.copyWith(
                   color: scheme.onSurface.withValues(alpha: 0.65),

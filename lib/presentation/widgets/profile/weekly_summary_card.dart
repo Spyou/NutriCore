@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-import '../../../core/services/gemini_insights_service.dart';
+import '../../../core/services/openrouter_insights_service.dart';
 import '../../controllers/nutrition_controller.dart';
 import '../../controllers/profile_controller.dart';
 
@@ -69,7 +69,7 @@ class _WeeklySummaryCardState extends State<WeeklySummaryCard>
           ? wh.last - wh[wh.length - 7]
           : 0.0;
 
-      final text = await GeminiInsightsService.instance.weeklySummary(
+      final text = await OpenRouterInsightsService.instance.weeklySummary(
         weekCalories: week,
         avgProtein: avgP,
         avgCarbs: avgC,
