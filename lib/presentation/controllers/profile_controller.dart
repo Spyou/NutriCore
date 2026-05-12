@@ -536,8 +536,15 @@ class ProfileController extends GetxController {
         print('ProfileController: Calculating stats...');
       }
 
-      final currentMeals = nutritionController.currentMeals;
-      totalMealsLogged.value = currentMeals.length;
+      // Bump (never decrease) the lifetime meal count using today's live
+      // count. The exact lifetime value comes from `_loadNutritionStats`
+      // (Firestore monthly intake aggregate); this ensures the count
+      // ratchets up immediately when a meal is added so reactive
+      // workers (e.g. achievement evaluation) can fire on the change.
+      final todayCount = nutritionController.todayMeals.length;
+      if (todayCount > totalMealsLogged.value) {
+        totalMealsLogged.value = todayCount;
+      }
       totalCaloriesConsumed.value = nutritionController.totalCalories.value;
 
       await _calculateStreakDays();
