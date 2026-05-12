@@ -30,8 +30,7 @@ class _AIMealAnalysisPageState extends State<AIMealAnalysisPage>
   late Animation<double> _fadeAnimation;
 
   static String get _apiKey => EnvConfig.openRouterApiKey;
-  static const String _visionModel =
-      'meta-llama/llama-3.2-11b-vision-instruct:free';
+  static const String _visionModel = 'google/gemma-4-31b-it:free';
   static const String _endpoint =
       'https://openrouter.ai/api/v1/chat/completions';
   bool get _apiKeyMissing => _apiKey.isEmpty;
