@@ -14,6 +14,17 @@ class EnvConfig {
 
   static bool get hasOpenRouterKey => openRouterApiKey.isNotEmpty;
 
+  /// Groq API key. Used for vision (meal photo analysis) since Groq's
+  /// free tier exposes Llama 4 Scout with image support. Get one at
+  /// https://console.groq.com/keys.
+  static String get groqApiKey {
+    final fromDotenv = dotenv.maybeGet('GROQ_API_KEY') ?? '';
+    if (fromDotenv.isNotEmpty) return fromDotenv;
+    return const String.fromEnvironment('GROQ_API_KEY', defaultValue: '');
+  }
+
+  static bool get hasGroqKey => groqApiKey.isNotEmpty;
+
   /// Cloudinary cloud name (from the Cloudinary dashboard, e.g. `dxyz123`).
   static String get cloudinaryCloudName =>
       dotenv.maybeGet('CLOUDINARY_CLOUD_NAME') ?? '';

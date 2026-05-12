@@ -29,10 +29,11 @@ class _AIMealAnalysisPageState extends State<AIMealAnalysisPage>
   late Animation<double> _scaleAnimation;
   late Animation<double> _fadeAnimation;
 
-  static String get _apiKey => EnvConfig.openRouterApiKey;
-  static const String _visionModel = 'google/gemma-4-31b-it:free';
+  static String get _apiKey => EnvConfig.groqApiKey;
+  static const String _visionModel =
+      'meta-llama/llama-4-scout-17b-16e-instruct';
   static const String _endpoint =
-      'https://openrouter.ai/api/v1/chat/completions';
+      'https://api.groq.com/openai/v1/chat/completions';
   bool get _apiKeyMissing => _apiKey.isEmpty;
 
   @override
@@ -818,8 +819,6 @@ All nutritional values should be numbers (integers for calories, decimals for ot
             headers: {
               'Authorization': 'Bearer $_apiKey',
               'Content-Type': 'application/json',
-              'HTTP-Referer': 'https://nutricore.app',
-              'X-Title': 'NutriCore',
             },
             body: jsonEncode({
               'model': _visionModel,
@@ -842,7 +841,7 @@ All nutritional values should be numbers (integers for calories, decimals for ot
           .timeout(const Duration(seconds: 45));
 
       if (res.statusCode != 200) {
-        throw Exception('OpenRouter ${res.statusCode}: ${res.body}');
+        throw Exception('Groq ${res.statusCode}: ${res.body}');
       }
       final body = jsonDecode(res.body) as Map<String, dynamic>;
       final choices = body['choices'] as List?;
@@ -1036,7 +1035,7 @@ All nutritional values should be numbers (integers for calories, decimals for ot
               ),
               const SizedBox(height: 12),
               Text(
-                'An OpenRouter API key is required to analyse meals from a photo. Add OPENROUTER_API_KEY to your .env to enable this feature.',
+                'A Groq API key is required to analyse meals from a photo. Add GROQ_API_KEY to your .env to enable this feature.',
                 textAlign: TextAlign.center,
                 style: text.bodyMedium?.copyWith(
                   color: scheme.onSurface.withValues(alpha: 0.65),
