@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -30,6 +31,26 @@ class HomeHeader extends StatelessWidget {
     final trimmed = name.trim();
     if (trimmed.isEmpty) return '';
     return trimmed.characters.first.toUpperCase();
+  }
+
+  /// Prefer the ProfileController-backed name (reactive, sourced from
+  /// Firestore) over HomeController's getter, which only reads from
+  /// FirebaseAuth's cached `displayName` and can be stale right after
+  /// signup. Falls back through ProfileController.userEmail → HomeController.
+  String _resolveName(HomeController home, ProfileController? profile) {
+    final fromProfile = profile?.userName.value.trim() ?? '';
+    if (fromProfile.isNotEmpty &&
+        fromProfile != 'Anonymous User' &&
+        fromProfile != 'User') {
+      return fromProfile;
+    }
+    final fromHome = home.userName.trim();
+    if (fromHome.isNotEmpty &&
+        fromHome != 'Anonymous User' &&
+        fromHome != 'User') {
+      return fromHome;
+    }
+    return '';
   }
 
   String _formatRelative(DateTime t) {
@@ -204,7 +225,13 @@ class HomeHeader extends StatelessWidget {
                         ],
                       ),
                       Obx(() {
-                        final initial = _initial(controller.userName);
+                        final profile = Get.isRegistered<ProfileController>()
+                            ? Get.find<ProfileController>()
+                            : null;
+                        final photoUrl =
+                            profile?.profileImageUrl.value.trim() ?? '';
+                        final name = _resolveName(controller, profile);
+                        final initial = _initial(name);
                         return Container(
                           width: 40,
                           height: 40,
@@ -217,26 +244,63 @@ class HomeHeader extends StatelessWidget {
                             ),
                           ),
                           alignment: Alignment.center,
-                          child: initial.isEmpty
-                              ? const Icon(
-                                  Icons.person_outline_rounded,
-                                  color: Colors.white,
-                                  size: 22,
-                                )
-                              : Text(
-                                  initial,
-                                  style: textTheme.titleSmall?.copyWith(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w700,
+                          child: photoUrl.isNotEmpty
+                              ? ClipOval(
+                                  child: CachedNetworkImage(
+                                    imageUrl: photoUrl,
+                                    fit: BoxFit.cover,
+                                    width: 40,
+                                    height: 40,
+                                    placeholder: (_, __) => Center(
+                                      child: Text(
+                                        initial,
+                                        style: textTheme.titleSmall?.copyWith(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                    errorWidget: (_, __, ___) => Center(
+                                      child: initial.isEmpty
+                                          ? const Icon(
+                                              Icons.person_outline_rounded,
+                                              color: Colors.white,
+                                              size: 22,
+                                            )
+                                          : Text(
+                                              initial,
+                                              style: textTheme.titleSmall
+                                                  ?.copyWith(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                            ),
+                                    ),
                                   ),
-                                ),
+                                )
+                              : (initial.isEmpty
+                                  ? const Icon(
+                                      Icons.person_outline_rounded,
+                                      color: Colors.white,
+                                      size: 22,
+                                    )
+                                  : Text(
+                                      initial,
+                                      style: textTheme.titleSmall?.copyWith(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    )),
                         );
                       }),
                     ],
                   ),
                   const SizedBox(height: 12),
                   Obx(() {
-                    final name = controller.userName.trim();
+                    final profile = Get.isRegistered<ProfileController>()
+                        ? Get.find<ProfileController>()
+                        : null;
+                    final name = _resolveName(controller, profile).trim();
                     final display = name.isEmpty ? 'Hey there.' : '$name.';
                     return Text(
                       display,

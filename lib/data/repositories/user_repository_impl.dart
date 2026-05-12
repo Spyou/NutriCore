@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:firebase_storage/firebase_storage.dart';
+import '../../core/services/cloudinary_service.dart';
 
 import '../../core/config/app_config.dart';
 import '../../core/errors/exceptions.dart';
@@ -57,11 +57,27 @@ class UserRepositoryImpl implements UserRepository {
   @override
   Future<Result<void>> updateUserProfile(UserProfile profile) async {
     try {
-      final model = UserMapper.toModel(profile);
+      // Write ONLY profile-relevant fields. A full UserModel.toMap()
+      // would include `onboardingComplete: false` (the default for a
+      // model freshly built from UserProfile, which doesn't carry that
+      // flag) and silently overwrite the true value set elsewhere.
+      final partial = <String, dynamic>{
+        if (profile.displayName != null) 'displayName': profile.displayName,
+        if (profile.photoURL != null) 'photoURL': profile.photoURL,
+        if (profile.profileImageUrl != null)
+          'profileImageUrl': profile.profileImageUrl,
+        if (profile.bio != null) 'bio': profile.bio,
+        'currentWeight': profile.currentWeight,
+        'targetWeight': profile.targetWeight,
+        'height': profile.height,
+        'age': profile.age,
+        'gender': profile.gender.name,
+        'updatedAt': DateTime.now().toIso8601String(),
+      };
       await _firebaseDataSource.setDocument(
         AppConfig.usersCollection,
         profile.id,
-        model.toMap(),
+        partial,
       );
       return const Result.success(null);
     } on ServerException catch (e) {
@@ -86,13 +102,16 @@ class UserRepositoryImpl implements UserRepository {
   @override
   Future<Result<void>> updateProfileImage(String uid, String localPath) async {
     try {
-      final ref = FirebaseStorage.instance.ref().child(
-        'profile_images/$uid/${DateTime.now().millisecondsSinceEpoch}.jpg',
+      final downloadUrl = await CloudinaryService.instance.uploadImage(
+        File(localPath),
+        folder: 'profile_images',
+        publicId: '${uid}_${DateTime.now().millisecondsSinceEpoch}',
       );
-      final file = File(localPath);
-      final uploadTask = ref.putFile(file);
-      final snapshot = await uploadTask;
-      final downloadUrl = await snapshot.ref.getDownloadURL();
+      if (downloadUrl == null) {
+        return const Result.failure(
+          ServerFailure(message: 'Image upload failed'),
+        );
+      }
       await _firebaseDataSource.setDocument(AppConfig.usersCollection, uid, {
         'photoURL': downloadUrl,
         'updatedAt': DateTime.now().toIso8601String(),

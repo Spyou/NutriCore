@@ -544,6 +544,11 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
       _saveTimeToStorage('working_lunch_time', lunchTime);
       _saveTimeToStorage('working_dinner_time', dinnerTime);
 
+      // Re-apply the full schedule so the OS-level alarms match the new
+      // persisted settings exactly (covers edge cases where the per-type
+      // call above didn't run for the changed item).
+      await workingService.applyAllSettings();
+
       _showUpdateFeedback('Meal reminders scheduled!');
     } catch (e) {
       _showErrorFeedback('Failed to schedule meal reminders');
@@ -565,6 +570,10 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
       _storage.write('working_hydration_enabled', hydrationEnabled);
       _storage.write('working_protein_enabled', proteinAlertsEnabled);
       _storage.write('working_evening_enabled', eveningReviewEnabled);
+
+      // Re-apply the full schedule to keep weekly/meal items aligned with
+      // the latest persisted settings.
+      await workingService.applyAllSettings();
 
       _showUpdateFeedback('Smart notifications scheduled!');
     } catch (e) {

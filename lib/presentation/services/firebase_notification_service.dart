@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:nutri_check/core/utils/components/custom_flushbar.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:timezone/data/latest_all.dart' as tz_data;
@@ -428,6 +429,120 @@ class NotificationService extends GetxService {
 
     if (kDebugMode) {
       print('Scheduled daily evening review');
+    }
+  }
+
+  /// Cancels all known scheduled notifications and re-schedules each enabled
+  /// one from the persisted settings in `GetStorage`. Safe to call whenever a
+  /// toggle changes — it ensures the OS-level schedule matches the latest
+  /// user-facing settings.
+  Future<void> applyAllSettings() async {
+    final storage = GetStorage();
+
+    final breakfastEnabled =
+        storage.read('working_breakfast_enabled') ?? true;
+    final lunchEnabled = storage.read('working_lunch_enabled') ?? true;
+    final dinnerEnabled = storage.read('working_dinner_enabled') ?? true;
+    final hydrationEnabled =
+        storage.read('working_hydration_enabled') ?? true;
+    final proteinEnabled = storage.read('working_protein_enabled') ?? true;
+    final eveningEnabled = storage.read('working_evening_enabled') ?? true;
+    final weeklyEnabled = storage.read('working_weekly_enabled') ?? true;
+
+    final breakfastTime = _readTime(
+      storage,
+      'working_breakfast_time',
+      const TimeOfDay(hour: 8, minute: 0),
+    );
+    final lunchTime = _readTime(
+      storage,
+      'working_lunch_time',
+      const TimeOfDay(hour: 13, minute: 0),
+    );
+    final dinnerTime = _readTime(
+      storage,
+      'working_dinner_time',
+      const TimeOfDay(hour: 19, minute: 30),
+    );
+
+    await scheduleMealReminders(
+      breakfastTime: breakfastTime,
+      lunchTime: lunchTime,
+      dinnerTime: dinnerTime,
+      enableBreakfast: breakfastEnabled,
+      enableLunch: lunchEnabled,
+      enableDinner: dinnerEnabled,
+    );
+    await scheduleHydrationReminders(enabled: hydrationEnabled);
+    await scheduleProteinAlerts(enabled: proteinEnabled);
+    await scheduleEveningReviews(enabled: eveningEnabled);
+    await scheduleWeeklyReport(enabled: weeklyEnabled);
+  }
+
+  TimeOfDay _readTime(GetStorage storage, String key, TimeOfDay fallback) {
+    final raw = storage.read(key);
+    if (raw is String) {
+      final parts = raw.split(':');
+      if (parts.length >= 2) {
+        final h = int.tryParse(parts[0]);
+        final m = int.tryParse(parts[1]);
+        if (h != null && m != null) return TimeOfDay(hour: h, minute: m);
+      }
+    }
+    return fallback;
+  }
+
+  /// Weekly nutrition report — fired Sunday 18:00 local time. Uses id 80.
+  Future<void> scheduleWeeklyReport({bool enabled = true}) async {
+    await _notifications.cancel(80);
+    if (!enabled) return;
+
+    final hasExactPermission = await _requestExactAlarmPermission();
+
+    final now = tz.TZDateTime.now(tz.local);
+    var scheduledDate = tz.TZDateTime(
+      tz.local,
+      now.year,
+      now.month,
+      now.day,
+      18,
+      0,
+    );
+    // Advance to next Sunday (DateTime.sunday == 7).
+    while (scheduledDate.weekday != DateTime.sunday ||
+        !scheduledDate.isAfter(now)) {
+      scheduledDate = scheduledDate.add(const Duration(days: 1));
+    }
+
+    await _notifications.zonedSchedule(
+      80,
+      'Your Weekly Nutrition Report',
+      'See how your week went and plan the next one.',
+      scheduledDate,
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'weekly_reports',
+          'Weekly Reports',
+          channelDescription: 'Weekly nutrition summary',
+          importance: Importance.defaultImportance,
+          priority: Priority.defaultPriority,
+          icon: '@mipmap/launcher_icon',
+        ),
+        iOS: DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+        ),
+      ),
+      androidScheduleMode: hasExactPermission
+          ? AndroidScheduleMode.exactAllowWhileIdle
+          : AndroidScheduleMode.inexact,
+      matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
+      payload: 'weekly_report',
+    );
+
+    if (kDebugMode) {
+      print('Scheduled weekly report for $scheduledDate');
     }
   }
 

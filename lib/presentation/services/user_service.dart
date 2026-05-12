@@ -45,6 +45,24 @@ class UserService {
     }
   }
 
+  /// Merge-writes `onboardingComplete: true` directly onto the user
+  /// doc. Used when the in-memory UserModel isn't available yet but we
+  /// still need to persist the onboarding flag (e.g., onboarding finishes
+  /// before the auth listener has hydrated the cached model).
+  Future<void> setOnboardingComplete(String uid) async {
+    try {
+      await _firestore.collection(usersCollection).doc(uid).set(
+        {
+          'onboardingComplete': true,
+          'updatedAt': DateTime.now().toIso8601String(),
+        },
+        SetOptions(merge: true),
+      );
+    } catch (e) {
+      throw Exception('Error setting onboarding complete: $e');
+    }
+  }
+
   Future<void> deleteUserData(String uid) async {
     try {
       await _firestore.collection(usersCollection).doc(uid).delete();

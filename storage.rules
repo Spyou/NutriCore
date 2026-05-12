@@ -1,0 +1,27 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Profile images keyed by `<uid>_<timestamp>.jpg`. Any signed-in user
+    // can read avatars (e.g., shown in shared meal lists later), but only
+    // the uid in the filename can write its own avatar.
+    match /profile_images/{imageId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn()
+        && imageId.matches('^' + request.auth.uid + '_.*\\.jpg$')
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    // Meal photos uploaded for AI analysis or to attach to meal entries.
+    // Path: `meal_photos/<uid>/<filename>`.
+    match /meal_photos/{uid}/{filename=**} {
+      allow read, write: if isSignedIn() && request.auth.uid == uid;
+    }
+  }
+}

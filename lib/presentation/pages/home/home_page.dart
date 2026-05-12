@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 
 import '../../controllers/home_controller.dart';
 import '../../widgets/home/ai_insight_card.dart';
+import '../../widgets/home/complete_profile_banner.dart';
 import '../../widgets/home/home_header.dart';
 import '../../widgets/home/today_meals_list.dart';
 import '../../widgets/home/today_progress_ring.dart';
@@ -26,6 +27,7 @@ class HomePage extends GetView<HomeController> {
                   delegate: SliverChildListDelegate([
                     const HomeHeader(),
                     const SizedBox(height: 24),
+                    const CompleteProfileBanner(),
                     const TodayProgressRing(),
                     const SizedBox(height: 16),
                     const AiInsightCard(),

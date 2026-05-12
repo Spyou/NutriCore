@@ -9,7 +9,7 @@ import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:nutri_check/core/utils/components/custom_flushbar.dart';
 
-import '../../controllers/nutrition_controller.dart';
+import '../../widgets/nutrition/add_manual_meal_sheet.dart';
 
 class AIMealAnalysisPage extends StatefulWidget {
   const AIMealAnalysisPage({super.key});
@@ -769,42 +769,17 @@ class _AIMealAnalysisPageState extends State<AIMealAnalysisPage>
 
   void _addToNutritionLog() {
     if (_analysisResult == null) return;
-
-    try {
-      final nutritionController = Get.find<NutritionController>();
-
-      final meal = {
-        'name': _analysisResult!['meal_name'] ?? 'Analyzed Meal',
-        'calories': (_analysisResult!['calories'] ?? 0).round(),
-        'proteins': (_analysisResult!['protein'] ?? 0.0).toDouble(),
-        'carbs': (_analysisResult!['carbs'] ?? 0.0).toDouble(),
-        'fat': (_analysisResult!['fat'] ?? 0.0).toDouble(),
-        'fiber': (_analysisResult!['fiber'] ?? 0.0).toDouble(),
-        'sugar': (_analysisResult!['sugar'] ?? 0.0).toDouble(),
-        'sodium': (_analysisResult!['sodium'] ?? 0.0).toDouble(),
-        'type': 'meal',
-        'time':
-            '${DateTime.now().hour.toString().padLeft(2, '0')}:${DateTime.now().minute.toString().padLeft(2, '0')}',
-        'quantity': 100.0,
-        'notes': 'Analyzed meal: ${_analysisResult!['ingredients'] ?? ''}',
-        'favorite': false,
-        'source': 'photo_analysis',
-      };
-
-      nutritionController.addMeal(meal);
-
-      CustomThemeFlushbar.show(
-        title: 'Added to Log',
-        message: '${meal['name']} added to your nutrition log',
-      );
-
-      Get.back();
-    } catch (e) {
-      CustomThemeFlushbar.show(
-        title: 'Error',
-        message: 'Failed to add meal to log: ${e.toString()}',
-      );
-    }
+    final existing = <String, dynamic>{
+      'name': _analysisResult!['meal_name'] ?? 'Analyzed Meal',
+      'calories': (_analysisResult!['calories'] ?? 0).round(),
+      'proteins': (_analysisResult!['protein'] ?? 0.0).toDouble(),
+      'carbs': (_analysisResult!['carbs'] ?? 0.0).toDouble(),
+      'fat': (_analysisResult!['fat'] ?? 0.0).toDouble(),
+      'type': 'meal',
+      'notes': _analysisResult!['ingredients']?.toString() ?? '',
+      'favorite': false,
+    };
+    AddManualMealSheet.show(context, existing: existing);
   }
 
   Future<void> _analyzeImage() async {

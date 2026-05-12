@@ -1,7 +1,8 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart';
+import 'package:nutri_check/core/services/cloudinary_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -9,13 +10,17 @@ import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:nutri_check/core/utils/components/custom_flushbar.dart';
 import 'package:nutri_check/domain/entities/user_profile.dart';
 import 'package:nutri_check/presentation/pages/auth/login_page.dart';
+import 'package:nutri_check/presentation/services/firebase_notification_service.dart';
 import 'package:nutri_check/domain/repositories/user_repository.dart';
 import 'package:nutri_check/domain/repositories/nutrition_repository.dart';
 import 'package:nutri_check/domain/repositories/preferences_repository.dart';
 
+import '../../data/models/user_model.dart';
 import 'auth_controller.dart';
 import 'nutrition_controller.dart';
 
@@ -43,6 +48,13 @@ class ProfileController extends GetxController {
   var age = 25.obs;
   var gender = 'Male'.obs;
   var joinDate = DateTime.now().obs;
+
+  // Persisted activity-level choice (set during onboarding or profile
+  // edit). One of: sedentary | light | moderate | active | very_active.
+  // This is distinct from the derived `activityLevel` getter at the
+  // bottom of the controller, which is computed from streak length and
+  // represents app engagement, not exercise intensity.
+  var activityLevelChoice = 'moderate'.obs;
 
   var notificationsEnabled = true.obs;
   var darkModeEnabled = false.obs;
@@ -139,6 +151,9 @@ class ProfileController extends GetxController {
 
   var lastLoginDate = DateTime.now().obs;
   var profileCompleteness = 0.0.obs;
+  // Human-readable list of profile fields the user has not yet filled in.
+  // The UI may surface these as a checklist when completeness < 100%.
+  final RxList<String> missingProfileFields = <String>[].obs;
   var totalDataPoints = 0.obs;
   var averageCaloriesPerDay = 0.0.obs;
   var averageMealsPerDay = 0.0.obs;
@@ -574,20 +589,69 @@ class ProfileController extends GetxController {
         currentWeight.value = cachedWeight.toDouble();
       }
 
-      final cachedName = storage.read('user_name');
-      if (cachedName != null) {
-        userName.value = cachedName;
+      // Prefer the authoritative `session.*` keys written by
+      // AuthController over the legacy `user_*` keys — the session keys
+      // are kept in sync with every Firestore write, so they reflect
+      // the most recent signed-in user's data even before AuthController
+      // finishes restoring the FirebaseAuth session on cold start.
+      final sessionName = storage.read('session.displayName');
+      final sessionEmail = storage.read('session.email');
+      final sessionPhoto = storage.read('session.photoURL');
+
+      if (sessionName is String && sessionName.trim().isNotEmpty) {
+        userName.value = sessionName;
+      } else {
+        final cachedName = storage.read('user_name');
+        if (cachedName != null) userName.value = cachedName;
       }
 
-      final cachedEmail = storage.read('user_email');
-      if (cachedEmail != null) {
-        userEmail.value = cachedEmail;
+      if (sessionEmail is String && sessionEmail.trim().isNotEmpty) {
+        userEmail.value = sessionEmail;
+      } else {
+        final cachedEmail = storage.read('user_email');
+        if (cachedEmail != null) userEmail.value = cachedEmail;
+      }
+
+      if (sessionPhoto is String && sessionPhoto.trim().isNotEmpty) {
+        profileImageUrl.value = sessionPhoto;
       }
     } catch (e) {
       if (kDebugMode) {
         print('Error loading cached data: $e');
       }
     }
+  }
+
+  /// Public wrapper so callers (e.g., AuthController after a fresh sign-up
+  /// or sign-in) can force ProfileController to re-read the current user.
+  Future<void> reloadUserProfile() => _loadUserProfile();
+
+  /// Resets every in-memory user field to its blank/default value. Called
+  /// by AuthController on sign-out so the next session doesn't see stale
+  /// data from the previous account.
+  void resetUserState() {
+    userName.value = '';
+    userEmail.value = '';
+    userBio.value = '';
+    profileImageUrl.value = '';
+    currentWeight.value = 70.0;
+    targetWeight.value = 65.0;
+    height.value = 175.0;
+    age.value = 25;
+    gender.value = 'Male';
+    activityLevelChoice.value = 'moderate';
+    joinDate.value = DateTime.now();
+    totalMealsLogged.value = 0;
+    totalCaloriesConsumed.value = 0;
+    streakDays.value = 0;
+    totalDaysTracked.value = 0;
+    profileCompleteness.value = 0;
+    monthlyWeight.clear();
+    achievementUnlocks.clear();
+    goalHitDays.clear();
+    achievements.clear();
+    weeklyCalories.clear();
+    _cachedProfile = null;
   }
 
   Future<void> _loadUserProfile() async {
@@ -608,6 +672,19 @@ class ProfileController extends GetxController {
       await _loadProfileFromRepo(user.uid);
       await _loadPreferences(user.uid);
 
+      // Belt-and-suspenders: if after all that the displayed name is
+      // still empty or the placeholder, but AuthController's cached
+      // model has a real name, use it. Covers the race where the
+      // Firestore profile-repo doc lags behind the user doc.
+      if (userName.value.isEmpty || userName.value == 'Anonymous User') {
+        final modelName =
+            authController.userModel?.displayName?.trim() ?? '';
+        if (modelName.isNotEmpty) {
+          userName.value = modelName;
+          storage.write('user_name', modelName);
+        }
+      }
+
       _updateControllers();
 
       await _syncWeightWithNutrition(70.0, currentWeight.value);
@@ -623,15 +700,34 @@ class ProfileController extends GetxController {
 
   Future<void> _extractUserAuthData(user) async {
     try {
-      userName.value = user.displayName ?? 'Anonymous User';
-      userEmail.value = user.email ?? '';
-      profileImageUrl.value = user.photoURL ?? '';
+      // Prefer the AuthController's cached UserModel (set by signup /
+      // _createUserDocument with the up-to-date name) over FirebaseAuth's
+      // local user object, whose `displayName` can be stale right after
+      // updateDisplayName until the auth stream re-emits.
+      final auth = Get.find<AuthController>();
+      final modelName = auth.userModel?.displayName?.trim() ?? '';
+      final authName = (user.displayName as String?)?.trim() ?? '';
+      final resolvedName = modelName.isNotEmpty
+          ? modelName
+          : (authName.isNotEmpty ? authName : '');
+      if (resolvedName.isNotEmpty) {
+        userName.value = resolvedName;
+      } else {
+        userName.value = 'Anonymous User';
+      }
+
+      userEmail.value =
+          (auth.userModel?.email ?? user.email ?? '') as String;
+      profileImageUrl.value =
+          (auth.userModel?.photoURL ?? user.photoURL ?? '') as String;
 
       await storage.write('user_name', userName.value);
       await storage.write('user_email', userEmail.value);
 
       if (kDebugMode) {
-        print('User auth data extracted: ${userName.value}');
+        print(
+            'User auth data extracted: name="${userName.value}" '
+            '(model="$modelName" auth="$authName")');
       }
     } catch (e) {
       if (kDebugMode) {
@@ -664,6 +760,14 @@ class ProfileController extends GetxController {
   }
 
   void _applyProfileToObservables(UserProfile profile) {
+    final profileName = profile.displayName?.trim() ?? '';
+    if (profileName.isNotEmpty) {
+      userName.value = profileName;
+      storage.write('user_name', profileName);
+    }
+    if (profile.email.trim().isNotEmpty) {
+      userEmail.value = profile.email;
+    }
     if (profile.bio != null) userBio.value = profile.bio!;
     profileImageUrl.value =
         profile.profileImageUrl ?? profile.photoURL ?? '';
@@ -741,11 +845,51 @@ class ProfileController extends GetxController {
       ever(currentWeight, (double weight) async {
         await _saveWeightPersistently(weight);
         await _updateWeightHistory(weight);
+        _calculateProfileCompleteness();
       }),
       ever(notificationsEnabled, (_) => _saveSettingsLocally()),
       ever(darkModeEnabled, (_) => _saveSettingsLocally()),
       ever(weeklyReportsEnabled, (_) => _saveSettingsLocally()),
+      // Recompute completeness whenever any user-fillable profile field
+      // changes (covers edits coming from edit-profile sheet, image upload,
+      // etc.). currentWeight is handled in its own worker above.
+      ever<String>(userName, (_) => _calculateProfileCompleteness()),
+      ever<String>(userBio, (_) => _calculateProfileCompleteness()),
+      ever<String>(profileImageUrl, (_) => _calculateProfileCompleteness()),
+      ever<double>(height, (_) => _calculateProfileCompleteness()),
+      ever<double>(targetWeight, (_) => _calculateProfileCompleteness()),
+      ever<int>(age, (_) => _calculateProfileCompleteness()),
+      ever<String>(gender, (_) => _calculateProfileCompleteness()),
     ]);
+
+    // Re-load the profile whenever AuthController's user model changes
+    // (sign-in, sign-up, session restore). ProfileController is permanent
+    // and runs onInit before the FirebaseAuth session has restored, so
+    // without this listener the very first _loadUserProfile bails early
+    // and the profile screen sticks on "Anonymous User".
+    try {
+      final auth = Get.find<AuthController>();
+      _workers.add(
+        ever<UserModel?>(auth.userModelRx, (model) async {
+          if (model == null) return;
+          final needsReload = userName.value.isEmpty ||
+              userName.value == 'Anonymous User' ||
+              userEmail.value.isEmpty;
+          if (needsReload) {
+            await reloadUserProfile();
+          }
+        }),
+      );
+      _workers.add(
+        ever<User?>(auth.userRx, (user) async {
+          if (user != null &&
+              (userName.value.isEmpty ||
+                  userName.value == 'Anonymous User')) {
+            await reloadUserProfile();
+          }
+        }),
+      );
+    } catch (_) {}
   }
 
   void _saveSettingsLocally() async {
@@ -964,22 +1108,71 @@ class ProfileController extends GetxController {
   }
 
   void _calculateProfileCompleteness() {
-    int completed = 0;
-    final int total = 6;
+    // Weight each user-fillable profile field; sum of weights == 100.
+    // A field is "complete" only when it differs from the seeded default
+    // — otherwise users would start at 50% just from default values.
+    int percent = 0;
+    final missing = <String>[];
 
-    if (userName.value.isNotEmpty && userName.value != 'Anonymous User') {
-      completed++;
+    final hasName =
+        userName.value.trim().isNotEmpty && userName.value != 'Anonymous User';
+    if (hasName) {
+      percent += 15;
+    } else {
+      missing.add('Add your name');
     }
-    if (userEmail.value.isNotEmpty) completed++;
-    if (userBio.value.isNotEmpty) completed++;
-    if (profileImageUrl.value.isNotEmpty) completed++;
-    if (totalMealsLogged.value > 0) completed++;
-    if (totalDaysTracked.value > 0) completed++;
 
-    profileCompleteness.value = completed / total;
+    if (userBio.value.trim().isNotEmpty) {
+      percent += 10;
+    } else {
+      missing.add('Add a bio');
+    }
+
+    if (profileImageUrl.value.trim().isNotEmpty) {
+      percent += 15;
+    } else {
+      missing.add('Upload a profile photo');
+    }
+
+    if (height.value > 0 && height.value != 175) {
+      percent += 15;
+    } else {
+      missing.add('Set your height');
+    }
+
+    if (currentWeight.value > 0 && currentWeight.value != 70) {
+      percent += 15;
+    } else {
+      missing.add('Set your current weight');
+    }
+
+    if (targetWeight.value > 0 && targetWeight.value != 65) {
+      percent += 10;
+    } else {
+      missing.add('Set your target weight');
+    }
+
+    if (age.value > 0 && age.value != 25) {
+      percent += 10;
+    } else {
+      missing.add('Set your age');
+    }
+
+    final g = gender.value;
+    if (g == 'Male' || g == 'Female' || g == 'Other') {
+      percent += 10;
+    } else {
+      missing.add('Set your gender');
+    }
+
+    final clamped = percent.clamp(0, 100);
+    profileCompleteness.value = clamped / 100.0;
+    missingProfileFields.assignAll(missing);
+
     if (kDebugMode) {
       print(
-        'Profile completeness: ${(profileCompleteness.value * 100).toInt()}%',
+        'Profile completeness: ${(profileCompleteness.value * 100).toInt()}%'
+        ' (missing: ${missing.length})',
       );
     }
   }
@@ -1003,19 +1196,35 @@ class ProfileController extends GetxController {
 
         final user = authController.user!;
 
-        final ref = FirebaseStorage.instance
-            .ref()
-            .child('profile_images')
-            .child('${user.uid}_${DateTime.now().millisecondsSinceEpoch}.jpg');
+        if (!CloudinaryService.instance.isConfigured) {
+          CustomThemeFlushbar.show(
+            title: 'Image upload unavailable',
+            message:
+                'Add CLOUDINARY_CLOUD_NAME and CLOUDINARY_UPLOAD_PRESET to .env to enable photo uploads.',
+          );
+          return;
+        }
 
-        final uploadTask = await ref.putFile(
+        final downloadUrl = await CloudinaryService.instance.uploadImage(
           File(image.path),
-          SettableMetadata(contentType: 'image/jpeg'),
+          folder: 'profile_images',
+          publicId: '${user.uid}_${DateTime.now().millisecondsSinceEpoch}',
         );
 
-        final downloadUrl = await uploadTask.ref.getDownloadURL();
+        if (downloadUrl == null) {
+          throw Exception('Image upload failed');
+        }
 
-        await user.updatePhotoURL(downloadUrl);
+        // Same known Pigeon cast bug as Google sign-in: the call still
+        // works server-side but throws on the Dart cast. Treat as
+        // non-fatal — we persist the URL to Firestore right after.
+        try {
+          await user.updatePhotoURL(downloadUrl);
+        } catch (e) {
+          if (kDebugMode) {
+            print('updatePhotoURL threw (ignored): $e');
+          }
+        }
 
         final updatedProfile = _cachedProfile?.copyWith(
               profileImageUrl: downloadUrl,
@@ -1150,8 +1359,10 @@ class ProfileController extends GetxController {
     int? userAge,
     String? userGender,
   ) {
-    if (name != null && (name.trim().isEmpty || name.length > 50)) {
-      return 'Name must be between 1 and 50 characters';
+    // Only validate name when the caller is actually updating it.
+    // An empty string means "leave the existing value alone" — same as null.
+    if (name != null && name.trim().isNotEmpty && name.length > 50) {
+      return 'Name must be less than 50 characters';
     }
     if (bio != null && bio.length > 500) {
       return 'Bio must be less than 500 characters';
@@ -1317,6 +1528,26 @@ class ProfileController extends GetxController {
 
       _saveSettingsLocally();
 
+      // Sync the relevant notification flags to the local key namespace used
+      // by the notification service, then re-apply the schedule so OS-level
+      // alarms match the new preferences immediately.
+      if (weeklyReports != null) {
+        await storage.write('working_weekly_enabled', weeklyReports);
+      }
+      if (reminder != null) {
+        // The legacy "reminder" toggle gates the evening review.
+        await storage.write('working_evening_enabled', reminder);
+      }
+      try {
+        if (Get.isRegistered<NotificationService>()) {
+          await NotificationService.to.applyAllSettings();
+        }
+      } catch (e) {
+        if (kDebugMode) {
+          print('Failed to re-apply notification schedule: $e');
+        }
+      }
+
       CustomThemeFlushbar.show(
         title: 'Settings Updated',
         message: 'Your preferences have been saved',
@@ -1329,28 +1560,33 @@ class ProfileController extends GetxController {
   Future<void> exportUserData() async {
     try {
       isExporting.value = true;
-
-      CustomThemeFlushbar.show(
-        title: 'Exporting...',
-        message: 'Preparing your data for export',
-      );
-
       final authController = Get.find<AuthController>();
       final user = authController.user;
       if (user == null) {
         throw Exception('User not authenticated');
       }
-
       final exportData = await _collectExportData(user.uid);
 
-      await storage.write(
-        'exported_data_${DateTime.now().millisecondsSinceEpoch}',
-        exportData,
+      // Write to a temp file
+      final dir = await getTemporaryDirectory();
+      final filename =
+          'nutricore-export-${DateTime.now().toIso8601String().split('T').first}.json';
+      final file = File('${dir.path}/$filename');
+      await file.writeAsString(
+        const JsonEncoder.withIndent('  ').convert(exportData),
+      );
+
+      // Share via share_plus
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(file.path)],
+          text: 'NutriCore data export',
+        ),
       );
 
       CustomThemeFlushbar.show(
-        title: 'Export Complete',
-        message: 'Your data has been exported successfully',
+        title: 'Export ready',
+        message: 'Your data has been exported',
       );
     } catch (e) {
       _showErrorSnackbar('Failed to export data: ${e.toString()}');

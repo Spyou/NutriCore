@@ -24,6 +24,12 @@ class UserModel {
   final Gender gender;
   final String? activityLevel;
 
+  /// True once the user has completed the onboarding flow. New accounts
+  /// start with `false` and remain there until the onboarding's final
+  /// step persists. Source of truth — the AuthController checks this on
+  /// every auth state change to decide between MainPage and OnboardingPage.
+  final bool onboardingComplete;
+
   UserModel({
     required this.uid,
     required this.email,
@@ -43,6 +49,7 @@ class UserModel {
     this.age,
     this.gender = Gender.male,
     this.activityLevel,
+    this.onboardingComplete = false,
   });
 
   Map<String, dynamic> toMap() {
@@ -65,6 +72,7 @@ class UserModel {
       'age': age,
       'gender': gender.name,
       'activityLevel': activityLevel,
+      'onboardingComplete': onboardingComplete,
     };
   }
 
@@ -92,6 +100,7 @@ class UserModel {
           : (map['age'] is double ? (map['age'] as double).toInt() : null),
       gender: _parseGender(map['gender']),
       activityLevel: map['activityLevel'],
+      onboardingComplete: map['onboardingComplete'] == true,
     );
   }
 
@@ -118,6 +127,7 @@ class UserModel {
     int? age,
     Gender? gender,
     String? activityLevel,
+    bool? onboardingComplete,
   }) {
     return UserModel(
       uid: uid,
@@ -138,6 +148,7 @@ class UserModel {
       age: age ?? this.age,
       gender: gender ?? this.gender,
       activityLevel: activityLevel ?? this.activityLevel,
+      onboardingComplete: onboardingComplete ?? this.onboardingComplete,
     );
   }
 
