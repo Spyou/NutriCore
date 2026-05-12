@@ -7,6 +7,7 @@ import 'package:nutri_check/core/config/env_config.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
+import 'package:openfoodfacts/openfoodfacts.dart' as off;
 import 'package:nutri_check/core/utils/components/custom_flushbar.dart';
 
 import '../../widgets/nutrition/add_manual_meal_sheet.dart';
@@ -24,6 +25,17 @@ class _AIMealAnalysisPageState extends State<AIMealAnalysisPage>
   bool _isAnalyzing = false;
   Map<String, dynamic>? _analysisResult;
   final ImagePicker _picker = ImagePicker();
+
+  // Portion correction state.
+  double _estimatedGrams = 100;
+  double _currentGrams = 100;
+  String _confidence = 'unknown';
+
+  // OpenFoodFacts cross-check state.
+  Map<String, double>? _offPer100;
+  String? _offMatchName;
+  bool _checkingOff = false;
+  bool _useOff = false;
 
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
@@ -222,6 +234,7 @@ class _AIMealAnalysisPageState extends State<AIMealAnalysisPage>
                       setState(() {
                         _selectedImage = null;
                         _analysisResult = null;
+                        _resetCorrectionState();
                       });
                     },
                     child: Container(
@@ -439,7 +452,13 @@ class _AIMealAnalysisPageState extends State<AIMealAnalysisPage>
           _buildResultsHeader(context),
           const SizedBox(height: 20),
           _buildMealInfo(context),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
+          _buildPortionEditor(context),
+          if (_offPer100 != null || _checkingOff) ...[
+            const SizedBox(height: 12),
+            _buildOffMatchBanner(context),
+          ],
+          const SizedBox(height: 16),
           _buildNutritionGrid(context),
           if (_analysisResult!['ingredients'] != null) ...[
             const SizedBox(height: 20),
@@ -491,7 +510,222 @@ class _AIMealAnalysisPageState extends State<AIMealAnalysisPage>
             ],
           ),
         ),
+        if (_confidence != 'unknown') _buildConfidenceChip(context),
       ],
+    );
+  }
+
+  Widget _buildConfidenceChip(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    late final Color color;
+    late final IconData icon;
+    switch (_confidence) {
+      case 'high':
+        color = scheme.primary;
+        icon = Icons.check_circle_rounded;
+        break;
+      case 'medium':
+        color = scheme.tertiary;
+        icon = Icons.help_outline_rounded;
+        break;
+      case 'low':
+      default:
+        color = scheme.error;
+        icon = Icons.warning_amber_rounded;
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 4),
+          Text(
+            _confidence,
+            style: textTheme.labelSmall?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.3,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPortionEditor(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final mults = const [0.5, 1.0, 1.5, 2.0];
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.scale_rounded, size: 18, color: scheme.primary),
+              const SizedBox(width: 8),
+              Text(
+                'Adjust portion',
+                style: textTheme.labelLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: scheme.onSurface,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                '${_currentGrams.round()} g',
+                style: textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: scheme.primary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'AI guessed ${_estimatedGrams.round()} g. Tap or drag to correct.',
+            style: textTheme.bodySmall?.copyWith(
+              color: scheme.onSurface.withValues(alpha: 0.6),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: mults.map((m) {
+              final target = _estimatedGrams * m;
+              final selected = (_currentGrams - target).abs() < 0.5;
+              return Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: GestureDetector(
+                    onTap: () => _pickMultiplier(m),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: selected
+                            ? scheme.primary
+                            : scheme.surface,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: selected
+                              ? scheme.primary
+                              : scheme.outlineVariant.withValues(alpha: 0.4),
+                        ),
+                      ),
+                      child: Text(
+                        '${m.toStringAsFixed(m == m.roundToDouble() ? 0 : 1)}×',
+                        style: textTheme.labelLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: selected
+                              ? scheme.onPrimary
+                              : scheme.onSurface,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+          Slider(
+            min: 10,
+            max: (_estimatedGrams * 3).clamp(200.0, 1500.0),
+            value: _currentGrams.clamp(
+              10.0,
+              (_estimatedGrams * 3).clamp(200.0, 1500.0),
+            ),
+            onChanged: (v) => _setGrams(v),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOffMatchBanner(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    if (_checkingOff && _offPer100 == null) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: scheme.secondary.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 14,
+              height: 14,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: scheme.secondary,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Text(
+              'Cross-checking with OpenFoodFacts…',
+              style: textTheme.bodySmall?.copyWith(
+                color: scheme.onSurface.withValues(alpha: 0.7),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    if (_offPer100 == null) return const SizedBox.shrink();
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: scheme.secondary.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: scheme.secondary.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.verified_outlined, color: scheme.secondary, size: 18),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _useOff ? 'Using OpenFoodFacts data' : 'OpenFoodFacts match found',
+                  style: textTheme.labelMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: scheme.secondary,
+                  ),
+                ),
+                if (_offMatchName != null)
+                  Text(
+                    _offMatchName!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurface.withValues(alpha: 0.7),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          Switch(
+            value: _useOff,
+            onChanged: (v) => setState(() => _useOff = v),
+          ),
+        ],
+      ),
     );
   }
 
@@ -541,28 +775,28 @@ class _AIMealAnalysisPageState extends State<AIMealAnalysisPage>
       {
         'icon': '🔥',
         'label': 'Calories',
-        'value': '${_analysisResult!['calories'] ?? 0}',
+        'value': _scaled('calories').round().toString(),
         'unit': 'kcal',
         'color': scheme.primary,
       },
       {
         'icon': '💪',
         'label': 'Protein',
-        'value': '${_analysisResult!['protein'] ?? 0}',
+        'value': _scaled('protein').toStringAsFixed(1),
         'unit': 'g',
         'color': scheme.primary,
       },
       {
         'icon': '🌾',
         'label': 'Carbs',
-        'value': '${_analysisResult!['carbs'] ?? 0}',
+        'value': _scaled('carbs').toStringAsFixed(1),
         'unit': 'g',
         'color': scheme.tertiary,
       },
       {
         'icon': '🥑',
         'label': 'Fat',
-        'value': '${_analysisResult!['fat'] ?? 0}',
+        'value': _scaled('fat').toStringAsFixed(1),
         'unit': 'g',
         'color': scheme.secondary,
       },
@@ -750,6 +984,7 @@ class _AIMealAnalysisPageState extends State<AIMealAnalysisPage>
         setState(() {
           _selectedImage = File(image.path);
           _analysisResult = null;
+          _resetCorrectionState();
         });
 
         // Auto-analyze after picking image
@@ -765,17 +1000,137 @@ class _AIMealAnalysisPageState extends State<AIMealAnalysisPage>
 
   void _addToNutritionLog() {
     if (_analysisResult == null) return;
+    final ingredients =
+        _analysisResult!['ingredients']?.toString().trim() ?? '';
+    final noteParts = <String>[
+      '${_currentGrams.round()}g portion',
+      if (_useOff && _offMatchName != null) 'OpenFoodFacts: $_offMatchName',
+      if (ingredients.isNotEmpty) ingredients,
+    ];
     final existing = <String, dynamic>{
       'name': _analysisResult!['meal_name'] ?? 'Analyzed Meal',
-      'calories': (_analysisResult!['calories'] ?? 0).round(),
-      'proteins': (_analysisResult!['protein'] ?? 0.0).toDouble(),
-      'carbs': (_analysisResult!['carbs'] ?? 0.0).toDouble(),
-      'fat': (_analysisResult!['fat'] ?? 0.0).toDouble(),
+      'calories': _scaled('calories').round(),
+      'proteins': _scaled('protein'),
+      'carbs': _scaled('carbs'),
+      'fat': _scaled('fat'),
       'type': 'meal',
-      'notes': _analysisResult!['ingredients']?.toString() ?? '',
+      'notes': noteParts.join(' · '),
       'favorite': false,
     };
     AddManualMealSheet.show(context, existing: existing);
+  }
+
+  void _resetCorrectionState() {
+    _estimatedGrams = 100;
+    _currentGrams = 100;
+    _confidence = 'unknown';
+    _offPer100 = null;
+    _offMatchName = null;
+    _useOff = false;
+    _checkingOff = false;
+  }
+
+  void _applyAnalysis(Map<String, dynamic> data) {
+    final est = (data['estimated_grams'] is num)
+        ? (data['estimated_grams'] as num).toDouble().clamp(1.0, 3000.0)
+        : 100.0;
+    final conf = (data['confidence'] as String?)?.toLowerCase() ?? 'unknown';
+    setState(() {
+      _analysisResult = data;
+      _estimatedGrams = est;
+      _currentGrams = est;
+      _confidence = (['low', 'medium', 'high'].contains(conf))
+          ? conf
+          : 'unknown';
+      _offPer100 = null;
+      _offMatchName = null;
+      _useOff = false;
+    });
+    final name = (data['meal_name'] as String?)?.trim();
+    if (name != null && name.length >= 3) {
+      _crossCheckOpenFoodFacts(name);
+    }
+  }
+
+  // Scaled macros: per-gram baseline × current grams. Source flips between
+  // the model's estimate and the OpenFoodFacts match when [_useOff] is on.
+  double _modelTotal(String key) {
+    final v = _analysisResult?[key];
+    if (v is num) return v.toDouble();
+    return 0.0;
+  }
+
+  double _perGram(String key) {
+    if (_useOff && _offPer100 != null) {
+      final off = _offPer100![key] ?? 0.0;
+      return off / 100.0;
+    }
+    final total = _modelTotal(key);
+    if (_estimatedGrams <= 0) return 0.0;
+    return total / _estimatedGrams;
+  }
+
+  double _scaled(String key) => _perGram(key) * _currentGrams;
+
+  void _setGrams(double g) {
+    setState(() {
+      _currentGrams = g.clamp(1.0, 3000.0);
+    });
+  }
+
+  void _pickMultiplier(double m) => _setGrams(_estimatedGrams * m);
+
+  Future<void> _crossCheckOpenFoodFacts(String mealName) async {
+    setState(() => _checkingOff = true);
+    try {
+      final result = await off.OpenFoodAPIClient.searchProducts(
+        null,
+        off.ProductSearchQueryConfiguration(
+          parametersList: [
+            off.SearchTerms(terms: [mealName]),
+            const off.PageSize(size: 5),
+          ],
+          fields: const [
+            off.ProductField.NAME,
+            off.ProductField.BRANDS,
+            off.ProductField.NUTRIMENTS,
+          ],
+          language: off.OpenFoodFactsLanguage.ENGLISH,
+          version: const off.ProductQueryVersion(2),
+        ),
+      );
+      if (!mounted) return;
+      final products = result.products ?? const [];
+      for (final p in products) {
+        final kcal = p.nutriments
+            ?.getValue(off.Nutrient.energyKCal, off.PerSize.oneHundredGrams);
+        if (kcal == null || kcal <= 0) continue;
+        final protein = p.nutriments
+                ?.getValue(off.Nutrient.proteins, off.PerSize.oneHundredGrams) ??
+            0.0;
+        final carbs = p.nutriments
+                ?.getValue(
+                    off.Nutrient.carbohydrates, off.PerSize.oneHundredGrams) ??
+            0.0;
+        final fat = p.nutriments
+                ?.getValue(off.Nutrient.fat, off.PerSize.oneHundredGrams) ??
+            0.0;
+        setState(() {
+          _offPer100 = {
+            'calories': kcal.toDouble(),
+            'protein': protein.toDouble(),
+            'carbs': carbs.toDouble(),
+            'fat': fat.toDouble(),
+          };
+          _offMatchName = p.productName ?? mealName;
+        });
+        break;
+      }
+    } catch (e) {
+      if (kDebugMode) print('OFF cross-check error: $e');
+    } finally {
+      if (mounted) setState(() => _checkingOff = false);
+    }
   }
 
   Future<void> _analyzeImage() async {
@@ -789,10 +1144,12 @@ class _AIMealAnalysisPageState extends State<AIMealAnalysisPage>
       final imageBytes = await _selectedImage!.readAsBytes();
 
       final prompt = '''
-Analyze this meal image and provide detailed nutritional information. 
-Return the response as a JSON object with the following structure:
+Analyze this meal image and return ONLY a JSON object — no prose, no
+markdown — with this exact shape:
 {
-  "meal_name": "Name of the dish/meal",
+  "meal_name": "Short name of the dish",
+  "estimated_grams": 0,
+  "confidence": "low" | "medium" | "high",
   "calories": 0,
   "protein": 0,
   "carbs": 0,
@@ -800,13 +1157,18 @@ Return the response as a JSON object with the following structure:
   "fiber": 0,
   "sugar": 0,
   "sodium": 0,
-  "ingredients": "List of main ingredients detected",
-  "portion_size": "Estimated portion size",
-  "health_notes": "Brief health assessment or tips"
+  "ingredients": "Comma-separated main ingredients",
+  "portion_size": "Plain-language portion description",
+  "health_notes": "One-line health note"
 }
 
-Please provide realistic estimates based on typical serving sizes. 
-All nutritional values should be numbers (integers for calories, decimals for others).
+Rules:
+- "estimated_grams" is the total mass of food visible (NOT plate/bowl).
+- All nutrient values are for the ENTIRE portion (not per 100g).
+- "confidence" reflects how sure you are about identity AND portion:
+  - "high" only when dish is unambiguous and portion has a clear reference.
+  - "low" when the dish is mixed/occluded or scale is ambiguous.
+- Integers for calories/estimated_grams; decimals allowed for macros.
 ''';
 
       if (_apiKeyMissing) {
@@ -883,10 +1245,8 @@ All nutritional values should be numbers (integers for calories, decimals for ot
         }
 
         try {
-          final analysisData = jsonDecode(jsonString);
-          setState(() {
-            _analysisResult = analysisData;
-          });
+          final analysisData = jsonDecode(jsonString) as Map<String, dynamic>;
+          _applyAnalysis(analysisData);
           _animationController.reset();
           _animationController.forward();
 
@@ -967,9 +1327,7 @@ All nutritional values should be numbers (integers for calories, decimals for ot
         'ingredients': ingredientsMatch?.group(1) ?? 'Various ingredients',
       };
 
-      setState(() {
-        _analysisResult = manualResult;
-      });
+      _applyAnalysis(manualResult);
 
       CustomThemeFlushbar.show(
         title: 'Analysis Complete',
